@@ -7,6 +7,7 @@ only the static geographic baseline:
 - Grey mainland outside the city boundary.
 - One 3 km2 green mainland planning boundary.
 - One separate 1 km2 green island.
+- One DOM compass overlay pointing north from mainland to island.
 
 ## Render Check
 

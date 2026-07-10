@@ -16,12 +16,14 @@ declare global {
         secondaryIslandSideM: number;
         seaGapM: number;
       };
+      getCompassBearingDegrees: () => number;
       getPerformance: () => { drawCalls: number; triangles: number };
     };
   }
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#scene");
+const compassNeedle = document.querySelector<HTMLElement>("#compass-needle");
 
 if (!canvas) {
   throw new Error("Canvas element #scene was not found.");
@@ -34,6 +36,7 @@ const MAIN_BOUNDARY_SIDE_M = Math.sqrt(MAIN_BOUNDARY_AREA_M2);
 const SECONDARY_ISLAND_AREA_M2 = 1_000_000;
 const SECONDARY_ISLAND_SIDE_M = Math.sqrt(SECONDARY_ISLAND_AREA_M2);
 const SEA_GAP_M = 400;
+const NORTH_SAMPLE_DISTANCE_M = 1_000;
 const SEA_Y = 0;
 const MAINLAND_Y = 1;
 const GRASS_SURFACE_Y = 2;
@@ -82,6 +85,12 @@ const viewTarget = new THREE.Vector3(
   0,
   0,
 );
+const worldNorth = new THREE.Vector3(NORTH_SAMPLE_DISTANCE_M, 0, 0);
+const compassOriginWorld = new THREE.Vector3();
+const compassNorthWorld = new THREE.Vector3();
+const compassOriginScreen = new THREE.Vector3();
+const compassNorthScreen = new THREE.Vector3();
+let compassBearingDegrees = 0;
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -219,14 +228,38 @@ window.__SITY_DEBUG__ = {
     secondaryIslandSideM: SECONDARY_ISLAND_SIDE_M,
     seaGapM: SEA_GAP_M,
   }),
+  getCompassBearingDegrees: () => compassBearingDegrees,
   getPerformance: () => ({
     drawCalls: renderer.info.render.calls,
     triangles: renderer.info.render.triangles,
   }),
 };
 
+function updateCompass() {
+  if (!compassNeedle) {
+    return;
+  }
+
+  compassOriginWorld.copy(controls.target);
+  compassNorthWorld.copy(controls.target).add(worldNorth);
+  compassOriginScreen.copy(compassOriginWorld).project(camera);
+  compassNorthScreen.copy(compassNorthWorld).project(camera);
+
+  const screenX = compassNorthScreen.x - compassOriginScreen.x;
+  const screenY = compassNorthScreen.y - compassOriginScreen.y;
+
+  if (Math.abs(screenX) + Math.abs(screenY) < 0.0001) {
+    return;
+  }
+
+  const bearingRadians = Math.atan2(screenX, screenY);
+  compassBearingDegrees = THREE.MathUtils.radToDeg(bearingRadians);
+  compassNeedle.style.transform = `rotate(${bearingRadians}rad)`;
+}
+
 function animate() {
   controls.update();
+  updateCompass();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

@@ -29,3 +29,103 @@ canvas {
   height: 100%;
   touch-action: none;
 }
+
+.compass {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+  display: grid;
+  width: 88px;
+  height: 88px;
+  place-items: center;
+  pointer-events: none;
+}
+
+.compass-ring {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border: 1px solid rgba(16, 25, 20, 0.28);
+  border-radius: 50%;
+  background: rgba(246, 250, 244, 0.62);
+  box-shadow: 0 12px 34px rgba(16, 25, 20, 0.18);
+}
+
+.compass-ring::before,
+.compass-ring::after {
+  position: absolute;
+  inset: 10px;
+  content: "";
+  border-color: rgba(16, 25, 20, 0.16);
+}
+
+.compass-ring::before {
+  left: 50%;
+  width: 1px;
+  border-left: 1px solid rgba(16, 25, 20, 0.16);
+  transform: translateX(-50%);
+}
+
+.compass-ring::after {
+  top: 50%;
+  height: 1px;
+  border-top: 1px solid rgba(16, 25, 20, 0.16);
+  transform: translateY(-50%);
+}
+
+.compass-needle {
+  position: absolute;
+  inset: 8px;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.compass-needle::before {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-right: 7px solid transparent;
+  border-bottom: 28px solid #d7443f;
+  border-left: 7px solid transparent;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.compass-needle::after {
+  position: absolute;
+  top: 28px;
+  bottom: 10px;
+  left: 50%;
+  width: 3px;
+  border-radius: 999px;
+  background: #101914;
+  content: "";
+  transform: translateX(-50%);
+}
+
+.compass-needle span {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  color: #101914;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  transform: translateX(-50%);
+}
+
+.compass-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #f6faf4;
+  border-radius: 50%;
+  background: #101914;
+  transform: translate(-50%, -50%);
+}

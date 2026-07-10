@@ -7,12 +7,30 @@ const runs = [
 
 const browser = await chromium.launch();
 
+async function readCompass(page) {
+  return page.evaluate(() => {
+    const compass = document.querySelector(".compass");
+    const needle = document.querySelector("#compass-needle");
+
+    if (!(compass instanceof HTMLElement) || !(needle instanceof HTMLElement)) {
+      throw new Error("Compass UI was not found.");
+    }
+
+    return {
+      visible: getComputedStyle(compass).display !== "none",
+      transform: needle.style.transform,
+      bearingDegrees: window.__SITY_DEBUG__.getCompassBearingDegrees(),
+    };
+  });
+}
+
 for (const run of runs) {
   const page = await browser.newPage({
     viewport: { width: run.width, height: run.height },
   });
   await page.goto(run.url, { waitUntil: "networkidle" });
   await page.waitForSelector("canvas");
+  await page.waitForSelector("#compass-needle");
   await page.waitForFunction(() => Boolean(window.__SITY_DEBUG__));
   await page.waitForTimeout(900);
 
@@ -56,11 +74,37 @@ for (const run of runs) {
       visibleSamples: visibleSamples.length,
     };
   });
+  const compassCheck = await readCompass(page);
+
+  if (!Number.isFinite(compassCheck.bearingDegrees)) {
+    throw new Error(`Compass bearing is invalid: ${JSON.stringify(compassCheck)}.`);
+  }
+
+  await page.mouse.move(run.width * 0.5, run.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(run.width * 0.68, run.height * 0.5, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+
+  const movedCompassCheck = await readCompass(page);
+  const compassMoved =
+    Math.abs(movedCompassCheck.bearingDegrees - compassCheck.bearingDegrees) > 0.1;
+
+  if (!compassMoved) {
+    throw new Error(
+      `Compass did not react to camera movement: ${JSON.stringify({
+        before: compassCheck,
+        after: movedCompassCheck,
+      })}.`,
+    );
+  }
 
   console.log(
     JSON.stringify({
       run: run.name,
       canvasCheck,
+      compassCheck,
+      movedCompassCheck,
       siteLayout: await page.evaluate(() => window.__SITY_DEBUG__.getSiteLayout()),
       performance: await page.evaluate(() => window.__SITY_DEBUG__.getPerformance()),
     }),

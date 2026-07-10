@@ -7,7 +7,15 @@
   </head>
   <body>
     <div id="app">
-      <canvas id="scene" aria-label="Sity island baseline"></canvas>
+      <canvas id="scene" aria-label="Sity mainland and island baseline"></canvas>
+      <aside class="compass" aria-label="Compass north points from mainland to island">
+        <div class="compass-ring">
+          <div id="compass-needle" class="compass-needle" aria-hidden="true">
+            <span>N</span>
+          </div>
+          <span class="compass-center" aria-hidden="true"></span>
+        </div>
+      </aside>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
