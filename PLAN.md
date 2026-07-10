@@ -10,6 +10,7 @@ building, vehicle, pedestrian, or smart-infrastructure logic is added.
 - One separate 1 km2 flat green island.
 - A 400 meter sea gap from the mainland coast to the island edge.
 - Open sea surrounding the separate island.
+- A UI compass whose north direction points from the mainland to the island.
 - One Three.js unit equals one meter.
 
 ## Dimensions
