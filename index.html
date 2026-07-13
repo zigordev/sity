@@ -7,13 +7,26 @@
   </head>
   <body>
     <div id="app">
-      <canvas id="scene" aria-label="Sity mainland and island baseline"></canvas>
-      <aside class="compass" aria-label="Compass north points from mainland to island">
+      <canvas id="scene" aria-label="Sity mainland baseline"></canvas>
+      <aside class="compass" aria-label="Compass north points from mainland toward the sea">
         <div class="compass-ring">
           <div id="compass-needle" class="compass-needle" aria-hidden="true">
             <span>N</span>
           </div>
           <span class="compass-center" aria-hidden="true"></span>
+        </div>
+      </aside>
+      <aside class="axis-scale" aria-label="Scale axes in meters">
+        <div class="axis-scale-stage" aria-hidden="true">
+          <span class="axis-scale-center"></span>
+          <span id="scale-axis-x" class="axis-scale-arm axis-scale-x"><span>X</span></span>
+          <span id="scale-axis-y" class="axis-scale-arm axis-scale-y"><span>Y</span></span>
+          <span id="scale-axis-z" class="axis-scale-arm axis-scale-z"><span>Z</span></span>
+        </div>
+        <div class="axis-scale-measures">
+          <span><strong>X</strong><span id="scale-measure-x"></span></span>
+          <span><strong>Y</strong><span id="scale-measure-y"></span></span>
+          <span><strong>Z</strong><span id="scale-measure-z"></span></span>
         </div>
       </aside>
       <aside class="layer-panel" aria-label="Element visibility controls">
@@ -25,6 +38,10 @@
         <label>
           <input id="toggle-artificial" type="checkbox" checked />
           <span>Artificial</span>
+        </label>
+        <label>
+          <input id="toggle-help" type="checkbox" checked />
+          <span>Help</span>
         </label>
       </aside>
     </div>

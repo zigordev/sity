@@ -12,9 +12,6 @@ declare global {
         mainlandWestMarginM: number;
         mainlandEastMarginM: number;
         mainlandNorthSouthMarginM: number;
-        secondaryIslandAreaM2: number;
-        secondaryIslandSideM: number;
-        seaGapM: number;
       };
       getNaturalFeatures: () => {
         mountain: {
@@ -31,6 +28,9 @@ declare global {
           radiusXM: number;
           radiusZM: number;
           clippedToMainBoundary: boolean;
+          centerOutsideMainBoundary: boolean;
+          estimatedVisiblePortion: number;
+          solidCutFaces: boolean;
           foothillBlendHeightM: number;
           higherThanReservoirMountain: boolean;
           separateFromReservoirMountain: boolean;
@@ -65,21 +65,58 @@ declare global {
           curved: boolean;
           abuttedByNaturalTerrain: boolean;
         };
+        coast: {
+          mainlandCoastSimple: boolean;
+          parallelCoastEdges: boolean;
+          hasIntegratedRiverBeach: boolean;
+          hasWetSandBand: boolean;
+          beachBoundedByNorthRiverBank: boolean;
+          wetSandWidthM: number;
+          beachOppositePier: boolean;
+          hasLongWoodenAttractionPier: boolean;
+          attractionPierLengthM: number;
+          hasConcreteShipPort: boolean;
+          cargoShipBerthCount: number;
+          hasPrivateMarina: boolean;
+          privateBerthCount: number;
+        };
       };
       getCategoryVisibility: () => {
         natural: boolean;
         artificial: boolean;
+        help: boolean;
       };
       getCompassBearingDegrees: () => number;
+      getAxisScale: () => {
+        unit: "meter";
+        visible: boolean;
+        xMeasureM: number;
+        yMeasureM: number;
+        zMeasureM: number;
+        axisAnglesDegrees: {
+          x: number;
+          y: number;
+          z: number;
+        };
+      };
       getPerformance: () => { drawCalls: number; triangles: number };
     };
   }
 }
 
 const canvas = document.querySelector<HTMLCanvasElement>("#scene");
+const compass = document.querySelector<HTMLElement>(".compass");
 const compassNeedle = document.querySelector<HTMLElement>("#compass-needle");
+const axisScale = document.querySelector<HTMLElement>(".axis-scale");
+const scaleAxisX = document.querySelector<HTMLElement>("#scale-axis-x");
+const scaleAxisY = document.querySelector<HTMLElement>("#scale-axis-y");
+const scaleAxisZ = document.querySelector<HTMLElement>("#scale-axis-z");
+const scaleMeasureX = document.querySelector<HTMLElement>("#scale-measure-x");
+const scaleMeasureY = document.querySelector<HTMLElement>("#scale-measure-y");
+const scaleMeasureZ = document.querySelector<HTMLElement>("#scale-measure-z");
 const naturalToggle = document.querySelector<HTMLInputElement>("#toggle-natural");
 const artificialToggle = document.querySelector<HTMLInputElement>("#toggle-artificial");
+const helpToggle = document.querySelector<HTMLInputElement>("#toggle-help");
 
 if (!canvas) {
   throw new Error("Canvas element #scene was not found.");
@@ -89,10 +126,8 @@ const urlParams = new URLSearchParams(window.location.search);
 
 const MAIN_BOUNDARY_AREA_M2 = 3_000_000;
 const MAIN_BOUNDARY_SIDE_M = Math.sqrt(MAIN_BOUNDARY_AREA_M2);
-const SECONDARY_ISLAND_AREA_M2 = 1_000_000;
-const SECONDARY_ISLAND_SIDE_M = Math.sqrt(SECONDARY_ISLAND_AREA_M2);
-const SEA_GAP_M = 400;
 const NORTH_SAMPLE_DISTANCE_M = 1_000;
+const SCALE_AXIS_SAMPLE_M = 650;
 const SEA_Y = 0;
 const MAINLAND_Y = 1;
 const GRASS_SURFACE_Y = 2;
@@ -104,6 +139,17 @@ const GRASS_COLOR = 0x93c97b;
 const MOUNTAIN_LOW_COLOR = 0x6f8d57;
 const MOUNTAIN_MID_COLOR = 0x887c68;
 const MOUNTAIN_HIGH_COLOR = 0xb0aaa0;
+const BEACH_SAND_COLOR = 0xd8c58d;
+const WET_SAND_COLOR = 0xb9a978;
+const WOOD_PIER_COLOR = 0x8b7355;
+const CONCRETE_PORT_COLOR = 0x9a9486;
+const DOCK_COLOR = 0x6f6254;
+const SHIP_HULL_COLOR = 0x4f6376;
+const PRIVATE_BOAT_COLOR = 0xd7f0f6;
+const SHIP_CABIN_COLOR = 0xe9e4d4;
+const ATTRACTION_RED_COLOR = 0xc44f4f;
+const ATTRACTION_BLUE_COLOR = 0x3f7fb0;
+const ATTRACTION_YELLOW_COLOR = 0xe5b64f;
 const MOUNTAIN_HEIGHT_M = 420;
 const MOUNTAIN_RADIUS_X_M = 950;
 const MOUNTAIN_RADIUS_Z_M = 880;
@@ -115,9 +161,9 @@ const MOUNTAIN_MIN_RENDER_HEIGHT_M = 0.18;
 const SNOW_COLOR = 0xf4f7f6;
 const SNOW_SHADOW_COLOR = 0xcbd8d5;
 const SNOW_MOUNTAIN_HEIGHT_M = 864;
-const SNOW_MOUNTAIN_RADIUS_X_M = 646;
-const SNOW_MOUNTAIN_RADIUS_Z_M = 595;
-const SNOW_MOUNTAIN_VISIBLE_SPAN_M = 1_180;
+const SNOW_MOUNTAIN_RADIUS_X_M = 1_292;
+const SNOW_MOUNTAIN_RADIUS_Z_M = 1_190;
+const SNOW_MOUNTAIN_VISIBLE_SPAN_M = 1_300;
 const SNOW_MOUNTAIN_GRID_SEGMENTS = 72;
 const SNOW_MOUNTAIN_SURFACE_LIFT_M = 0.9;
 const SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M = 0.18;
@@ -149,6 +195,24 @@ const DAM_ABUTMENT_FLARE_M = 28;
 const DAM_ABUTMENT_CREST_RISE_M = 18;
 const SEA_COLOR = 0x2e96c4;
 const COASTAL_INLET_OVERLAP_M = 92;
+const COAST_SURFACE_Y = GRASS_SURFACE_Y + 0.08;
+const PLATFORM_SURFACE_Y = GRASS_SURFACE_Y + 0.32;
+const BEACH_INLAND_WIDTH_M = 160;
+const WET_SAND_WIDTH_M = 30;
+const ATTRACTION_PIER_LENGTH_M = 420;
+const ATTRACTION_PIER_DEPTH_M = 180;
+const ATTRACTION_PIER_LAND_OVERLAP_M = 55;
+const ATTRACTION_PIER_RIVER_OFFSET_M = 272;
+const CARGO_PORT_LENGTH_M = 330;
+const CARGO_PORT_DEPTH_M = 230;
+const CARGO_PORT_LAND_OVERLAP_M = 45;
+const CARGO_PORT_RIVER_OFFSET_M = 732;
+const CARGO_SHIP_BERTH_COUNT = 2;
+const PRIVATE_MARINA_RIVER_OFFSET_M = 477;
+const PRIVATE_MARINA_BERTH_COUNT = 4;
+const SCALE_X_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
+const SCALE_Y_MEASURE_M = SNOW_MOUNTAIN_HEIGHT_M;
+const SCALE_Z_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
 
 const mainBoundaryCenterX = 0;
 const mainBoundaryCenterZ = 0;
@@ -164,36 +228,43 @@ const mainlandMaxZ = mainBoundaryMaxZ + MAINLAND_NORTH_SOUTH_MARGIN_M;
 const mainlandDepth = mainlandMaxZ - mainlandMinZ;
 const mainlandCenterZ = (mainlandMinZ + mainlandMaxZ) / 2;
 
-const secondaryIslandCenterX =
-  mainlandMaxX + SEA_GAP_M + SECONDARY_ISLAND_SIDE_M / 2;
-const secondaryIslandCenterZ = 0;
-
-const secondaryIslandMinX = secondaryIslandCenterX - SECONDARY_ISLAND_SIDE_M / 2;
-const secondaryIslandMaxX = secondaryIslandCenterX + SECONDARY_ISLAND_SIDE_M / 2;
-const secondaryIslandMinZ = secondaryIslandCenterZ - SECONDARY_ISLAND_SIDE_M / 2;
-const secondaryIslandMaxZ = secondaryIslandCenterZ + SECONDARY_ISLAND_SIDE_M / 2;
-
-const minWorldX = Math.min(mainlandMinX, secondaryIslandMinX);
-const maxWorldX = Math.max(mainlandMaxX, secondaryIslandMaxX);
-const minWorldZ = Math.min(mainlandMinZ, secondaryIslandMinZ);
-const maxWorldZ = Math.max(mainlandMaxZ, secondaryIslandMaxZ);
+const minWorldX = mainlandMinX;
+const maxWorldX = mainlandMaxX;
+const minWorldZ = mainlandMinZ;
+const maxWorldZ = mainlandMaxZ;
 
 const seaCenter = new THREE.Vector3(
   (minWorldX + maxWorldX) / 2,
   0,
   (minWorldZ + maxWorldZ) / 2,
 );
-const viewTarget = new THREE.Vector3(
-  (mainBoundaryCenterX + secondaryIslandCenterX) / 2,
-  0,
-  0,
-);
+const viewTarget = new THREE.Vector3(mainBoundaryCenterX + 120, 0, 0);
 const worldNorth = new THREE.Vector3(NORTH_SAMPLE_DISTANCE_M, 0, 0);
 const compassOriginWorld = new THREE.Vector3();
 const compassNorthWorld = new THREE.Vector3();
 const compassOriginScreen = new THREE.Vector3();
 const compassNorthScreen = new THREE.Vector3();
 let compassBearingDegrees = 0;
+const scaleAxisElements = {
+  x: scaleAxisX,
+  y: scaleAxisY,
+  z: scaleAxisZ,
+};
+const scaleMeasureElements = {
+  x: scaleMeasureX,
+  y: scaleMeasureY,
+  z: scaleMeasureZ,
+};
+const scaleAxisDefinitions = [
+  { key: "x", vector: new THREE.Vector3(SCALE_AXIS_SAMPLE_M, 0, 0) },
+  { key: "y", vector: new THREE.Vector3(0, SCALE_AXIS_SAMPLE_M, 0) },
+  { key: "z", vector: new THREE.Vector3(0, 0, SCALE_AXIS_SAMPLE_M) },
+] as const;
+const scaleOriginWorld = new THREE.Vector3();
+const scaleAxisWorld = new THREE.Vector3();
+const scaleOriginScreen = new THREE.Vector3();
+const scaleAxisScreen = new THREE.Vector3();
+let scaleAxisAnglesDegrees = { x: 0, y: 0, z: 0 };
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -260,6 +331,65 @@ const grassMaterial = new THREE.MeshStandardMaterial({
   metalness: 0,
   side: THREE.DoubleSide,
 });
+const beachSandMaterial = new THREE.MeshStandardMaterial({
+  color: BEACH_SAND_COLOR,
+  roughness: 0.9,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
+const wetSandMaterial = new THREE.MeshStandardMaterial({
+  color: WET_SAND_COLOR,
+  roughness: 0.84,
+  metalness: 0.01,
+  side: THREE.DoubleSide,
+});
+const woodPierMaterial = new THREE.MeshStandardMaterial({
+  color: WOOD_PIER_COLOR,
+  roughness: 0.86,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
+const concretePortMaterial = new THREE.MeshStandardMaterial({
+  color: CONCRETE_PORT_COLOR,
+  roughness: 0.82,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
+const dockMaterial = new THREE.MeshStandardMaterial({
+  color: DOCK_COLOR,
+  roughness: 0.78,
+  metalness: 0,
+});
+const shipHullMaterial = new THREE.MeshStandardMaterial({
+  color: SHIP_HULL_COLOR,
+  roughness: 0.72,
+  metalness: 0.03,
+});
+const privateBoatMaterial = new THREE.MeshStandardMaterial({
+  color: PRIVATE_BOAT_COLOR,
+  roughness: 0.6,
+  metalness: 0.02,
+});
+const shipCabinMaterial = new THREE.MeshStandardMaterial({
+  color: SHIP_CABIN_COLOR,
+  roughness: 0.64,
+  metalness: 0,
+});
+const attractionRedMaterial = new THREE.MeshStandardMaterial({
+  color: ATTRACTION_RED_COLOR,
+  roughness: 0.58,
+  metalness: 0.02,
+});
+const attractionBlueMaterial = new THREE.MeshStandardMaterial({
+  color: ATTRACTION_BLUE_COLOR,
+  roughness: 0.58,
+  metalness: 0.02,
+});
+const attractionYellowMaterial = new THREE.MeshStandardMaterial({
+  color: ATTRACTION_YELLOW_COLOR,
+  roughness: 0.58,
+  metalness: 0.02,
+});
 const mountainMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.92,
   metalness: 0,
@@ -270,6 +400,7 @@ const mountainCutMaterial = new THREE.MeshStandardMaterial({
   color: 0x6f6b61,
   roughness: 0.94,
   metalness: 0,
+  side: THREE.DoubleSide,
 });
 const riverMaterial = new THREE.MeshStandardMaterial({
   color: SEA_COLOR,
@@ -306,8 +437,8 @@ const mountainVisibleBounds = {
   maxZ: mainBoundaryMaxZ,
 };
 const snowMountainCenter = {
-  x: mainBoundaryMinX + 400,
-  z: mainBoundaryMinZ + 380,
+  x: mainBoundaryMinX - 35,
+  z: mainBoundaryMinZ - 35,
 };
 const snowMountainVisibleBounds = {
   minX: mainBoundaryMinX,
@@ -427,22 +558,256 @@ function addFlatPlane(
   parent.add(plane);
 }
 
-function addMainBoundarySurface() {
-  const shape = new THREE.Shape();
-  shape.moveTo(mainBoundaryCoastlinePoints[0].x, mainBoundaryCoastlinePoints[0].z);
+function addPolygonSurface(
+  name: string,
+  points: GroundPathPoint[],
+  material: THREE.Material,
+  y: number,
+  renderOrder: number,
+  parent: THREE.Object3D = naturalElements,
+) {
+  const positions: number[] = [];
+  const triangles = THREE.ShapeUtils.triangulateShape(
+    points.map((point) => new THREE.Vector2(point.x, point.z)),
+    [],
+  );
 
-  for (const point of mainBoundaryCoastlinePoints.slice(1)) {
-    shape.lineTo(point.x, point.z);
+  for (const point of points) {
+    positions.push(point.x, y, point.z);
   }
 
-  shape.closePath();
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(triangles.flat());
+  geometry.computeVertexNormals();
 
-  const boundary = new THREE.Mesh(new THREE.ShapeGeometry(shape), grassMaterial);
-  boundary.name = "main-3-square-kilometer-grass-boundary";
-  boundary.renderOrder = 2;
-  boundary.rotation.x = -Math.PI / 2;
-  boundary.position.y = GRASS_SURFACE_Y;
-  naturalElements.add(boundary);
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = name;
+  mesh.renderOrder = renderOrder;
+  parent.add(mesh);
+}
+
+function addMainBoundarySurface() {
+  addPolygonSurface(
+    "main-3-square-kilometer-grass-boundary",
+    mainBoundaryCoastlinePoints,
+    grassMaterial,
+    GRASS_SURFACE_Y,
+    2,
+  );
+}
+
+function addBox(
+  name: string,
+  width: number,
+  height: number,
+  depth: number,
+  material: THREE.Material,
+  x: number,
+  y: number,
+  z: number,
+  parent: THREE.Object3D = artificialElements,
+) {
+  const box = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+  box.name = name;
+  box.position.set(x, y, z);
+  parent.add(box);
+}
+
+function addCargoShip(name: string, x: number, z: number) {
+  addBox(name, 150, 16, 34, shipHullMaterial, x, SEA_Y + 10, z);
+  addBox(`${name}-cabin`, 42, 18, 22, shipCabinMaterial, x - 38, SEA_Y + 27, z);
+}
+
+function addPrivateBoat(name: string, x: number, z: number) {
+  addBox(name, 42, 6, 12, privateBoatMaterial, x, SEA_Y + 5, z);
+  addBox(`${name}-cabin`, 13, 7, 8, shipCabinMaterial, x - 5, SEA_Y + 11, z);
+}
+
+function addPierAttractionPark(pierCenterX: number, pierCenterZ: number) {
+  const ferrisWheel = new THREE.Mesh(
+    new THREE.TorusGeometry(42, 2.8, 8, 44),
+    attractionRedMaterial,
+  );
+  ferrisWheel.name = "wooden-pier-ferris-wheel";
+  ferrisWheel.position.set(pierCenterX - 110, PLATFORM_SURFACE_Y + 48, pierCenterZ - 58);
+  artificialElements.add(ferrisWheel);
+
+  addBox(
+    "ferris-wheel-left-support",
+    5,
+    58,
+    5,
+    dockMaterial,
+    pierCenterX - 134,
+    PLATFORM_SURFACE_Y + 29,
+    pierCenterZ - 58,
+  );
+  addBox(
+    "ferris-wheel-right-support",
+    5,
+    58,
+    5,
+    dockMaterial,
+    pierCenterX - 86,
+    PLATFORM_SURFACE_Y + 29,
+    pierCenterZ - 58,
+  );
+  addBox(
+    "pier-carousel-base",
+    52,
+    10,
+    52,
+    attractionYellowMaterial,
+    pierCenterX + 34,
+    PLATFORM_SURFACE_Y + 6,
+    pierCenterZ - 58,
+  );
+  addBox(
+    "pier-attraction-building",
+    68,
+    18,
+    42,
+    attractionBlueMaterial,
+    pierCenterX - 52,
+    PLATFORM_SURFACE_Y + 10,
+    pierCenterZ + 58,
+  );
+  addBox(
+    "pier-ticket-booth",
+    34,
+    14,
+    26,
+    attractionRedMaterial,
+    pierCenterX + 104,
+    PLATFORM_SURFACE_Y + 8,
+    pierCenterZ + 58,
+  );
+}
+
+function addSimpleMainlandCoast() {
+  const beachInnerX = mainBoundaryMaxX - BEACH_INLAND_WIDTH_M;
+  const beachInlandSouthZ = riverMouth.z + 284;
+  const beachRiverEdge = sampleGroundPath(
+    [
+      { x: riverEstuaryStart.x - 26, z: riverEstuaryStart.z + 74 },
+      { x: mainBoundaryMaxX - 138, z: riverMouth.z + 108 },
+      { x: mainBoundaryMaxX - 54, z: riverMouth.z + 138 },
+      { x: mainBoundaryMaxX, z: riverMouth.z + 140 },
+    ],
+    18,
+  );
+
+  addPolygonSurface(
+    "river-integrated-mainland-beach",
+    [
+      ...beachRiverEdge,
+      { x: mainBoundaryMaxX, z: mainBoundaryMaxZ },
+      { x: beachInnerX, z: mainBoundaryMaxZ },
+      { x: beachInnerX, z: beachInlandSouthZ },
+      { x: beachInnerX + 34, z: riverMouth.z + 228 },
+      { x: beachInnerX + 80, z: riverMouth.z + 184 },
+    ],
+    beachSandMaterial,
+    COAST_SURFACE_Y,
+    3,
+    naturalElements,
+  );
+
+  addPolygonSurface(
+    "mainland-beach-wet-sand-band",
+    [
+      { x: mainBoundaryMaxX - WET_SAND_WIDTH_M, z: riverMouth.z + 166 },
+      { x: mainBoundaryMaxX - 10, z: riverMouth.z + 143 },
+      { x: mainBoundaryMaxX, z: riverMouth.z + 140 },
+      { x: mainBoundaryMaxX, z: mainBoundaryMaxZ },
+      { x: mainBoundaryMaxX - WET_SAND_WIDTH_M, z: mainBoundaryMaxZ },
+    ],
+    wetSandMaterial,
+    COAST_SURFACE_Y + 0.04,
+    4,
+    naturalElements,
+  );
+
+  const attractionPierCenterX =
+    mainBoundaryMaxX - ATTRACTION_PIER_LAND_OVERLAP_M + ATTRACTION_PIER_LENGTH_M * 0.5;
+  const attractionPierCenterZ = riverMouth.z - ATTRACTION_PIER_RIVER_OFFSET_M;
+
+  addFlatPlane(
+    "long-wooden-attraction-pier",
+    ATTRACTION_PIER_LENGTH_M,
+    ATTRACTION_PIER_DEPTH_M,
+    woodPierMaterial,
+    attractionPierCenterX,
+    PLATFORM_SURFACE_Y,
+    attractionPierCenterZ,
+    8,
+    artificialElements,
+  );
+  addPierAttractionPark(attractionPierCenterX, attractionPierCenterZ);
+
+  const marinaCenterZ = riverMouth.z - PRIVATE_MARINA_RIVER_OFFSET_M;
+  addFlatPlane(
+    "private-marina-shore-walkway",
+    18,
+    128,
+    dockMaterial,
+    mainBoundaryMaxX + 9,
+    PLATFORM_SURFACE_Y + 0.08,
+    marinaCenterZ,
+    9,
+    artificialElements,
+  );
+
+  for (let index = 0; index < PRIVATE_MARINA_BERTH_COUNT; index += 1) {
+    const berthZ = marinaCenterZ - 45 + index * 30;
+    addFlatPlane(
+      `private-marina-berth-${index + 1}`,
+      116,
+      6,
+      dockMaterial,
+      mainBoundaryMaxX + 76,
+      PLATFORM_SURFACE_Y + 0.08,
+      berthZ,
+      9,
+      artificialElements,
+    );
+    addPrivateBoat(`private-marina-boat-${index + 1}`, mainBoundaryMaxX + 148, berthZ + 10);
+  }
+
+  const cargoPortCenterX =
+    mainBoundaryMaxX - CARGO_PORT_LAND_OVERLAP_M + CARGO_PORT_LENGTH_M * 0.5;
+  const cargoPortCenterZ = riverMouth.z - CARGO_PORT_RIVER_OFFSET_M;
+  const cargoPortEastEdge =
+    cargoPortCenterX + CARGO_PORT_LENGTH_M * 0.5;
+
+  addFlatPlane(
+    "large-concrete-cargo-port",
+    CARGO_PORT_LENGTH_M,
+    CARGO_PORT_DEPTH_M,
+    concretePortMaterial,
+    cargoPortCenterX,
+    PLATFORM_SURFACE_Y,
+    cargoPortCenterZ,
+    8,
+    artificialElements,
+  );
+
+  for (const [index, dockZ] of [cargoPortCenterZ - 58, cargoPortCenterZ + 58].entries()) {
+    addFlatPlane(
+      `cargo-port-berth-dock-${index + 1}`,
+      80,
+      18,
+      dockMaterial,
+      cargoPortEastEdge + 40,
+      PLATFORM_SURFACE_Y + 0.08,
+      dockZ,
+      9,
+      artificialElements,
+    );
+    const shipZ = dockZ + (index === 0 ? 38 : -38);
+    addCargoShip(`cargo-port-ship-${index + 1}`, mainBoundaryMaxX + 285, shipZ);
+  }
 }
 
 function addMainlandOutsideBoundary() {
@@ -490,16 +855,7 @@ addFlatPlane(
 );
 addMainlandOutsideBoundary();
 addMainBoundarySurface();
-addFlatPlane(
-  "secondary-1-square-kilometer-grass-island",
-  SECONDARY_ISLAND_SIDE_M,
-  SECONDARY_ISLAND_SIDE_M,
-  grassMaterial,
-  secondaryIslandCenterX,
-  GRASS_SURFACE_Y,
-  secondaryIslandCenterZ,
-  2,
-);
+addSimpleMainlandCoast();
 
 function mountainHeightAt(x: number, z: number) {
   const normalizedX = (x - mountainCenter.x) / MOUNTAIN_RADIUS_X_M;
@@ -697,6 +1053,47 @@ function snowMountainHeightAt(x: number, z: number) {
   return SNOW_MOUNTAIN_HEIGHT_M * broadSlope * summitLift * ridgeLift * ridgeNoise;
 }
 
+function estimateSnowMountainVisiblePortion() {
+  let fullFootprintSamples = 0;
+  let visibleFootprintSamples = 0;
+  const samples = 72;
+
+  for (let zIndex = 0; zIndex <= samples; zIndex += 1) {
+    const z = THREE.MathUtils.lerp(
+      snowMountainCenter.z - SNOW_MOUNTAIN_RADIUS_Z_M,
+      snowMountainCenter.z + SNOW_MOUNTAIN_RADIUS_Z_M,
+      zIndex / samples,
+    );
+
+    for (let xIndex = 0; xIndex <= samples; xIndex += 1) {
+      const x = THREE.MathUtils.lerp(
+        snowMountainCenter.x - SNOW_MOUNTAIN_RADIUS_X_M,
+        snowMountainCenter.x + SNOW_MOUNTAIN_RADIUS_X_M,
+        xIndex / samples,
+      );
+      const normalizedX = (x - snowMountainCenter.x) / SNOW_MOUNTAIN_RADIUS_X_M;
+      const normalizedZ = (z - snowMountainCenter.z) / SNOW_MOUNTAIN_RADIUS_Z_M;
+
+      if (normalizedX * normalizedX + normalizedZ * normalizedZ > 1) {
+        continue;
+      }
+
+      fullFootprintSamples += 1;
+
+      if (
+        x >= mainBoundaryMinX &&
+        x <= mainBoundaryMaxX &&
+        z >= mainBoundaryMinZ &&
+        z <= mainBoundaryMaxZ
+      ) {
+        visibleFootprintSamples += 1;
+      }
+    }
+  }
+
+  return visibleFootprintSamples / fullFootprintSamples;
+}
+
 function snowMountainBaseYAt(x: number, z: number) {
   return mountainSurfaceYAt(mountainHeightAt(x, z)) + SNOW_MOUNTAIN_SURFACE_LIFT_M;
 }
@@ -802,8 +1199,12 @@ function addSnowCappedMountain() {
 
 function addSnowMountainCutWall(name: string, edge: "west" | "south") {
   const positions: number[] = [];
+  const colors: number[] = [];
   const indices: number[] = [];
   const samples = SNOW_MOUNTAIN_GRID_SEGMENTS;
+  const verticalSegments = 10;
+  const rowLength = verticalSegments + 1;
+  const color = new THREE.Color();
 
   for (let index = 0; index <= samples; index += 1) {
     const ratio = index / samples;
@@ -826,23 +1227,33 @@ function addSnowMountainCutWall(name: string, edge: "west" | "south") {
     const height = snowMountainHeightAt(x, z);
     const bottomY = snowMountainBaseYAt(x, z);
 
-    positions.push(x, bottomY + height, z, x, bottomY, z);
+    for (let verticalIndex = 0; verticalIndex <= verticalSegments; verticalIndex += 1) {
+      const heightRatio = verticalIndex / verticalSegments;
+      const localHeight = height * heightRatio;
+
+      setSnowMountainVertexColor(localHeight, color);
+      positions.push(x, bottomY + localHeight, z);
+      colors.push(color.r, color.g, color.b);
+    }
   }
 
   for (let index = 0; index < samples; index += 1) {
-    const topA = index * 2;
-    const bottomA = topA + 1;
-    const topB = topA + 2;
-    const bottomB = topA + 3;
-    indices.push(topA, bottomA, topB, topB, bottomA, bottomB);
+    for (let verticalIndex = 0; verticalIndex < verticalSegments; verticalIndex += 1) {
+      const a = index * rowLength + verticalIndex;
+      const b = a + 1;
+      const c = a + rowLength;
+      const d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
-  const cut = new THREE.Mesh(geometry, mountainCutMaterial);
+  const cut = new THREE.Mesh(geometry, mountainMaterial);
   cut.name = name;
   cut.renderOrder = 4;
   naturalElements.add(cut);
@@ -1361,11 +1772,44 @@ window.addEventListener("resize", handleResize);
 function updateCategoryVisibility() {
   naturalElements.visible = naturalToggle?.checked ?? true;
   artificialElements.visible = artificialToggle?.checked ?? true;
+
+  const helpVisible = helpToggle?.checked ?? true;
+  if (compass) {
+    compass.hidden = !helpVisible;
+  }
+  if (axisScale) {
+    axisScale.hidden = !helpVisible;
+  }
+}
+
+function formatScaleMeasure(measureM: number) {
+  if (measureM >= 1_000) {
+    return `${(measureM / 1_000).toFixed(2)} km`;
+  }
+
+  return `${Math.round(measureM)} m`;
+}
+
+function updateScaleMeasureLabels() {
+  const labels = {
+    x: formatScaleMeasure(SCALE_X_MEASURE_M),
+    y: formatScaleMeasure(SCALE_Y_MEASURE_M),
+    z: formatScaleMeasure(SCALE_Z_MEASURE_M),
+  };
+
+  for (const axis of scaleAxisDefinitions) {
+    const label = scaleMeasureElements[axis.key];
+    if (label) {
+      label.textContent = labels[axis.key];
+    }
+  }
 }
 
 naturalToggle?.addEventListener("change", updateCategoryVisibility);
 artificialToggle?.addEventListener("change", updateCategoryVisibility);
+helpToggle?.addEventListener("change", updateCategoryVisibility);
 updateCategoryVisibility();
+updateScaleMeasureLabels();
 
 window.__SITY_DEBUG__ = {
   getSiteLayout: () => ({
@@ -1375,9 +1819,6 @@ window.__SITY_DEBUG__ = {
     mainlandWestMarginM: MAINLAND_WEST_MARGIN_M,
     mainlandEastMarginM: MAINLAND_EAST_MARGIN_M,
     mainlandNorthSouthMarginM: MAINLAND_NORTH_SOUTH_MARGIN_M,
-    secondaryIslandAreaM2: SECONDARY_ISLAND_AREA_M2,
-    secondaryIslandSideM: SECONDARY_ISLAND_SIDE_M,
-    seaGapM: SEA_GAP_M,
   }),
   getNaturalFeatures: () => ({
     mountain: {
@@ -1394,6 +1835,10 @@ window.__SITY_DEBUG__ = {
       radiusXM: SNOW_MOUNTAIN_RADIUS_X_M,
       radiusZM: SNOW_MOUNTAIN_RADIUS_Z_M,
       clippedToMainBoundary: true,
+      centerOutsideMainBoundary:
+        snowMountainCenter.x < mainBoundaryMinX && snowMountainCenter.z < mainBoundaryMinZ,
+      estimatedVisiblePortion: estimateSnowMountainVisiblePortion(),
+      solidCutFaces: true,
       foothillBlendHeightM: SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M,
       higherThanReservoirMountain: SNOW_MOUNTAIN_HEIGHT_M > MOUNTAIN_HEIGHT_M,
       separateFromReservoirMountain:
@@ -1433,12 +1878,36 @@ window.__SITY_DEBUG__ = {
       curved: true,
       abuttedByNaturalTerrain: true,
     },
+    coast: {
+      mainlandCoastSimple: true,
+      parallelCoastEdges: true,
+      hasIntegratedRiverBeach: true,
+      hasWetSandBand: true,
+      beachBoundedByNorthRiverBank: true,
+      wetSandWidthM: WET_SAND_WIDTH_M,
+      beachOppositePier: true,
+      hasLongWoodenAttractionPier: true,
+      attractionPierLengthM: ATTRACTION_PIER_LENGTH_M,
+      hasConcreteShipPort: true,
+      cargoShipBerthCount: CARGO_SHIP_BERTH_COUNT,
+      hasPrivateMarina: true,
+      privateBerthCount: PRIVATE_MARINA_BERTH_COUNT,
+    },
   }),
   getCategoryVisibility: () => ({
     natural: naturalElements.visible,
     artificial: artificialElements.visible,
+    help: (compass ? !compass.hidden : true) && (axisScale ? !axisScale.hidden : true),
   }),
   getCompassBearingDegrees: () => compassBearingDegrees,
+  getAxisScale: () => ({
+    unit: "meter",
+    visible: axisScale ? getComputedStyle(axisScale).display !== "none" : false,
+    xMeasureM: SCALE_X_MEASURE_M,
+    yMeasureM: SCALE_Y_MEASURE_M,
+    zMeasureM: SCALE_Z_MEASURE_M,
+    axisAnglesDegrees: scaleAxisAnglesDegrees,
+  }),
   getPerformance: () => ({
     drawCalls: renderer.info.render.calls,
     triangles: renderer.info.render.triangles,
@@ -1467,9 +1936,47 @@ function updateCompass() {
   compassNeedle.style.transform = `rotate(${bearingRadians}rad)`;
 }
 
+function updateAxisScale() {
+  if (!axisScale) {
+    return;
+  }
+
+  scaleOriginWorld.copy(controls.target);
+  scaleOriginScreen.copy(scaleOriginWorld).project(camera);
+
+  for (const axis of scaleAxisDefinitions) {
+    const element = scaleAxisElements[axis.key];
+    if (!element) {
+      continue;
+    }
+
+    scaleAxisWorld.copy(controls.target).add(axis.vector);
+    scaleAxisScreen.copy(scaleAxisWorld).project(camera);
+
+    const screenX = scaleAxisScreen.x - scaleOriginScreen.x;
+    const screenY = scaleAxisScreen.y - scaleOriginScreen.y;
+    const projectedLength = Math.hypot(screenX, screenY);
+
+    if (projectedLength < 0.0001) {
+      element.style.setProperty("--axis-opacity", "0.28");
+      continue;
+    }
+
+    const angleRadians = Math.atan2(-screenY, screenX);
+    const cssLength = THREE.MathUtils.clamp(24 + projectedLength * 48, 24, 32);
+    const opacity = THREE.MathUtils.clamp(0.42 + projectedLength * 3, 0.45, 1);
+
+    scaleAxisAnglesDegrees[axis.key] = THREE.MathUtils.radToDeg(angleRadians);
+    element.style.setProperty("--axis-rotation", `${angleRadians}rad`);
+    element.style.setProperty("--axis-length", `${cssLength}px`);
+    element.style.setProperty("--axis-opacity", `${opacity}`);
+  }
+}
+
 function animate() {
   controls.update();
   updateCompass();
+  updateAxisScale();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
