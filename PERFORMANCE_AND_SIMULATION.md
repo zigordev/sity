@@ -4,10 +4,18 @@ The current application intentionally contains no simulation logic. It renders
 only the static geographic baseline:
 
 - Surrounding sea.
-- Grey mainland outside the city boundary.
+- Grey mainland outside the city boundary, split into surrounding strips so it
+  does not sit under the active green planning area.
 - One 3 km2 green mainland planning boundary.
 - One separate 1 km2 green island.
 - One DOM compass overlay pointing north from mainland to island.
+- One DOM control pane for natural/artificial visibility toggles.
+- One clipped mountain mesh with vertical boundary faces and a lifted foothill blend to avoid grass z-fighting.
+- One reservoir lake enclosed by a natural mountain bank with a dam-sized outlet opening.
+- One reservoir water boundary clipped to the curved upstream dam face.
+- Two natural terrain abutments joining the dam ends into the reservoir bank.
+- One curved dam spanning the reservoir outlet.
+- One borderless river strip starting as a narrowed outlet at the downstream dam face and feeding a carved coastal estuary at the coastline.
 
 ## Render Check
 
@@ -15,9 +23,12 @@ Latest verification target:
 
 - Desktop canvas: 1440 x 900.
 - Mobile canvas: 390 x 844.
-- Geometry: 4 planes.
-- Draw calls: 4.
-- Triangles: 8.
+- Geometry: 6 baseline land/sea surfaces plus natural feature meshes.
+- Draw calls: 17 on desktop, 16 on mobile due viewport culling.
+- Triangles: 4,002 on desktop, 3,990 on mobile.
+
+The visibility controls toggle existing Three.js groups and do not add render
+cost while both categories are visible.
 
 ## Scale
 

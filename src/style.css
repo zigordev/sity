@@ -129,3 +129,55 @@ canvas {
   background: #101914;
   transform: translate(-50%, -50%);
 }
+
+.layer-panel {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  display: grid;
+  gap: 10px;
+  width: 168px;
+  padding: 14px;
+  border: 1px solid rgba(16, 25, 20, 0.18);
+  background: rgba(246, 250, 244, 0.72);
+  box-shadow: 0 12px 34px rgba(16, 25, 20, 0.14);
+  color: #101914;
+}
+
+.layer-panel-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.layer-panel label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 30px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.layer-panel input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #258fba;
+}
+
+@media (max-width: 620px) {
+  .layer-panel {
+    top: 10px;
+    left: 10px;
+    width: 148px;
+    padding: 12px;
+  }
+
+  .compass {
+    top: 10px;
+    right: 10px;
+  }
+}
