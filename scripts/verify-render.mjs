@@ -224,22 +224,37 @@ for (const run of runs) {
   }
 
   if (
+    !naturalFeatures.coast.hasVolumetricTerrain ||
+    naturalFeatures.coast.terrainSlabThicknessM < 1.5 ||
     !naturalFeatures.coast.mainlandCoastSimple ||
     !naturalFeatures.coast.parallelCoastEdges ||
     !naturalFeatures.coast.hasIntegratedRiverBeach ||
     !naturalFeatures.coast.hasWetSandBand ||
     !naturalFeatures.coast.beachBoundedByNorthRiverBank ||
+    !naturalFeatures.coast.hasVolumetricBeach ||
+    !naturalFeatures.coast.hasRaisedWaterfrontStructures ||
+    !naturalFeatures.coast.hasPierSupportPiles ||
+    naturalFeatures.coast.pierSupportPileCount < 20 ||
+    !naturalFeatures.coast.hasCargoPortEquipment ||
+    naturalFeatures.coast.cargoContainerCount !== 12 ||
+    naturalFeatures.coast.cargoCraneCount !== 2 ||
     naturalFeatures.coast.wetSandWidthM < 20 ||
     !naturalFeatures.coast.beachOppositePier ||
     !naturalFeatures.coast.hasLongWoodenAttractionPier ||
     naturalFeatures.coast.attractionPierLengthM < 400 ||
+    naturalFeatures.coast.pierDeckThicknessM < 4 ||
     !naturalFeatures.coast.hasConcreteShipPort ||
+    naturalFeatures.coast.cargoPortHeightM < 6 ||
     naturalFeatures.coast.cargoShipBerthCount !== 2 ||
+    naturalFeatures.coast.cargoShipCenterOffsetFromPortEdgeM -
+      naturalFeatures.coast.cargoShipHullLengthM * 0.5 <
+      naturalFeatures.coast.cargoBerthDockLengthM + naturalFeatures.coast.cargoShipWaterGapM ||
+    naturalFeatures.coast.cargoShipWaterGapM < 20 ||
     !naturalFeatures.coast.hasPrivateMarina ||
     naturalFeatures.coast.privateBerthCount !== 4
   ) {
     throw new Error(
-      `Expected simple mainland coast with river-integrated beach, wet sand band, long wooden attraction pier, separate cargo port, and private marina: ${JSON.stringify(
+      `Expected volumetric terrain, river-integrated beach, supported pier/marina, separate cargo port, and 3D port equipment: ${JSON.stringify(
         naturalFeatures,
       )}.`,
     );
@@ -281,6 +296,26 @@ for (const run of runs) {
   ) {
     throw new Error(
       `Expected river to start as a narrower dam outlet channel: ${JSON.stringify(naturalFeatures)}.`,
+    );
+  }
+
+  if (
+    !naturalFeatures.river.hasCarvedChannel ||
+    naturalFeatures.river.channelBankWidthM < 35 ||
+    naturalFeatures.river.channelReliefM < 1.5
+  ) {
+    throw new Error(
+      `Expected river to sit in a visible natural 3D channel: ${JSON.stringify(
+        naturalFeatures,
+      )}.`,
+    );
+  }
+
+  if (!naturalFeatures.estuary.hasSlopedBanks || !naturalFeatures.estuary.banksTaperIntoSea) {
+    throw new Error(
+      `Expected estuary banks to slope and taper into the sea: ${JSON.stringify(
+        naturalFeatures,
+      )}.`,
     );
   }
 
