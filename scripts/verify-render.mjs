@@ -121,6 +121,25 @@ for (const run of runs) {
     );
   }
 
+  if (
+    naturalFeatures.snowMountain.corner !== "southwest" ||
+    naturalFeatures.snowMountain.maxHeightM < 850 ||
+    naturalFeatures.snowMountain.radiusXM < 640 ||
+    naturalFeatures.snowMountain.radiusZM < 590 ||
+    !naturalFeatures.snowMountain.clippedToMainBoundary ||
+    naturalFeatures.snowMountain.foothillBlendHeightM < 120 ||
+    !naturalFeatures.snowMountain.higherThanReservoirMountain ||
+    !naturalFeatures.snowMountain.separateFromReservoirMountain ||
+    !naturalFeatures.snowMountain.hasSnowCap ||
+    naturalFeatures.snowMountain.snowLineM >= naturalFeatures.snowMountain.maxHeightM
+  ) {
+    throw new Error(
+      `Expected a higher snow-capped mountain in the southwest corner: ${JSON.stringify(
+        naturalFeatures,
+      )}.`,
+    );
+  }
+
   if (naturalFeatures.river.mouth.x <= naturalFeatures.river.source.x) {
     throw new Error(`Expected river to flow toward the sea: ${JSON.stringify(naturalFeatures)}.`);
   }

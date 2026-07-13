@@ -24,6 +24,19 @@ declare global {
           foothillBlendHeightM: number;
           surfaceLiftM: number;
         };
+        snowMountain: {
+          center: { x: number; z: number };
+          corner: string;
+          maxHeightM: number;
+          radiusXM: number;
+          radiusZM: number;
+          clippedToMainBoundary: boolean;
+          foothillBlendHeightM: number;
+          higherThanReservoirMountain: boolean;
+          separateFromReservoirMountain: boolean;
+          hasSnowCap: boolean;
+          snowLineM: number;
+        };
         river: {
           source: { x: number; z: number };
           mouth: { x: number; z: number };
@@ -99,6 +112,17 @@ const MOUNTAIN_GRID_SEGMENTS = 48;
 const MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M = 42;
 const MOUNTAIN_SURFACE_LIFT_M = 0.35;
 const MOUNTAIN_MIN_RENDER_HEIGHT_M = 0.18;
+const SNOW_COLOR = 0xf4f7f6;
+const SNOW_SHADOW_COLOR = 0xcbd8d5;
+const SNOW_MOUNTAIN_HEIGHT_M = 864;
+const SNOW_MOUNTAIN_RADIUS_X_M = 646;
+const SNOW_MOUNTAIN_RADIUS_Z_M = 595;
+const SNOW_MOUNTAIN_VISIBLE_SPAN_M = 1_180;
+const SNOW_MOUNTAIN_GRID_SEGMENTS = 72;
+const SNOW_MOUNTAIN_SURFACE_LIFT_M = 0.9;
+const SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M = 0.18;
+const SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M = 128;
+const SNOW_MOUNTAIN_SNOWLINE_M = SNOW_MOUNTAIN_HEIGHT_M * 0.68;
 const RIVER_SOURCE_WIDTH_M = 42;
 const RIVER_SOURCE_TAPER_PROGRESS = 0.16;
 const RIVER_WIDTH_M = 90;
@@ -263,6 +287,8 @@ const terrainGrassColor = new THREE.Color(GRASS_COLOR);
 const mountainLowColor = new THREE.Color(MOUNTAIN_LOW_COLOR);
 const mountainMidColor = new THREE.Color(MOUNTAIN_MID_COLOR);
 const mountainHighColor = new THREE.Color(MOUNTAIN_HIGH_COLOR);
+const snowColor = new THREE.Color(SNOW_COLOR);
+const snowShadowColor = new THREE.Color(SNOW_SHADOW_COLOR);
 
 type GroundPathPoint = {
   x: number;
@@ -278,6 +304,16 @@ const mountainVisibleBounds = {
   maxX: Math.min(mainBoundaryMinX + MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMaxX),
   minZ: Math.max(mainBoundaryMaxZ - MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMinZ),
   maxZ: mainBoundaryMaxZ,
+};
+const snowMountainCenter = {
+  x: mainBoundaryMinX + 400,
+  z: mainBoundaryMinZ + 380,
+};
+const snowMountainVisibleBounds = {
+  minX: mainBoundaryMinX,
+  maxX: Math.min(mainBoundaryMinX + SNOW_MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMaxX),
+  minZ: mainBoundaryMinZ,
+  maxZ: Math.min(mainBoundaryMinZ + SNOW_MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMaxZ),
 };
 const reservoirCenter = {
   x: mainBoundaryMinX + 300,
@@ -631,6 +667,184 @@ function addMountainCutWall(name: string, edge: "west" | "south") {
   const cut = new THREE.Mesh(geometry, mountainCutMaterial);
   cut.name = name;
   cut.renderOrder = 3;
+  naturalElements.add(cut);
+}
+
+function snowMountainHeightAt(x: number, z: number) {
+  const normalizedX = (x - snowMountainCenter.x) / SNOW_MOUNTAIN_RADIUS_X_M;
+  const normalizedZ = (z - snowMountainCenter.z) / SNOW_MOUNTAIN_RADIUS_Z_M;
+  const distance = Math.sqrt(normalizedX * normalizedX + normalizedZ * normalizedZ);
+
+  if (distance >= 1) {
+    return 0;
+  }
+
+  const summitDistance = Math.sqrt(
+    ((normalizedX + 0.07) / 0.96) ** 2 + ((normalizedZ - 0.04) / 1.02) ** 2,
+  );
+  const ridgeAngle = Math.atan2(normalizedZ, normalizedX);
+  const centerMass = THREE.MathUtils.smoothstep(1 - distance, 0, 1);
+  const ridgeNoise =
+    0.96 +
+    0.028 * Math.sin(x * 0.01 + z * 0.008) +
+    0.022 * Math.sin(x * 0.006 - z * 0.012) +
+    0.016 * Math.sin((x + z) * 0.005);
+  const broadSlope = Math.pow(centerMass, 1.04);
+  const summitLift =
+    0.8 + 0.2 * Math.pow(Math.max(0, 1 - summitDistance / 0.76), 1.55);
+  const ridgeLift =
+    1 + 0.055 * Math.cos(ridgeAngle * 2.1 + distance * 4.8) * centerMass;
+  return SNOW_MOUNTAIN_HEIGHT_M * broadSlope * summitLift * ridgeLift * ridgeNoise;
+}
+
+function snowMountainBaseYAt(x: number, z: number) {
+  return mountainSurfaceYAt(mountainHeightAt(x, z)) + SNOW_MOUNTAIN_SURFACE_LIFT_M;
+}
+
+function snowMountainSurfaceYAt(x: number, z: number, height: number) {
+  return snowMountainBaseYAt(x, z) + height;
+}
+
+function setSnowMountainVertexColor(height: number, color: THREE.Color) {
+  if (height <= SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M) {
+    const foothillBlend = THREE.MathUtils.smoothstep(
+      height / SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M,
+      0,
+      1,
+    );
+    color.copy(terrainGrassColor).lerp(mountainLowColor, foothillBlend);
+    return;
+  }
+
+  if (height < SNOW_MOUNTAIN_SNOWLINE_M) {
+    const rockBlend = THREE.MathUtils.smoothstep(
+      (height - SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M) /
+        (SNOW_MOUNTAIN_SNOWLINE_M - SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M),
+      0,
+      1,
+    );
+    color.copy(mountainLowColor).lerp(mountainHighColor, rockBlend);
+    return;
+  }
+
+  const snowBlend = THREE.MathUtils.smoothstep(
+    (height - SNOW_MOUNTAIN_SNOWLINE_M) /
+      (SNOW_MOUNTAIN_HEIGHT_M - SNOW_MOUNTAIN_SNOWLINE_M),
+    0,
+    1,
+  );
+  color.copy(snowShadowColor).lerp(snowColor, snowBlend);
+}
+
+function createSnowMountainSurfaceGeometry() {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
+  const heights: number[] = [];
+  const color = new THREE.Color();
+
+  for (let zIndex = 0; zIndex <= SNOW_MOUNTAIN_GRID_SEGMENTS; zIndex += 1) {
+    const zRatio = zIndex / SNOW_MOUNTAIN_GRID_SEGMENTS;
+    const z = THREE.MathUtils.lerp(
+      snowMountainVisibleBounds.minZ,
+      snowMountainVisibleBounds.maxZ,
+      zRatio,
+    );
+
+    for (let xIndex = 0; xIndex <= SNOW_MOUNTAIN_GRID_SEGMENTS; xIndex += 1) {
+      const xRatio = xIndex / SNOW_MOUNTAIN_GRID_SEGMENTS;
+      const x = THREE.MathUtils.lerp(
+        snowMountainVisibleBounds.minX,
+        snowMountainVisibleBounds.maxX,
+        xRatio,
+      );
+      const height = snowMountainHeightAt(x, z);
+
+      heights.push(height);
+      setSnowMountainVertexColor(height, color);
+      positions.push(x, snowMountainSurfaceYAt(x, z, height), z);
+      colors.push(color.r, color.g, color.b);
+    }
+  }
+
+  const rowLength = SNOW_MOUNTAIN_GRID_SEGMENTS + 1;
+  for (let zIndex = 0; zIndex < SNOW_MOUNTAIN_GRID_SEGMENTS; zIndex += 1) {
+    for (let xIndex = 0; xIndex < SNOW_MOUNTAIN_GRID_SEGMENTS; xIndex += 1) {
+      const a = zIndex * rowLength + xIndex;
+      const b = a + 1;
+      const c = a + rowLength;
+      const d = c + 1;
+      const cellMaxHeight = Math.max(heights[a], heights[b], heights[c], heights[d]);
+
+      if (cellMaxHeight > SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M) {
+        indices.push(a, c, b, b, c, d);
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function addSnowCappedMountain() {
+  const mountain = new THREE.Mesh(createSnowMountainSurfaceGeometry(), mountainMaterial);
+  mountain.name = "higher-snow-capped-southwest-mountain";
+  mountain.renderOrder = 4;
+  naturalElements.add(mountain);
+
+  addSnowMountainCutWall("snow-mountain-west-vertical-cut", "west");
+  addSnowMountainCutWall("snow-mountain-south-vertical-cut", "south");
+}
+
+function addSnowMountainCutWall(name: string, edge: "west" | "south") {
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const samples = SNOW_MOUNTAIN_GRID_SEGMENTS;
+
+  for (let index = 0; index <= samples; index += 1) {
+    const ratio = index / samples;
+    const x =
+      edge === "west"
+        ? snowMountainVisibleBounds.minX
+        : THREE.MathUtils.lerp(
+            snowMountainVisibleBounds.minX,
+            snowMountainVisibleBounds.maxX,
+            ratio,
+          );
+    const z =
+      edge === "south"
+        ? snowMountainVisibleBounds.minZ
+        : THREE.MathUtils.lerp(
+            snowMountainVisibleBounds.minZ,
+            snowMountainVisibleBounds.maxZ,
+            ratio,
+          );
+    const height = snowMountainHeightAt(x, z);
+    const bottomY = snowMountainBaseYAt(x, z);
+
+    positions.push(x, bottomY + height, z, x, bottomY, z);
+  }
+
+  for (let index = 0; index < samples; index += 1) {
+    const topA = index * 2;
+    const bottomA = topA + 1;
+    const topB = topA + 2;
+    const bottomB = topA + 3;
+    indices.push(topA, bottomA, topB, topB, bottomA, bottomB);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+
+  const cut = new THREE.Mesh(geometry, mountainCutMaterial);
+  cut.name = name;
+  cut.renderOrder = 4;
   naturalElements.add(cut);
 }
 
@@ -1128,6 +1342,7 @@ function addCoastalEstuary() {
 
 addMountainFoothillBlend();
 addClippedMountain();
+addSnowCappedMountain();
 addReservoirBasin();
 addReservoirLake();
 addDamAbutments();
@@ -1171,6 +1386,23 @@ window.__SITY_DEBUG__ = {
       clippedToMainBoundary: true,
       foothillBlendHeightM: MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M,
       surfaceLiftM: MOUNTAIN_SURFACE_LIFT_M,
+    },
+    snowMountain: {
+      center: snowMountainCenter,
+      corner: "southwest",
+      maxHeightM: SNOW_MOUNTAIN_HEIGHT_M,
+      radiusXM: SNOW_MOUNTAIN_RADIUS_X_M,
+      radiusZM: SNOW_MOUNTAIN_RADIUS_Z_M,
+      clippedToMainBoundary: true,
+      foothillBlendHeightM: SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M,
+      higherThanReservoirMountain: SNOW_MOUNTAIN_HEIGHT_M > MOUNTAIN_HEIGHT_M,
+      separateFromReservoirMountain:
+        Math.hypot(
+          snowMountainCenter.x - mountainCenter.x,
+          snowMountainCenter.z - mountainCenter.z,
+        ) > 800,
+      hasSnowCap: true,
+      snowLineM: SNOW_MOUNTAIN_SNOWLINE_M,
     },
     river: {
       source: riverPath[0],
