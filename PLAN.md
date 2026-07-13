@@ -13,6 +13,7 @@ building, vehicle, pedestrian, or smart-infrastructure logic is added.
 - A UI compass whose north direction points from the mainland to the island.
 - A UI control pane for natural and artificial scene-element visibility.
 - A clipped mountain in the southwest corner with a lifted 42 m foothill blend into the grass.
+- A separate clipped snow-capped mountain mass in the southwest corner, away from the reservoir mountain.
 - A reservoir lake enclosed by a natural mountain bank with a clear outlet opening for the dam.
 - A curved dam spanning the reservoir outlet without natural bank geometry underneath it.
 - Natural terrain abutments at both dam ends to merge the dam into the lake enclosure.
@@ -29,6 +30,10 @@ building, vehicle, pedestrian, or smart-infrastructure logic is added.
 - Secondary island side length: 1,000 m.
 - Sea gap from mainland coast to island: 400 m.
 - Mountain max height: 420 m.
+- Snow-capped mountain max height above its base: 864 m.
+- Snow-capped mountain footprint radius: 646 m by 595 m.
+- Snow-capped mountain foothill blend height: 128 m.
+- Snow-capped mountain snow line: 587.52 m.
 - River width: 90 m.
 - Coastal estuary overlap into sea: 262 m.
 - Reservoir size: 340 m by 210 m.
@@ -37,7 +42,7 @@ building, vehicle, pedestrian, or smart-infrastructure logic is added.
 
 ## Categories
 
-- Natural: sea, mainland surfaces, green planning area, island, mountain, reservoir, reservoir bank, river, and coastal estuary.
+- Natural: sea, mainland surfaces, green planning area, island, mountains, reservoir, reservoir bank, river, and coastal estuary.
 - Artificial: dam.
 
 ## Next Step

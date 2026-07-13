@@ -11,6 +11,7 @@ only the static geographic baseline:
 - One DOM compass overlay pointing north from mainland to island.
 - One DOM control pane for natural/artificial visibility toggles.
 - One clipped mountain mesh with vertical boundary faces and a lifted foothill blend to avoid grass z-fighting.
+- One separate clipped snow-capped mountain mass in the southwest corner.
 - One reservoir lake enclosed by a natural mountain bank with a dam-sized outlet opening.
 - One reservoir water boundary clipped to the curved upstream dam face.
 - Two natural terrain abutments joining the dam ends into the reservoir bank.
@@ -24,8 +25,8 @@ Latest verification target:
 - Desktop canvas: 1440 x 900.
 - Mobile canvas: 390 x 844.
 - Geometry: 6 baseline land/sea surfaces plus natural feature meshes.
-- Draw calls: 17 on desktop, 16 on mobile due viewport culling.
-- Triangles: 4,002 on desktop, 3,990 on mobile.
+- Draw calls: 20 on desktop, 18 on mobile due viewport culling.
+- Triangles: 11,070 on desktop, 10,914 on mobile.
 
 The visibility controls toggle existing Three.js groups and do not add render
 cost while both categories are visible.
