@@ -30,6 +30,10 @@ canvas {
   touch-action: none;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .compass {
   position: fixed;
   top: 18px;
@@ -130,6 +134,138 @@ canvas {
   transform: translate(-50%, -50%);
 }
 
+.axis-scale {
+  position: fixed;
+  top: 108px;
+  right: 18px;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  width: 126px;
+  padding: 10px;
+  border: 1px solid rgba(16, 25, 20, 0.18);
+  background: rgba(246, 250, 244, 0.66);
+  box-shadow: 0 12px 34px rgba(16, 25, 20, 0.14);
+  pointer-events: none;
+}
+
+.axis-scale-stage {
+  position: relative;
+  width: 104px;
+  height: 82px;
+  overflow: hidden;
+}
+
+.axis-scale-stage::before,
+.axis-scale-stage::after {
+  position: absolute;
+  content: "";
+  opacity: 0.24;
+}
+
+.axis-scale-stage::before {
+  top: 50%;
+  right: 9px;
+  left: 9px;
+  border-top: 1px solid rgba(16, 25, 20, 0.22);
+}
+
+.axis-scale-stage::after {
+  top: 9px;
+  bottom: 9px;
+  left: 50%;
+  border-left: 1px solid rgba(16, 25, 20, 0.22);
+}
+
+.axis-scale-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 8px;
+  height: 8px;
+  border: 2px solid rgba(246, 250, 244, 0.94);
+  border-radius: 50%;
+  background: #101914;
+  transform: translate(-50%, -50%);
+}
+
+.axis-scale-arm {
+  --axis-length: 32px;
+  --axis-opacity: 1;
+  --axis-rotation: 0rad;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: var(--axis-length);
+  height: 3px;
+  border-radius: 999px;
+  opacity: var(--axis-opacity);
+  transform: rotate(var(--axis-rotation));
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.axis-scale-arm::after {
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentColor;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.axis-scale-arm span {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 7px);
+  color: #101914;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-50%) rotate(calc(var(--axis-rotation) * -1));
+}
+
+.axis-scale-x {
+  color: #b93f3b;
+  background: #b93f3b;
+}
+
+.axis-scale-y {
+  color: #2d7e45;
+  background: #2d7e45;
+}
+
+.axis-scale-z {
+  color: #2f68a8;
+  background: #2f68a8;
+}
+
+.axis-scale-measures {
+  display: grid;
+  gap: 4px;
+  color: #101914;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.axis-scale-measures span {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.axis-scale-measures strong {
+  min-width: 12px;
+}
+
 .layer-panel {
   position: fixed;
   top: 18px;
@@ -179,5 +315,25 @@ canvas {
   .compass {
     top: 10px;
     right: 10px;
+  }
+
+  .axis-scale {
+    top: 94px;
+    right: 10px;
+    width: 112px;
+    padding: 8px;
+  }
+
+  .axis-scale-stage {
+    width: 94px;
+    height: 72px;
+  }
+
+  .axis-scale-arm {
+    --axis-length: 30px;
+  }
+
+  .axis-scale-measures {
+    font-size: 0.68rem;
   }
 }

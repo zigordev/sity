@@ -1,8 +1,10 @@
 import { chromium } from "playwright";
 
+const baseUrl = process.env.SITY_VERIFY_BASE_URL ?? "http://localhost:5173";
+
 const runs = [
-  { name: "mainland-island-desktop", width: 1440, height: 900, url: "http://localhost:5173/?verify" },
-  { name: "mainland-island-mobile", width: 390, height: 844, url: "http://localhost:5173/?verify" },
+  { name: "mainland-desktop", width: 1440, height: 900, url: `${baseUrl}/?verify` },
+  { name: "mainland-mobile", width: 390, height: 844, url: `${baseUrl}/?verify` },
 ];
 
 const browser = await chromium.launch();
@@ -24,6 +26,45 @@ async function readCompass(page) {
   });
 }
 
+async function readAxisScale(page) {
+  return page.evaluate(() => {
+    const axisScale = document.querySelector(".axis-scale");
+    const axisX = document.querySelector("#scale-axis-x");
+    const axisY = document.querySelector("#scale-axis-y");
+    const axisZ = document.querySelector("#scale-axis-z");
+    const measureX = document.querySelector("#scale-measure-x");
+    const measureY = document.querySelector("#scale-measure-y");
+    const measureZ = document.querySelector("#scale-measure-z");
+
+    if (
+      !(axisScale instanceof HTMLElement) ||
+      !(axisX instanceof HTMLElement) ||
+      !(axisY instanceof HTMLElement) ||
+      !(axisZ instanceof HTMLElement) ||
+      !(measureX instanceof HTMLElement) ||
+      !(measureY instanceof HTMLElement) ||
+      !(measureZ instanceof HTMLElement)
+    ) {
+      throw new Error("Axis scale UI was not found.");
+    }
+
+    return {
+      visible: getComputedStyle(axisScale).display !== "none",
+      labels: {
+        x: measureX.textContent,
+        y: measureY.textContent,
+        z: measureZ.textContent,
+      },
+      rotations: {
+        x: axisX.style.getPropertyValue("--axis-rotation"),
+        y: axisY.style.getPropertyValue("--axis-rotation"),
+        z: axisZ.style.getPropertyValue("--axis-rotation"),
+      },
+      debug: window.__SITY_DEBUG__.getAxisScale(),
+    };
+  });
+}
+
 async function readCategoryVisibility(page) {
   return page.evaluate(() => window.__SITY_DEBUG__.getCategoryVisibility());
 }
@@ -35,8 +76,12 @@ for (const run of runs) {
   await page.goto(run.url, { waitUntil: "networkidle" });
   await page.waitForSelector("canvas");
   await page.waitForSelector("#compass-needle");
+  await page.waitForSelector("#scale-axis-x");
+  await page.waitForSelector("#scale-axis-y");
+  await page.waitForSelector("#scale-axis-z");
   await page.waitForSelector("#toggle-natural");
   await page.waitForSelector("#toggle-artificial");
+  await page.waitForSelector("#toggle-help");
   await page.waitForFunction(() => Boolean(window.__SITY_DEBUG__));
   await page.waitForTimeout(900);
 
@@ -81,9 +126,26 @@ for (const run of runs) {
     };
   });
   const compassCheck = await readCompass(page);
+  const axisScaleCheck = await readAxisScale(page);
 
   if (!Number.isFinite(compassCheck.bearingDegrees)) {
     throw new Error(`Compass bearing is invalid: ${JSON.stringify(compassCheck)}.`);
+  }
+
+  if (
+    !axisScaleCheck.visible ||
+    axisScaleCheck.debug.unit !== "meter" ||
+    axisScaleCheck.debug.xMeasureM < 1_700 ||
+    axisScaleCheck.debug.yMeasureM < 850 ||
+    axisScaleCheck.debug.zMeasureM < 1_700 ||
+    !axisScaleCheck.labels.x ||
+    !axisScaleCheck.labels.y ||
+    !axisScaleCheck.labels.z ||
+    !axisScaleCheck.rotations.x ||
+    !axisScaleCheck.rotations.y ||
+    !axisScaleCheck.rotations.z
+  ) {
+    throw new Error(`Axis scale is invalid: ${JSON.stringify(axisScaleCheck)}.`);
   }
 
   await page.mouse.move(run.width * 0.5, run.height * 0.5);
@@ -93,14 +155,31 @@ for (const run of runs) {
   await page.waitForTimeout(300);
 
   const movedCompassCheck = await readCompass(page);
+  const movedAxisScaleCheck = await readAxisScale(page);
   const compassMoved =
     Math.abs(movedCompassCheck.bearingDegrees - compassCheck.bearingDegrees) > 0.1;
+  const axisScaleMoved = ["x", "y", "z"].some(
+    (axis) =>
+      Math.abs(
+        movedAxisScaleCheck.debug.axisAnglesDegrees[axis] -
+          axisScaleCheck.debug.axisAnglesDegrees[axis],
+      ) > 0.1,
+  );
 
   if (!compassMoved) {
     throw new Error(
       `Compass did not react to camera movement: ${JSON.stringify({
         before: compassCheck,
         after: movedCompassCheck,
+      })}.`,
+    );
+  }
+
+  if (!axisScaleMoved) {
+    throw new Error(
+      `Axis scale did not react to camera movement: ${JSON.stringify({
+        before: axisScaleCheck,
+        after: movedAxisScaleCheck,
       })}.`,
     );
   }
@@ -124,9 +203,13 @@ for (const run of runs) {
   if (
     naturalFeatures.snowMountain.corner !== "southwest" ||
     naturalFeatures.snowMountain.maxHeightM < 850 ||
-    naturalFeatures.snowMountain.radiusXM < 640 ||
-    naturalFeatures.snowMountain.radiusZM < 590 ||
+    naturalFeatures.snowMountain.radiusXM < 1_200 ||
+    naturalFeatures.snowMountain.radiusZM < 1_100 ||
     !naturalFeatures.snowMountain.clippedToMainBoundary ||
+    !naturalFeatures.snowMountain.centerOutsideMainBoundary ||
+    naturalFeatures.snowMountain.estimatedVisiblePortion <= 0.12 ||
+    naturalFeatures.snowMountain.estimatedVisiblePortion >= 0.3 ||
+    !naturalFeatures.snowMountain.solidCutFaces ||
     naturalFeatures.snowMountain.foothillBlendHeightM < 120 ||
     !naturalFeatures.snowMountain.higherThanReservoirMountain ||
     !naturalFeatures.snowMountain.separateFromReservoirMountain ||
@@ -134,7 +217,29 @@ for (const run of runs) {
     naturalFeatures.snowMountain.snowLineM >= naturalFeatures.snowMountain.maxHeightM
   ) {
     throw new Error(
-      `Expected a higher snow-capped mountain in the southwest corner: ${JSON.stringify(
+      `Expected a higher snow-capped mountain clipped to roughly a southwest visible quadrant: ${JSON.stringify(
+        naturalFeatures,
+      )}.`,
+    );
+  }
+
+  if (
+    !naturalFeatures.coast.mainlandCoastSimple ||
+    !naturalFeatures.coast.parallelCoastEdges ||
+    !naturalFeatures.coast.hasIntegratedRiverBeach ||
+    !naturalFeatures.coast.hasWetSandBand ||
+    !naturalFeatures.coast.beachBoundedByNorthRiverBank ||
+    naturalFeatures.coast.wetSandWidthM < 20 ||
+    !naturalFeatures.coast.beachOppositePier ||
+    !naturalFeatures.coast.hasLongWoodenAttractionPier ||
+    naturalFeatures.coast.attractionPierLengthM < 400 ||
+    !naturalFeatures.coast.hasConcreteShipPort ||
+    naturalFeatures.coast.cargoShipBerthCount !== 2 ||
+    !naturalFeatures.coast.hasPrivateMarina ||
+    naturalFeatures.coast.privateBerthCount !== 4
+  ) {
+    throw new Error(
+      `Expected simple mainland coast with river-integrated beach, wet sand band, long wooden attraction pier, separate cargo port, and private marina: ${JSON.stringify(
         naturalFeatures,
       )}.`,
     );
@@ -236,32 +341,78 @@ for (const run of runs) {
   }
 
   const initialCategoryVisibility = await readCategoryVisibility(page);
-  if (!initialCategoryVisibility.natural || !initialCategoryVisibility.artificial) {
+  if (
+    !initialCategoryVisibility.natural ||
+    !initialCategoryVisibility.artificial ||
+    !initialCategoryVisibility.help
+  ) {
     throw new Error(
-      `Expected both categories visible initially: ${JSON.stringify(initialCategoryVisibility)}.`,
+      `Expected all categories visible initially: ${JSON.stringify(initialCategoryVisibility)}.`,
     );
   }
 
   await page.locator("#toggle-natural").uncheck();
   const hiddenNaturalVisibility = await readCategoryVisibility(page);
-  if (hiddenNaturalVisibility.natural || !hiddenNaturalVisibility.artificial) {
+  if (
+    hiddenNaturalVisibility.natural ||
+    !hiddenNaturalVisibility.artificial ||
+    !hiddenNaturalVisibility.help
+  ) {
     throw new Error(
       `Expected natural category hidden only: ${JSON.stringify(hiddenNaturalVisibility)}.`,
     );
   }
 
   await page.locator("#toggle-artificial").uncheck();
-  const hiddenAllVisibility = await readCategoryVisibility(page);
-  if (hiddenAllVisibility.natural || hiddenAllVisibility.artificial) {
-    throw new Error(`Expected both categories hidden: ${JSON.stringify(hiddenAllVisibility)}.`);
+  const hiddenSceneVisibility = await readCategoryVisibility(page);
+  if (
+    hiddenSceneVisibility.natural ||
+    hiddenSceneVisibility.artificial ||
+    !hiddenSceneVisibility.help
+  ) {
+    throw new Error(`Expected scene categories hidden with help still visible: ${JSON.stringify(hiddenSceneVisibility)}.`);
+  }
+
+  await page.locator("#toggle-help").uncheck();
+  const hiddenHelpVisibility = await readCategoryVisibility(page);
+  const hiddenHelpCompassCheck = await readCompass(page);
+  const hiddenHelpAxisScaleCheck = await readAxisScale(page);
+
+  if (
+    hiddenHelpVisibility.natural ||
+    hiddenHelpVisibility.artificial ||
+    hiddenHelpVisibility.help ||
+    hiddenHelpCompassCheck.visible ||
+    hiddenHelpAxisScaleCheck.visible
+  ) {
+    throw new Error(
+      `Expected help category hidden without restoring scene categories: ${JSON.stringify({
+        hiddenHelpVisibility,
+        hiddenHelpCompassCheck,
+        hiddenHelpAxisScaleCheck,
+      })}.`,
+    );
   }
 
   await page.locator("#toggle-natural").check();
   await page.locator("#toggle-artificial").check();
+  await page.locator("#toggle-help").check();
   const restoredCategoryVisibility = await readCategoryVisibility(page);
-  if (!restoredCategoryVisibility.natural || !restoredCategoryVisibility.artificial) {
+  const restoredHelpCompassCheck = await readCompass(page);
+  const restoredHelpAxisScaleCheck = await readAxisScale(page);
+  if (
+    !restoredCategoryVisibility.natural ||
+    !restoredCategoryVisibility.artificial ||
+    !restoredCategoryVisibility.help ||
+    !restoredHelpCompassCheck.visible ||
+    !restoredHelpAxisScaleCheck.visible
+  ) {
     throw new Error(
-      `Expected categories restored: ${JSON.stringify(restoredCategoryVisibility)}.`,
+      `Expected categories restored: ${JSON.stringify({
+        restoredCategoryVisibility,
+        restoredHelpCompassCheck,
+        restoredHelpAxisScaleCheck,
+      })}.`,
     );
   }
 
@@ -271,6 +422,8 @@ for (const run of runs) {
       canvasCheck,
       compassCheck,
       movedCompassCheck,
+      axisScaleCheck,
+      movedAxisScaleCheck,
       siteLayout,
       naturalFeatures,
       categoryVisibility: restoredCategoryVisibility,
