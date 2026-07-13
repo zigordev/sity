@@ -42,11 +42,16 @@ declare global {
           mouth: { x: number; z: number };
           sourceWidthM: number;
           widthM: number;
+          hasCarvedChannel: boolean;
+          channelBankWidthM: number;
+          channelReliefM: number;
         };
         estuary: {
           start: { x: number; z: number };
           end: { x: number; z: number };
           extendsPastCoastlineM: number;
+          hasSlopedBanks: boolean;
+          banksTaperIntoSea: boolean;
         };
         reservoir: {
           center: { x: number; z: number };
@@ -66,17 +71,32 @@ declare global {
           abuttedByNaturalTerrain: boolean;
         };
         coast: {
+          hasVolumetricTerrain: boolean;
+          terrainSlabThicknessM: number;
           mainlandCoastSimple: boolean;
           parallelCoastEdges: boolean;
           hasIntegratedRiverBeach: boolean;
           hasWetSandBand: boolean;
           beachBoundedByNorthRiverBank: boolean;
+          hasVolumetricBeach: boolean;
+          hasRaisedWaterfrontStructures: boolean;
+          hasPierSupportPiles: boolean;
+          pierSupportPileCount: number;
+          hasCargoPortEquipment: boolean;
+          cargoContainerCount: number;
+          cargoCraneCount: number;
           wetSandWidthM: number;
           beachOppositePier: boolean;
           hasLongWoodenAttractionPier: boolean;
           attractionPierLengthM: number;
+          pierDeckThicknessM: number;
           hasConcreteShipPort: boolean;
+          cargoPortHeightM: number;
           cargoShipBerthCount: number;
+          cargoBerthDockLengthM: number;
+          cargoShipHullLengthM: number;
+          cargoShipCenterOffsetFromPortEdgeM: number;
+          cargoShipWaterGapM: number;
           hasPrivateMarina: boolean;
           privateBerthCount: number;
         };
@@ -135,6 +155,7 @@ const SEA_MARGIN_M = 30_000;
 const MAINLAND_WEST_MARGIN_M = 10_000;
 const MAINLAND_EAST_MARGIN_M = 0;
 const MAINLAND_NORTH_SOUTH_MARGIN_M = 10_000;
+const MAIN_BOUNDARY_TERRAIN_THICKNESS_M = 2;
 const GRASS_COLOR = 0x93c97b;
 const MOUNTAIN_LOW_COLOR = 0x6f8d57;
 const MOUNTAIN_MID_COLOR = 0x887c68;
@@ -173,6 +194,16 @@ const RIVER_SOURCE_WIDTH_M = 42;
 const RIVER_SOURCE_TAPER_PROGRESS = 0.16;
 const RIVER_WIDTH_M = 90;
 const RIVER_MOUTH_WIDTH_M = 126;
+const RIVER_LOWLAND_WATER_CLEARANCE_M = 0.82;
+const RIVER_CHANNEL_BANK_WIDTH_M = 48;
+const RIVER_CHANNEL_CREST_OFFSET_M = 20;
+const RIVER_CHANNEL_WATER_EDGE_OVERLAP_M = 1.5;
+const RIVER_CHANNEL_CREST_RISE_M = 1.6;
+const RIVER_CHANNEL_INNER_DROP_M = 0.35;
+const ESTUARY_BANK_WIDTH_M = 38;
+const ESTUARY_BANK_CREST_OFFSET_M = 16;
+const ESTUARY_BANK_CREST_RISE_M = 1.2;
+const ESTUARY_BANK_INNER_DROP_M = 0.24;
 const RESERVOIR_RADIUS_X_M = 170;
 const RESERVOIR_RADIUS_Z_M = 105;
 const RESERVOIR_SEGMENTS = 56;
@@ -199,17 +230,34 @@ const COAST_SURFACE_Y = GRASS_SURFACE_Y + 0.08;
 const PLATFORM_SURFACE_Y = GRASS_SURFACE_Y + 0.32;
 const BEACH_INLAND_WIDTH_M = 160;
 const WET_SAND_WIDTH_M = 30;
+const BEACH_THICKNESS_M = 1.3;
+const WET_SAND_THICKNESS_M = 0.7;
 const ATTRACTION_PIER_LENGTH_M = 420;
 const ATTRACTION_PIER_DEPTH_M = 180;
 const ATTRACTION_PIER_LAND_OVERLAP_M = 55;
 const ATTRACTION_PIER_RIVER_OFFSET_M = 272;
+const PIER_DECK_THICKNESS_M = 5;
+const ATTRACTION_PIER_SUPPORT_COLUMNS = 5;
+const ATTRACTION_PIER_SUPPORT_ROWS = 3;
 const CARGO_PORT_LENGTH_M = 330;
 const CARGO_PORT_DEPTH_M = 230;
 const CARGO_PORT_LAND_OVERLAP_M = 45;
 const CARGO_PORT_RIVER_OFFSET_M = 732;
+const CARGO_PORT_HEIGHT_M = 8;
 const CARGO_SHIP_BERTH_COUNT = 2;
+const CARGO_SHIP_HULL_LENGTH_M = 150;
+const CARGO_SHIP_WATER_GAP_M = 24;
+const CARGO_CONTAINER_COUNT = 12;
+const CARGO_CRANE_COUNT = 2;
+const CARGO_BOLLARD_COUNT = 8;
 const PRIVATE_MARINA_RIVER_OFFSET_M = 477;
 const PRIVATE_MARINA_BERTH_COUNT = 4;
+const MARINA_DOCK_THICKNESS_M = 2.2;
+const CARGO_BERTH_DOCK_LENGTH_M = 80;
+const CARGO_BERTH_DOCK_THICKNESS_M = 3;
+const CARGO_SHIP_CENTER_OFFSET_FROM_PORT_EDGE_M =
+  CARGO_BERTH_DOCK_LENGTH_M + CARGO_SHIP_HULL_LENGTH_M * 0.5 + CARGO_SHIP_WATER_GAP_M;
+const PRIVATE_MARINA_SUPPORT_PILE_COUNT = PRIVATE_MARINA_BERTH_COUNT * 2 + 4;
 const SCALE_X_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
 const SCALE_Y_MEASURE_M = SNOW_MOUNTAIN_HEIGHT_M;
 const SCALE_Z_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
@@ -277,6 +325,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xb8d7e6);
@@ -312,6 +362,16 @@ scene.add(hemisphereLight);
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 2.8);
 sunLight.position.set(-1_600, 2_800, 1_800);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.camera.left = -2_800;
+sunLight.shadow.camera.right = 2_800;
+sunLight.shadow.camera.top = 2_800;
+sunLight.shadow.camera.bottom = -2_800;
+sunLight.shadow.camera.near = 200;
+sunLight.shadow.camera.far = 7_000;
+sunLight.shadow.bias = -0.00008;
+sunLight.shadow.normalBias = 1.5;
 scene.add(sunLight);
 
 const seaMaterial = new THREE.MeshStandardMaterial({
@@ -328,6 +388,12 @@ const mainlandMaterial = new THREE.MeshStandardMaterial({
 const grassMaterial = new THREE.MeshStandardMaterial({
   color: GRASS_COLOR,
   roughness: 0.82,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
+const terrainCutMaterial = new THREE.MeshStandardMaterial({
+  color: 0x68705d,
+  roughness: 0.92,
   metalness: 0,
   side: THREE.DoubleSide,
 });
@@ -390,6 +456,17 @@ const attractionYellowMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.58,
   metalness: 0.02,
 });
+const cargoContainerMaterials = [
+  new THREE.MeshStandardMaterial({ color: 0xa94f3f, roughness: 0.78, metalness: 0.05 }),
+  new THREE.MeshStandardMaterial({ color: 0x3f6f93, roughness: 0.78, metalness: 0.05 }),
+  new THREE.MeshStandardMaterial({ color: 0xd1a44f, roughness: 0.78, metalness: 0.05 }),
+  new THREE.MeshStandardMaterial({ color: 0x6a7a54, roughness: 0.78, metalness: 0.05 }),
+];
+const portCraneMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe0b34f,
+  roughness: 0.62,
+  metalness: 0.05,
+});
 const mountainMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.92,
   metalness: 0,
@@ -409,6 +486,12 @@ const riverMaterial = new THREE.MeshStandardMaterial({
   side: THREE.DoubleSide,
   depthWrite: false,
 });
+const riverBankMaterial = new THREE.MeshStandardMaterial({
+  roughness: 0.9,
+  metalness: 0,
+  vertexColors: true,
+  side: THREE.DoubleSide,
+});
 const damMaterial = new THREE.MeshStandardMaterial({
   color: 0x8d8f8a,
   roughness: 0.78,
@@ -420,10 +503,22 @@ const mountainMidColor = new THREE.Color(MOUNTAIN_MID_COLOR);
 const mountainHighColor = new THREE.Color(MOUNTAIN_HIGH_COLOR);
 const snowColor = new THREE.Color(SNOW_COLOR);
 const snowShadowColor = new THREE.Color(SNOW_SHADOW_COLOR);
+const riverBankOuterColor = new THREE.Color(GRASS_COLOR);
+const riverBankCrestColor = new THREE.Color(0x7d9c62);
+const riverBankWetColor = new THREE.Color(0x67715b);
 
 type GroundPathPoint = {
   x: number;
   z: number;
+};
+
+type XZPlacement = {
+  x: number;
+  z: number;
+};
+
+type XYZPlacement = XZPlacement & {
+  y: number;
 };
 
 const mountainCenter = {
@@ -555,45 +650,147 @@ function addFlatPlane(
   plane.renderOrder = renderOrder;
   plane.rotation.x = -Math.PI / 2;
   plane.position.set(x, y, z);
+  plane.receiveShadow = true;
   parent.add(plane);
 }
 
-function addPolygonSurface(
+function addExtrudedPolygonSurface(
   name: string,
   points: GroundPathPoint[],
   material: THREE.Material,
-  y: number,
+  topY: number,
+  thickness: number,
   renderOrder: number,
   parent: THREE.Object3D = naturalElements,
 ) {
   const positions: number[] = [];
-  const triangles = THREE.ShapeUtils.triangulateShape(
+  const topTriangles = THREE.ShapeUtils.triangulateShape(
     points.map((point) => new THREE.Vector2(point.x, point.z)),
     [],
   );
+  const indices: number[] = [];
+  const bottomY = topY - thickness;
 
   for (const point of points) {
-    positions.push(point.x, y, point.z);
+    positions.push(point.x, topY, point.z);
+  }
+
+  for (const point of points) {
+    positions.push(point.x, bottomY, point.z);
+  }
+
+  indices.push(...topTriangles.flat());
+
+  for (const triangle of topTriangles) {
+    indices.push(
+      triangle[2] + points.length,
+      triangle[1] + points.length,
+      triangle[0] + points.length,
+    );
+  }
+
+  for (let index = 0; index < points.length; index += 1) {
+    const nextIndex = (index + 1) % points.length;
+    const topA = index;
+    const topB = nextIndex;
+    const bottomA = index + points.length;
+    const bottomB = nextIndex + points.length;
+    indices.push(topA, bottomA, topB, topB, bottomA, bottomB);
   }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(triangles.flat());
+  geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
   mesh.renderOrder = renderOrder;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+}
+
+function addLayeredPolygonVolume(
+  name: string,
+  points: GroundPathPoint[],
+  topMaterial: THREE.Material,
+  sideMaterial: THREE.Material,
+  topY: number,
+  thickness: number,
+  renderOrder: number,
+  parent: THREE.Object3D = naturalElements,
+  castShadow = true,
+) {
+  const positions: number[] = [];
+  const topTriangles = THREE.ShapeUtils.triangulateShape(
+    points.map((point) => new THREE.Vector2(point.x, point.z)),
+    [],
+  );
+  const indices: number[] = [];
+  const bottomY = topY - thickness;
+
+  for (const point of points) {
+    positions.push(point.x, topY, point.z);
+  }
+
+  for (const point of points) {
+    positions.push(point.x, bottomY, point.z);
+  }
+
+  const topIndexStart = indices.length;
+  indices.push(...topTriangles.flat());
+  const topIndexCount = indices.length - topIndexStart;
+
+  const bottomIndexStart = indices.length;
+  for (const triangle of topTriangles) {
+    indices.push(
+      triangle[2] + points.length,
+      triangle[1] + points.length,
+      triangle[0] + points.length,
+    );
+  }
+  const bottomIndexCount = indices.length - bottomIndexStart;
+
+  const sideIndexStart = indices.length;
+  for (let index = 0; index < points.length; index += 1) {
+    const nextIndex = (index + 1) % points.length;
+    const topA = index;
+    const topB = nextIndex;
+    const bottomA = index + points.length;
+    const bottomB = nextIndex + points.length;
+    indices.push(topA, bottomA, topB, topB, bottomA, bottomB);
+  }
+  const sideIndexCount = indices.length - sideIndexStart;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.clearGroups();
+  geometry.addGroup(topIndexStart, topIndexCount, 0);
+  geometry.addGroup(bottomIndexStart, bottomIndexCount, 1);
+  geometry.addGroup(sideIndexStart, sideIndexCount, 1);
+  geometry.computeVertexNormals();
+
+  const mesh = new THREE.Mesh(geometry, [topMaterial, sideMaterial]);
+  mesh.name = name;
+  mesh.renderOrder = renderOrder;
+  mesh.castShadow = castShadow;
+  mesh.receiveShadow = true;
   parent.add(mesh);
 }
 
 function addMainBoundarySurface() {
-  addPolygonSurface(
-    "main-3-square-kilometer-grass-boundary",
+  addLayeredPolygonVolume(
+    "main-3-square-kilometer-grass-terrain-slab",
     mainBoundaryCoastlinePoints,
     grassMaterial,
+    terrainCutMaterial,
     GRASS_SURFACE_Y,
+    MAIN_BOUNDARY_TERRAIN_THICKNESS_M,
     2,
+    naturalElements,
+    false,
   );
 }
 
@@ -611,11 +808,90 @@ function addBox(
   const box = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
   box.name = name;
   box.position.set(x, y, z);
+  box.castShadow = true;
+  box.receiveShadow = true;
   parent.add(box);
 }
 
+function addTopAlignedBox(
+  name: string,
+  width: number,
+  height: number,
+  depth: number,
+  material: THREE.Material,
+  x: number,
+  topY: number,
+  z: number,
+  renderOrder: number,
+  parent: THREE.Object3D = artificialElements,
+) {
+  const box = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+  box.name = name;
+  box.renderOrder = renderOrder;
+  box.position.set(x, topY - height * 0.5, z);
+  box.castShadow = true;
+  box.receiveShadow = true;
+  parent.add(box);
+}
+
+function addCylinderInstances(
+  name: string,
+  radius: number,
+  height: number,
+  material: THREE.Material,
+  topY: number,
+  placements: XZPlacement[],
+  parent: THREE.Object3D = artificialElements,
+) {
+  const mesh = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(radius, radius, height, 12),
+    material,
+    placements.length,
+  );
+  const matrix = new THREE.Matrix4();
+
+  placements.forEach((placement, index) => {
+    matrix.makeTranslation(placement.x, topY - height * 0.5, placement.z);
+    mesh.setMatrixAt(index, matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+
+  mesh.name = name;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+}
+
+function addBoxInstances(
+  name: string,
+  width: number,
+  height: number,
+  depth: number,
+  material: THREE.Material,
+  placements: XYZPlacement[],
+  parent: THREE.Object3D = artificialElements,
+) {
+  const mesh = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(width, height, depth),
+    material,
+    placements.length,
+  );
+  const matrix = new THREE.Matrix4();
+
+  placements.forEach((placement, index) => {
+    matrix.makeTranslation(placement.x, placement.y, placement.z);
+    mesh.setMatrixAt(index, matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+
+  mesh.name = name;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+}
+
 function addCargoShip(name: string, x: number, z: number) {
-  addBox(name, 150, 16, 34, shipHullMaterial, x, SEA_Y + 10, z);
+  addBox(name, CARGO_SHIP_HULL_LENGTH_M, 16, 34, shipHullMaterial, x, SEA_Y + 10, z);
   addBox(`${name}-cabin`, 42, 18, 22, shipCabinMaterial, x - 38, SEA_Y + 27, z);
 }
 
@@ -630,6 +906,8 @@ function addPierAttractionPark(pierCenterX: number, pierCenterZ: number) {
     attractionRedMaterial,
   );
   ferrisWheel.name = "wooden-pier-ferris-wheel";
+  ferrisWheel.castShadow = true;
+  ferrisWheel.receiveShadow = true;
   ferrisWheel.position.set(pierCenterX - 110, PLATFORM_SURFACE_Y + 48, pierCenterZ - 58);
   artificialElements.add(ferrisWheel);
 
@@ -685,6 +963,137 @@ function addPierAttractionPark(pierCenterX: number, pierCenterZ: number) {
   );
 }
 
+function addAttractionPierSupportPiles(pierCenterZ: number) {
+  const placements: XZPlacement[] = [];
+
+  for (let column = 0; column < ATTRACTION_PIER_SUPPORT_COLUMNS; column += 1) {
+    const x = THREE.MathUtils.lerp(
+      mainBoundaryMaxX + 28,
+      mainBoundaryMaxX + ATTRACTION_PIER_LENGTH_M - 95,
+      column / (ATTRACTION_PIER_SUPPORT_COLUMNS - 1),
+    );
+
+    for (let row = 0; row < ATTRACTION_PIER_SUPPORT_ROWS; row += 1) {
+      const z = THREE.MathUtils.lerp(
+        pierCenterZ - ATTRACTION_PIER_DEPTH_M * 0.36,
+        pierCenterZ + ATTRACTION_PIER_DEPTH_M * 0.36,
+        row / (ATTRACTION_PIER_SUPPORT_ROWS - 1),
+      );
+      placements.push({ x, z });
+    }
+  }
+
+  addCylinderInstances(
+    "attraction-pier-support-piles",
+    3.4,
+    PLATFORM_SURFACE_Y - SEA_Y + 3,
+    woodPierMaterial,
+    PLATFORM_SURFACE_Y + 0.1,
+    placements,
+  );
+}
+
+function addPrivateMarinaSupportPiles(marinaCenterZ: number) {
+  const walkwayPlacements = [
+    marinaCenterZ - 60,
+    marinaCenterZ - 20,
+    marinaCenterZ + 20,
+    marinaCenterZ + 60,
+  ].map((z) => ({ x: mainBoundaryMaxX + 10, z }));
+  const berthPlacements: XZPlacement[] = [];
+
+  for (let index = 0; index < PRIVATE_MARINA_BERTH_COUNT; index += 1) {
+    const berthZ = marinaCenterZ - 45 + index * 30;
+    berthPlacements.push(
+      { x: mainBoundaryMaxX + 123, z: berthZ - 4 },
+      { x: mainBoundaryMaxX + 123, z: berthZ + 4 },
+    );
+  }
+
+  addCylinderInstances(
+    "private-marina-walkway-piles",
+    2.4,
+    PLATFORM_SURFACE_Y - SEA_Y + 3,
+    dockMaterial,
+    PLATFORM_SURFACE_Y + 0.1,
+    walkwayPlacements,
+  );
+  addCylinderInstances(
+    "private-marina-berth-piles",
+    2.1,
+    PLATFORM_SURFACE_Y - SEA_Y + 3,
+    dockMaterial,
+    PLATFORM_SURFACE_Y + 0.1,
+    berthPlacements,
+  );
+}
+
+function addCargoCrane(name: string, x: number, z: number) {
+  addBox(`${name}-mast`, 8, 38, 8, portCraneMaterial, x, PLATFORM_SURFACE_Y + 19, z);
+  addBox(`${name}-boom`, 78, 5, 7, portCraneMaterial, x + 34, PLATFORM_SURFACE_Y + 39, z);
+  addBox(`${name}-counterweight`, 16, 8, 10, concretePortMaterial, x - 13, PLATFORM_SURFACE_Y + 35, z);
+  addBox(`${name}-cabin`, 12, 9, 12, shipCabinMaterial, x + 10, PLATFORM_SURFACE_Y + 31, z);
+}
+
+function addCargoContainers(cargoPortCenterX: number, cargoPortCenterZ: number) {
+  const placementsByMaterial: XYZPlacement[][] = cargoContainerMaterials.map(() => []);
+
+  for (let index = 0; index < CARGO_CONTAINER_COUNT; index += 1) {
+    const column = index % 4;
+    const row = Math.floor(index / 4);
+    const x = cargoPortCenterX - 70 + column * 38;
+    const z = cargoPortCenterZ - 66 + row * 38;
+    const materialIndex = index % cargoContainerMaterials.length;
+    placementsByMaterial[materialIndex].push({
+      x,
+      y: PLATFORM_SURFACE_Y + 4,
+      z,
+    });
+  }
+
+  placementsByMaterial.forEach((placements, materialIndex) => {
+    addBoxInstances(
+      `cargo-containers-${materialIndex + 1}`,
+      28,
+      8,
+      12,
+      cargoContainerMaterials[materialIndex],
+      placements,
+    );
+  });
+}
+
+function addCargoPortEquipment(
+  cargoPortCenterX: number,
+  cargoPortCenterZ: number,
+  cargoPortEastEdge: number,
+) {
+  addCargoContainers(cargoPortCenterX, cargoPortCenterZ);
+
+  for (const [index, z] of [cargoPortCenterZ - 72, cargoPortCenterZ + 72].entries()) {
+    addCargoCrane(`cargo-port-crane-${index + 1}`, cargoPortEastEdge - 64, z);
+  }
+
+  const bollardPlacements: XZPlacement[] = [];
+  for (let index = 0; index < CARGO_BOLLARD_COUNT; index += 1) {
+    const z = THREE.MathUtils.lerp(
+      cargoPortCenterZ - CARGO_PORT_DEPTH_M * 0.42,
+      cargoPortCenterZ + CARGO_PORT_DEPTH_M * 0.42,
+      index / (CARGO_BOLLARD_COUNT - 1),
+    );
+    bollardPlacements.push({ x: cargoPortEastEdge - 16, z });
+  }
+
+  addCylinderInstances(
+    "cargo-port-bollards",
+    3.2,
+    4.8,
+    dockMaterial,
+    PLATFORM_SURFACE_Y + 4.8,
+    bollardPlacements,
+  );
+}
+
 function addSimpleMainlandCoast() {
   const beachInnerX = mainBoundaryMaxX - BEACH_INLAND_WIDTH_M;
   const beachInlandSouthZ = riverMouth.z + 284;
@@ -698,7 +1107,7 @@ function addSimpleMainlandCoast() {
     18,
   );
 
-  addPolygonSurface(
+  addExtrudedPolygonSurface(
     "river-integrated-mainland-beach",
     [
       ...beachRiverEdge,
@@ -710,11 +1119,12 @@ function addSimpleMainlandCoast() {
     ],
     beachSandMaterial,
     COAST_SURFACE_Y,
+    BEACH_THICKNESS_M,
     3,
     naturalElements,
   );
 
-  addPolygonSurface(
+  addExtrudedPolygonSurface(
     "mainland-beach-wet-sand-band",
     [
       { x: mainBoundaryMaxX - WET_SAND_WIDTH_M, z: riverMouth.z + 166 },
@@ -725,6 +1135,7 @@ function addSimpleMainlandCoast() {
     ],
     wetSandMaterial,
     COAST_SURFACE_Y + 0.04,
+    WET_SAND_THICKNESS_M,
     4,
     naturalElements,
   );
@@ -733,9 +1144,10 @@ function addSimpleMainlandCoast() {
     mainBoundaryMaxX - ATTRACTION_PIER_LAND_OVERLAP_M + ATTRACTION_PIER_LENGTH_M * 0.5;
   const attractionPierCenterZ = riverMouth.z - ATTRACTION_PIER_RIVER_OFFSET_M;
 
-  addFlatPlane(
+  addTopAlignedBox(
     "long-wooden-attraction-pier",
     ATTRACTION_PIER_LENGTH_M,
+    PIER_DECK_THICKNESS_M,
     ATTRACTION_PIER_DEPTH_M,
     woodPierMaterial,
     attractionPierCenterX,
@@ -744,12 +1156,14 @@ function addSimpleMainlandCoast() {
     8,
     artificialElements,
   );
+  addAttractionPierSupportPiles(attractionPierCenterZ);
   addPierAttractionPark(attractionPierCenterX, attractionPierCenterZ);
 
   const marinaCenterZ = riverMouth.z - PRIVATE_MARINA_RIVER_OFFSET_M;
-  addFlatPlane(
+  addTopAlignedBox(
     "private-marina-shore-walkway",
     18,
+    MARINA_DOCK_THICKNESS_M,
     128,
     dockMaterial,
     mainBoundaryMaxX + 9,
@@ -761,9 +1175,10 @@ function addSimpleMainlandCoast() {
 
   for (let index = 0; index < PRIVATE_MARINA_BERTH_COUNT; index += 1) {
     const berthZ = marinaCenterZ - 45 + index * 30;
-    addFlatPlane(
+    addTopAlignedBox(
       `private-marina-berth-${index + 1}`,
       116,
+      MARINA_DOCK_THICKNESS_M,
       6,
       dockMaterial,
       mainBoundaryMaxX + 76,
@@ -774,6 +1189,7 @@ function addSimpleMainlandCoast() {
     );
     addPrivateBoat(`private-marina-boat-${index + 1}`, mainBoundaryMaxX + 148, berthZ + 10);
   }
+  addPrivateMarinaSupportPiles(marinaCenterZ);
 
   const cargoPortCenterX =
     mainBoundaryMaxX - CARGO_PORT_LAND_OVERLAP_M + CARGO_PORT_LENGTH_M * 0.5;
@@ -781,9 +1197,10 @@ function addSimpleMainlandCoast() {
   const cargoPortEastEdge =
     cargoPortCenterX + CARGO_PORT_LENGTH_M * 0.5;
 
-  addFlatPlane(
+  addTopAlignedBox(
     "large-concrete-cargo-port",
     CARGO_PORT_LENGTH_M,
+    CARGO_PORT_HEIGHT_M,
     CARGO_PORT_DEPTH_M,
     concretePortMaterial,
     cargoPortCenterX,
@@ -792,11 +1209,13 @@ function addSimpleMainlandCoast() {
     8,
     artificialElements,
   );
+  addCargoPortEquipment(cargoPortCenterX, cargoPortCenterZ, cargoPortEastEdge);
 
   for (const [index, dockZ] of [cargoPortCenterZ - 58, cargoPortCenterZ + 58].entries()) {
-    addFlatPlane(
+    addTopAlignedBox(
       `cargo-port-berth-dock-${index + 1}`,
-      80,
+      CARGO_BERTH_DOCK_LENGTH_M,
+      CARGO_BERTH_DOCK_THICKNESS_M,
       18,
       dockMaterial,
       cargoPortEastEdge + 40,
@@ -806,7 +1225,11 @@ function addSimpleMainlandCoast() {
       artificialElements,
     );
     const shipZ = dockZ + (index === 0 ? 38 : -38);
-    addCargoShip(`cargo-port-ship-${index + 1}`, mainBoundaryMaxX + 285, shipZ);
+    addCargoShip(
+      `cargo-port-ship-${index + 1}`,
+      cargoPortEastEdge + CARGO_SHIP_CENTER_OFFSET_FROM_PORT_EDGE_M,
+      shipZ,
+    );
   }
 }
 
@@ -969,6 +1392,7 @@ function addMountainFoothillBlend() {
   );
   foothill.name = "mountain-grass-foothill-blend";
   foothill.renderOrder = 3;
+  foothill.receiveShadow = true;
   naturalElements.add(foothill);
 }
 
@@ -981,6 +1405,8 @@ function addClippedMountain() {
   );
   mountain.name = "clipped-corner-mountain";
   mountain.renderOrder = 3;
+  mountain.castShadow = false;
+  mountain.receiveShadow = true;
   naturalElements.add(mountain);
 
   addMountainCutWall("mountain-west-vertical-cut", "west");
@@ -1023,6 +1449,8 @@ function addMountainCutWall(name: string, edge: "west" | "south") {
   const cut = new THREE.Mesh(geometry, mountainCutMaterial);
   cut.name = name;
   cut.renderOrder = 3;
+  cut.castShadow = false;
+  cut.receiveShadow = true;
   naturalElements.add(cut);
 }
 
@@ -1191,6 +1619,8 @@ function addSnowCappedMountain() {
   const mountain = new THREE.Mesh(createSnowMountainSurfaceGeometry(), mountainMaterial);
   mountain.name = "higher-snow-capped-southwest-mountain";
   mountain.renderOrder = 4;
+  mountain.castShadow = false;
+  mountain.receiveShadow = true;
   naturalElements.add(mountain);
 
   addSnowMountainCutWall("snow-mountain-west-vertical-cut", "west");
@@ -1256,6 +1686,8 @@ function addSnowMountainCutWall(name: string, edge: "west" | "south") {
   const cut = new THREE.Mesh(geometry, mountainMaterial);
   cut.name = name;
   cut.renderOrder = 4;
+  cut.castShadow = false;
+  cut.receiveShadow = true;
   naturalElements.add(cut);
 }
 
@@ -1428,9 +1860,13 @@ function createReservoirBasinGeometry() {
 function riverWaterYAt(point: GroundPathPoint, progress: number) {
   void progress;
   return Math.max(
-    GRASS_SURFACE_Y + 3.2,
-    GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z) + 3.2,
+    GRASS_SURFACE_Y + RIVER_LOWLAND_WATER_CLEARANCE_M,
+    GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z) + RIVER_LOWLAND_WATER_CLEARANCE_M,
   );
+}
+
+function terrainSurfaceYAt(point: GroundPathPoint) {
+  return GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z);
 }
 
 function riverWidthAt(progress: number) {
@@ -1442,6 +1878,140 @@ function riverWidthAt(progress: number) {
   );
   const lowerCourseBlend = THREE.MathUtils.smoothstep(progress, 0.62, 1);
   return THREE.MathUtils.lerp(upperCourseWidth, RIVER_MOUTH_WIDTH_M, lowerCourseBlend);
+}
+
+function estuaryWidthAt(progress: number) {
+  return THREE.MathUtils.lerp(
+    RIVER_MOUTH_WIDTH_M * 1.05,
+    RIVER_MOUTH_WIDTH_M * 2.28,
+    THREE.MathUtils.smoothstep(progress, 0, 1),
+  );
+}
+
+function estuaryWaterYAt(progress: number) {
+  const riverMouthY = riverWaterYAt(riverEstuaryStart, 1);
+  const seaBlend = THREE.MathUtils.smoothstep(progress, 0.14, 1);
+  return THREE.MathUtils.lerp(riverMouthY, SEA_Y + 0.18, seaBlend);
+}
+
+function addRiverBankVertex(
+  positions: number[],
+  colors: number[],
+  x: number,
+  y: number,
+  z: number,
+  color: THREE.Color,
+) {
+  positions.push(
+    THREE.MathUtils.clamp(x, mainBoundaryMinX, mainBoundaryMaxX),
+    y,
+    THREE.MathUtils.clamp(z, mainBoundaryMinZ, mainBoundaryMaxZ),
+  );
+  colors.push(color.r, color.g, color.b);
+}
+
+function addChannelBankStrip(indices: number[], rowLength: number, columnA: number, columnB: number) {
+  for (let index = 0; index < rowLength - 1; index += 1) {
+    const current = index * 6;
+    const next = current + 6;
+    indices.push(
+      current + columnA,
+      next + columnA,
+      current + columnB,
+      current + columnB,
+      next + columnA,
+      next + columnB,
+    );
+  }
+}
+
+function createRiverChannelBankGeometry(path: GroundPathPoint[]) {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
+
+  path.forEach((point, index) => {
+    const progress = index / (path.length - 1);
+    const previous = path[Math.max(index - 1, 0)];
+    const next = path[Math.min(index + 1, path.length - 1)];
+    const tangentX = next.x - previous.x;
+    const tangentZ = next.z - previous.z;
+    const tangentLength = Math.hypot(tangentX, tangentZ) || 1;
+    const normalX = -tangentZ / tangentLength;
+    const normalZ = tangentX / tangentLength;
+    const waterY = riverWaterYAt(point, progress);
+    const terrainY = terrainSurfaceYAt(point);
+    const width = riverWidthAt(progress);
+    const channelVariation =
+      0.18 * Math.sin(progress * Math.PI * 5.2) + 0.1 * Math.sin(progress * Math.PI * 13.1);
+    const outerY = Math.max(terrainY + 0.12, waterY - RIVER_CHANNEL_INNER_DROP_M - 0.2);
+    const crestY = waterY + RIVER_CHANNEL_CREST_RISE_M + channelVariation;
+    const innerY = waterY - RIVER_CHANNEL_INNER_DROP_M;
+    const waterEdgeOffset = width * 0.5 + RIVER_CHANNEL_WATER_EDGE_OVERLAP_M;
+    const crestOffset = width * 0.5 + RIVER_CHANNEL_CREST_OFFSET_M;
+    const outerOffset = width * 0.5 + RIVER_CHANNEL_BANK_WIDTH_M;
+
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x + normalX * outerOffset,
+      outerY,
+      point.z + normalZ * outerOffset,
+      riverBankOuterColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x + normalX * crestOffset,
+      crestY,
+      point.z + normalZ * crestOffset,
+      riverBankCrestColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x + normalX * waterEdgeOffset,
+      innerY,
+      point.z + normalZ * waterEdgeOffset,
+      riverBankWetColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x - normalX * waterEdgeOffset,
+      innerY,
+      point.z - normalZ * waterEdgeOffset,
+      riverBankWetColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x - normalX * crestOffset,
+      crestY,
+      point.z - normalZ * crestOffset,
+      riverBankCrestColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x - normalX * outerOffset,
+      outerY,
+      point.z - normalZ * outerOffset,
+      riverBankOuterColor,
+    );
+  });
+
+  addChannelBankStrip(indices, path.length, 0, 1);
+  addChannelBankStrip(indices, path.length, 1, 2);
+  addChannelBankStrip(indices, path.length, 3, 4);
+  addChannelBankStrip(indices, path.length, 4, 5);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 function createRiverStripGeometry(path: GroundPathPoint[]) {
@@ -1511,12 +2081,8 @@ function createEstuaryStripGeometry(path: GroundPathPoint[]) {
     const tangentLength = Math.hypot(tangentX, tangentZ) || 1;
     const normalX = -tangentZ / tangentLength;
     const normalZ = tangentX / tangentLength;
-    const width = THREE.MathUtils.lerp(
-      RIVER_MOUTH_WIDTH_M * 1.05,
-      RIVER_MOUTH_WIDTH_M * 2.28,
-      THREE.MathUtils.smoothstep(progress, 0, 1),
-    );
-    const y = GRASS_SURFACE_Y + 3.38;
+    const width = estuaryWidthAt(progress);
+    const y = estuaryWaterYAt(progress);
 
     positions.push(
       point.x + normalX * width * 0.5,
@@ -1538,6 +2104,96 @@ function createEstuaryStripGeometry(path: GroundPathPoint[]) {
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createEstuaryBankGeometry(path: GroundPathPoint[]) {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
+  const bankPath = path.filter((point) => point.x <= mainBoundaryMaxX);
+
+  bankPath.forEach((point, index) => {
+    const progress = index / Math.max(bankPath.length - 1, 1);
+    const previous = bankPath[Math.max(index - 1, 0)];
+    const next = bankPath[Math.min(index + 1, bankPath.length - 1)];
+    const tangentX = next.x - previous.x;
+    const tangentZ = next.z - previous.z;
+    const tangentLength = Math.hypot(tangentX, tangentZ) || 1;
+    const normalX = -tangentZ / tangentLength;
+    const normalZ = tangentX / tangentLength;
+    const sourceProgress = path.indexOf(point) / (path.length - 1);
+    const waterY = estuaryWaterYAt(sourceProgress);
+    const terrainY = terrainSurfaceYAt(point);
+    const taper = 1 - THREE.MathUtils.smoothstep(progress, 0.62, 1);
+    const width = estuaryWidthAt(sourceProgress);
+    const waterEdgeOffset = width * 0.5 + RIVER_CHANNEL_WATER_EDGE_OVERLAP_M * taper;
+    const crestOffset = width * 0.5 + ESTUARY_BANK_CREST_OFFSET_M * taper;
+    const outerOffset = width * 0.5 + ESTUARY_BANK_WIDTH_M * taper;
+    const outerY = Math.max(terrainY + 0.08 * taper, waterY - ESTUARY_BANK_INNER_DROP_M);
+    const crestY = Math.max(outerY, waterY + ESTUARY_BANK_CREST_RISE_M * taper);
+    const innerY = waterY - ESTUARY_BANK_INNER_DROP_M;
+
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x + normalX * outerOffset,
+      outerY,
+      point.z + normalZ * outerOffset,
+      riverBankOuterColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x + normalX * crestOffset,
+      crestY,
+      point.z + normalZ * crestOffset,
+      riverBankCrestColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x + normalX * waterEdgeOffset,
+      innerY,
+      point.z + normalZ * waterEdgeOffset,
+      riverBankWetColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x - normalX * waterEdgeOffset,
+      innerY,
+      point.z - normalZ * waterEdgeOffset,
+      riverBankWetColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x - normalX * crestOffset,
+      crestY,
+      point.z - normalZ * crestOffset,
+      riverBankCrestColor,
+    );
+    addRiverBankVertex(
+      positions,
+      colors,
+      point.x - normalX * outerOffset,
+      outerY,
+      point.z - normalZ * outerOffset,
+      riverBankOuterColor,
+    );
+  });
+
+  addChannelBankStrip(indices, bankPath.length, 0, 1);
+  addChannelBankStrip(indices, bankPath.length, 1, 2);
+  addChannelBankStrip(indices, bankPath.length, 3, 4);
+  addChannelBankStrip(indices, bankPath.length, 4, 5);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -1644,6 +2300,8 @@ function addDamAbutments() {
     const abutment = new THREE.Mesh(createDamAbutmentGeometry(sideSign), mountainMaterial);
     abutment.name = sideSign < 0 ? "reservoir-dam-left-abutment" : "reservoir-dam-right-abutment";
     abutment.renderOrder = 6;
+    abutment.castShadow = true;
+    abutment.receiveShadow = true;
     naturalElements.add(abutment);
   }
 }
@@ -1713,6 +2371,7 @@ function addReservoirBasin() {
   const basin = new THREE.Mesh(createReservoirBasinGeometry(), mountainMaterial);
   basin.name = "natural-reservoir-basin";
   basin.renderOrder = 4;
+  basin.receiveShadow = true;
   naturalElements.add(basin);
 }
 
@@ -1731,6 +2390,8 @@ function addDam() {
   const dam = new THREE.Mesh(createCurvedDamGeometry(damBaseY), damMaterial);
   dam.name = "curved-reservoir-dam";
   dam.renderOrder = 7;
+  dam.castShadow = true;
+  dam.receiveShadow = true;
   artificialElements.add(dam);
 }
 
@@ -1739,6 +2400,14 @@ function addRiver() {
   river.name = "mountain-to-sea-river";
   river.renderOrder = 5;
   naturalElements.add(river);
+}
+
+function addRiverChannelBanks() {
+  const banks = new THREE.Mesh(createRiverChannelBankGeometry(riverPath), riverBankMaterial);
+  banks.name = "sloped-natural-river-channel-banks";
+  banks.renderOrder = 4;
+  banks.receiveShadow = true;
+  naturalElements.add(banks);
 }
 
 function addCoastalEstuary() {
@@ -1751,6 +2420,17 @@ function addCoastalEstuary() {
   naturalElements.add(estuary);
 }
 
+function addCoastalEstuaryBanks() {
+  const banks = new THREE.Mesh(
+    createEstuaryBankGeometry(riverSeaTransitionPath),
+    riverBankMaterial,
+  );
+  banks.name = "tapered-natural-estuary-banks";
+  banks.renderOrder = 4;
+  banks.receiveShadow = true;
+  naturalElements.add(banks);
+}
+
 addMountainFoothillBlend();
 addClippedMountain();
 addSnowCappedMountain();
@@ -1758,6 +2438,8 @@ addReservoirBasin();
 addReservoirLake();
 addDamAbutments();
 addDam();
+addRiverChannelBanks();
+addCoastalEstuaryBanks();
 addRiver();
 addCoastalEstuary();
 
@@ -1854,12 +2536,17 @@ window.__SITY_DEBUG__ = {
       mouth: riverMouth,
       sourceWidthM: RIVER_SOURCE_WIDTH_M,
       widthM: RIVER_WIDTH_M,
+      hasCarvedChannel: true,
+      channelBankWidthM: RIVER_CHANNEL_BANK_WIDTH_M,
+      channelReliefM: RIVER_CHANNEL_CREST_RISE_M + RIVER_CHANNEL_INNER_DROP_M,
     },
     estuary: {
       start: riverSeaTransitionPath[0],
       end: riverSeaTransitionPath[riverSeaTransitionPath.length - 1],
       extendsPastCoastlineM:
         riverSeaTransitionPath[riverSeaTransitionPath.length - 1].x - mainBoundaryMaxX,
+      hasSlopedBanks: true,
+      banksTaperIntoSea: true,
     },
     reservoir: {
       center: reservoirCenter,
@@ -1879,17 +2566,34 @@ window.__SITY_DEBUG__ = {
       abuttedByNaturalTerrain: true,
     },
     coast: {
+      hasVolumetricTerrain: true,
+      terrainSlabThicknessM: MAIN_BOUNDARY_TERRAIN_THICKNESS_M,
       mainlandCoastSimple: true,
       parallelCoastEdges: true,
       hasIntegratedRiverBeach: true,
       hasWetSandBand: true,
       beachBoundedByNorthRiverBank: true,
+      hasVolumetricBeach: true,
+      hasRaisedWaterfrontStructures: true,
+      hasPierSupportPiles: true,
+      pierSupportPileCount:
+        ATTRACTION_PIER_SUPPORT_COLUMNS * ATTRACTION_PIER_SUPPORT_ROWS +
+        PRIVATE_MARINA_SUPPORT_PILE_COUNT,
+      hasCargoPortEquipment: true,
+      cargoContainerCount: CARGO_CONTAINER_COUNT,
+      cargoCraneCount: CARGO_CRANE_COUNT,
       wetSandWidthM: WET_SAND_WIDTH_M,
       beachOppositePier: true,
       hasLongWoodenAttractionPier: true,
       attractionPierLengthM: ATTRACTION_PIER_LENGTH_M,
+      pierDeckThicknessM: PIER_DECK_THICKNESS_M,
       hasConcreteShipPort: true,
+      cargoPortHeightM: CARGO_PORT_HEIGHT_M,
       cargoShipBerthCount: CARGO_SHIP_BERTH_COUNT,
+      cargoBerthDockLengthM: CARGO_BERTH_DOCK_LENGTH_M,
+      cargoShipHullLengthM: CARGO_SHIP_HULL_LENGTH_M,
+      cargoShipCenterOffsetFromPortEdgeM: CARGO_SHIP_CENTER_OFFSET_FROM_PORT_EDGE_M,
+      cargoShipWaterGapM: CARGO_SHIP_WATER_GAP_M,
       hasPrivateMarina: true,
       privateBerthCount: PRIVATE_MARINA_BERTH_COUNT,
     },
