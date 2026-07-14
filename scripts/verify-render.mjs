@@ -261,6 +261,33 @@ for (const run of runs) {
     );
   }
 
+  if (
+    !naturalFeatures.coast.hasShorelineFoam ||
+    naturalFeatures.coast.beachFoamStripCount < 6 ||
+    !naturalFeatures.coast.hasBeachDunes ||
+    naturalFeatures.coast.beachDuneCount < 12 ||
+    naturalFeatures.coast.beachGrassClusterCount < 30 ||
+    !naturalFeatures.coast.hasBeachAmenities ||
+    naturalFeatures.coast.beachUmbrellaCount < 10 ||
+    naturalFeatures.coast.beachSunbedCount < 20 ||
+    naturalFeatures.coast.beachTowelCount < 8 ||
+    !naturalFeatures.coast.hasBeachVolleyballCourt ||
+    !naturalFeatures.coast.hasLifeguardTower ||
+    !naturalFeatures.coast.hasBeachAccessBoardwalk ||
+    !naturalFeatures.coast.hasBeachShowers ||
+    !naturalFeatures.coast.hasBeachSafetyFlags ||
+    naturalFeatures.coast.beachTrashBinCount < 4 ||
+    !naturalFeatures.coast.beachAmenitiesAvoidWetSand ||
+    !naturalFeatures.coast.beachDetailsInsideVisibleBoundary ||
+    naturalFeatures.coast.beachDryDetailSeaMarginM <= naturalFeatures.coast.wetSandWidthM
+  ) {
+    throw new Error(
+      `Expected detailed beach amenities and natural shoreline details: ${JSON.stringify(
+        naturalFeatures,
+      )}.`,
+    );
+  }
+
   if (naturalFeatures.river.mouth.x <= naturalFeatures.river.source.x) {
     throw new Error(`Expected river to flow toward the sea: ${JSON.stringify(naturalFeatures)}.`);
   }
