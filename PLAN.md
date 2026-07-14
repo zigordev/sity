@@ -10,6 +10,7 @@ city building, vehicle, pedestrian, or smart-infrastructure logic is added.
 - Open sea east of the mainland coastline.
 - A mainland beach north of the river mouth, bounded by the river's north bank instead of crossing to the opposite side.
 - A shallow volumetric beach and darker wet-sand band along the beach's sea edge.
+- Static beach detail: shoreline foam placed seaward of the wet sand, plus low dry-sand dunes with grass clumps, umbrellas, sunbeds, towels, a volleyball court, a lifeguard tower, shower station, safety flags, bins, and a boardwalk access path.
 - A raised wooden attraction pier south of the river mouth, starting on land and extending into the sea.
 - Instanced support piles under the attraction pier and private marina docks.
 - A raised concrete cargo port with two big-ship berths.
@@ -49,6 +50,8 @@ city building, vehicle, pedestrian, or smart-infrastructure logic is added.
 - Beach inland width: 160 m, constrained to the north/east river mouth bank.
 - Wet-sand band width: 30 m.
 - Beach thickness: 1.3 m dry sand, 0.7 m wet sand.
+- Beach detail counts: 7 foam strips, 16 dune mounds, 40 grass clumps, 12 umbrellas, 24 sunbeds, 10 towels, and 4 bins.
+- Beach amenity placement: all furniture and utilities keep a 52 m sea-side dry-sand margin, so they do not sit on the 30 m wet-sand band or outside the visible beach bounds.
 - Wooden attraction pier size: 420 m by 180 m by 5 m thick, with 55 m overlapping the mainland.
 - Waterfront support piles: 27 total across attraction pier and private marina.
 - Cargo port size: 330 m by 230 m by 8 m high, with two big-ship berths.
@@ -67,8 +70,8 @@ city building, vehicle, pedestrian, or smart-infrastructure logic is added.
 
 ## Categories
 
-- Natural: sea, mainland surfaces, volumetric green planning slab, volumetric reservoir water, volumetric river-integrated beach, wet sand, mountains, reservoir bank, river, sloped river channel banks, and tapered coastal estuary banks.
-- Artificial: dam, raised wooden attraction pier, pier support piles, attraction pieces, raised concrete cargo port, port equipment, raised private marina docks, marina support piles, ships, and boats.
+- Natural: sea, mainland surfaces, volumetric green planning slab, volumetric reservoir water, volumetric river-integrated beach, wet sand, shoreline foam, dune mounds, beach grass, mountains, reservoir bank, river, sloped river channel banks, and tapered coastal estuary banks.
+- Artificial: beach umbrellas, sunbeds, towels, volleyball court, lifeguard tower, shower station, safety flags, bins, boardwalk access, dam, raised wooden attraction pier, pier support piles, attraction pieces, raised concrete cargo port, port equipment, raised private marina docks, marina support piles, ships, and boats.
 - Roads: smart highway loop, curved dam road crossing, terrain-aligned volumetric rock-backed high-mountain tunnel portals with dark entry masks, river cable-stayed bridge with pylons and symmetric diagonal stay cables, lane markings, bridge rails, and sparse instanced elevated-road pillars.
 - Help: compass and X/Y/Z measurements.
 

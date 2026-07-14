@@ -13,6 +13,8 @@ only the static geographic baseline:
 - One DOM control pane for natural/artificial/roads/help visibility toggles.
 - One shallow volumetric beach north of the river mouth, bounded by the river's north bank.
 - One shallow darker wet-sand band along the beach's sea edge.
+- Static beach detail: 7 shoreline foam strips placed seaward of the wet-sand band, 16 dry-sand dune mounds, 40 beach-grass clumps, 12 umbrellas, 24 sunbeds, 10 towels, a volleyball court, a lifeguard tower, a shower station, safety flags, 4 bins, and a boardwalk access path.
+- Beach furniture and utility props keep a 52 m sea-side dry-sand margin so they avoid the 30 m wet-sand band and stay inside the visible beach bounds.
 - One raised wooden attraction pier south of the river mouth with static attraction pieces.
 - Instanced support piles under the attraction pier and private marina docks.
 - One raised concrete cargo port with two big-ship berths.
@@ -38,12 +40,12 @@ Latest verification target:
 
 - Desktop canvas: 1440 x 900.
 - Mobile canvas: 390 x 844.
-- Geometry: baseline land/sea surfaces plus volumetric green terrain slab, flat-topped volumetric reservoir water, dam-side reservoir shore closures, volumetric river-integrated beach, wet-sand band, raised attraction pier, raised cargo port, raised private marina, instanced waterfront details, cargo-port equipment, sloped river/estuary banks, highway deck including the terrain-aligned interior tunnel throat, lane markings, highway shoulder strips, sparse meter-spaced elevated-road pillars, cable-stayed bridge pylons and symmetric diagonal stay cables, volumetric rock-backed rounded tunnel portals, black tunnel-entry masks, and natural feature meshes.
-- Draw calls: 130 on desktop and mobile.
-- Triangles: 32,550 on desktop and mobile.
+- Geometry: baseline land/sea surfaces plus volumetric green terrain slab, flat-topped volumetric reservoir water, dam-side reservoir shore closures, volumetric river-integrated beach, wet-sand band, beach foam/dunes/grass, beach amenities, raised attraction pier, raised cargo port, raised private marina, instanced waterfront details, cargo-port equipment, sloped river/estuary banks, highway deck including the terrain-aligned interior tunnel throat, lane markings, highway shoulder strips, sparse meter-spaced elevated-road pillars, cable-stayed bridge pylons and symmetric diagonal stay cables, volumetric rock-backed rounded tunnel portals, black tunnel-entry masks, and natural feature meshes.
+- Draw calls: 164 on desktop and mobile.
+- Triangles: 38,294 on desktop and mobile.
 
-Repeated waterfront piles, cargo bollards, cargo containers, bridge stay cables, and
-elevated-road pillars use Three.js
+Repeated beach grass, beach umbrellas, sunbeds, towels, waterfront piles, cargo
+bollards, cargo containers, bridge stay cables, and elevated-road pillars use Three.js
 `InstancedMesh` so the extra 3D detail does not scale one draw call per repeated
 piece.
 

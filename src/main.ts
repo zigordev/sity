@@ -88,6 +88,24 @@ declare global {
           cargoContainerCount: number;
           cargoCraneCount: number;
           wetSandWidthM: number;
+          hasShorelineFoam: boolean;
+          beachFoamStripCount: number;
+          hasBeachDunes: boolean;
+          beachDuneCount: number;
+          beachGrassClusterCount: number;
+          hasBeachAmenities: boolean;
+          beachUmbrellaCount: number;
+          beachSunbedCount: number;
+          beachTowelCount: number;
+          hasBeachVolleyballCourt: boolean;
+          hasLifeguardTower: boolean;
+          hasBeachAccessBoardwalk: boolean;
+          hasBeachShowers: boolean;
+          hasBeachSafetyFlags: boolean;
+          beachTrashBinCount: number;
+          beachAmenitiesAvoidWetSand: boolean;
+          beachDetailsInsideVisibleBoundary: boolean;
+          beachDryDetailSeaMarginM: number;
           beachOppositePier: boolean;
           hasLongWoodenAttractionPier: boolean;
           attractionPierLengthM: number;
@@ -281,6 +299,17 @@ const BEACH_INLAND_WIDTH_M = 160;
 const WET_SAND_WIDTH_M = 30;
 const BEACH_THICKNESS_M = 1.3;
 const WET_SAND_THICKNESS_M = 0.7;
+const BEACH_FOAM_STRIP_COUNT = 7;
+const BEACH_DRY_DETAIL_SEA_MARGIN_M = WET_SAND_WIDTH_M + 22;
+const BEACH_DRY_DETAIL_INLAND_MARGIN_M = 18;
+const BEACH_DETAIL_NORTH_MARGIN_M = 54;
+const BEACH_DETAIL_RIVER_MARGIN_M = 230;
+const BEACH_DUNE_COUNT = 16;
+const BEACH_GRASS_CLUSTER_COUNT = 40;
+const BEACH_UMBRELLA_COUNT = 12;
+const BEACH_SUNBED_COUNT = 24;
+const BEACH_TOWEL_COUNT = 10;
+const BEACH_TRASH_BIN_COUNT = 4;
 const ATTRACTION_PIER_LENGTH_M = 420;
 const ATTRACTION_PIER_DEPTH_M = 180;
 const ATTRACTION_PIER_LAND_OVERLAP_M = 55;
@@ -497,6 +526,22 @@ const wetSandMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.01,
   side: THREE.DoubleSide,
 });
+const shorelineFoamMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe9f1e8,
+  roughness: 0.72,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
+const duneSandMaterial = new THREE.MeshStandardMaterial({
+  color: 0xc8b577,
+  roughness: 0.92,
+  metalness: 0,
+});
+const beachGrassMaterial = new THREE.MeshStandardMaterial({
+  color: 0x6f8f4b,
+  roughness: 0.86,
+  metalness: 0,
+});
 const woodPierMaterial = new THREE.MeshStandardMaterial({
   color: WOOD_PIER_COLOR,
   roughness: 0.86,
@@ -542,6 +587,33 @@ const attractionBlueMaterial = new THREE.MeshStandardMaterial({
 const attractionYellowMaterial = new THREE.MeshStandardMaterial({
   color: ATTRACTION_YELLOW_COLOR,
   roughness: 0.58,
+  metalness: 0.02,
+});
+const beachWhiteMaterial = new THREE.MeshStandardMaterial({
+  color: 0xf1eee2,
+  roughness: 0.62,
+  metalness: 0,
+});
+const beachUmbrellaMaterials = [
+  attractionRedMaterial,
+  attractionBlueMaterial,
+  attractionYellowMaterial,
+  new THREE.MeshStandardMaterial({ color: 0x5aa184, roughness: 0.58, metalness: 0.01 }),
+];
+const beachTowelMaterials = [
+  new THREE.MeshStandardMaterial({ color: 0xd75b4d, roughness: 0.82, metalness: 0 }),
+  new THREE.MeshStandardMaterial({ color: 0x3f8fc0, roughness: 0.82, metalness: 0 }),
+  new THREE.MeshStandardMaterial({ color: 0xf0d06a, roughness: 0.82, metalness: 0 }),
+  new THREE.MeshStandardMaterial({ color: 0x77a66a, roughness: 0.82, metalness: 0 }),
+];
+const beachFlagMaterial = new THREE.MeshStandardMaterial({
+  color: 0xd94d42,
+  roughness: 0.62,
+  metalness: 0.01,
+});
+const beachBinMaterial = new THREE.MeshStandardMaterial({
+  color: 0x315f63,
+  roughness: 0.74,
   metalness: 0.02,
 });
 const highwayAsphaltMaterial = new THREE.MeshStandardMaterial({
@@ -694,6 +766,12 @@ type XZPlacement = {
 
 type XYZPlacement = XZPlacement & {
   y: number;
+};
+
+type ScaledXYZPlacement = XYZPlacement & {
+  scaleX: number;
+  scaleY: number;
+  scaleZ: number;
 };
 
 let highwayLoopCenterPath: RoadPathPoint[] = [];
@@ -1068,6 +1146,36 @@ function addBoxInstances(
   parent.add(mesh);
 }
 
+function addScaledSphereInstances(
+  name: string,
+  material: THREE.Material,
+  placements: ScaledXYZPlacement[],
+  parent: THREE.Object3D = naturalElements,
+) {
+  const mesh = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(1, 14, 8),
+    material,
+    placements.length,
+  );
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+
+  placements.forEach((placement, index) => {
+    position.set(placement.x, placement.y, placement.z);
+    scale.set(placement.scaleX, placement.scaleY, placement.scaleZ);
+    matrix.compose(position, quaternion, scale);
+    mesh.setMatrixAt(index, matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+
+  mesh.name = name;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+}
+
 function addCargoShip(name: string, x: number, z: number) {
   addBox(name, CARGO_SHIP_HULL_LENGTH_M, 16, 34, shipHullMaterial, x, SEA_Y + 10, z);
   addBox(`${name}-cabin`, 42, 18, 22, shipCabinMaterial, x - 38, SEA_Y + 27, z);
@@ -1272,6 +1380,525 @@ function addCargoPortEquipment(
   );
 }
 
+function beachDryDetailMinX(beachInnerX: number) {
+  return beachInnerX + BEACH_DRY_DETAIL_INLAND_MARGIN_M;
+}
+
+function beachDryDetailMaxX() {
+  return mainBoundaryMaxX - BEACH_DRY_DETAIL_SEA_MARGIN_M;
+}
+
+function beachDryDetailMinZ() {
+  return riverMouth.z + BEACH_DETAIL_RIVER_MARGIN_M;
+}
+
+function beachDryDetailMaxZ() {
+  return mainBoundaryMaxZ - BEACH_DETAIL_NORTH_MARGIN_M;
+}
+
+function clampBeachDryX(beachInnerX: number, x: number) {
+  return THREE.MathUtils.clamp(x, beachDryDetailMinX(beachInnerX), beachDryDetailMaxX());
+}
+
+function clampBeachDryXWithClearance(
+  beachInnerX: number,
+  x: number,
+  clearanceM: number,
+) {
+  return THREE.MathUtils.clamp(
+    x,
+    beachDryDetailMinX(beachInnerX) + clearanceM,
+    beachDryDetailMaxX() - clearanceM,
+  );
+}
+
+function clampBeachDryZ(z: number) {
+  return THREE.MathUtils.clamp(z, beachDryDetailMinZ(), beachDryDetailMaxZ());
+}
+
+function clampBeachDryZWithClearance(z: number, clearanceM: number) {
+  return THREE.MathUtils.clamp(
+    z,
+    beachDryDetailMinZ() + clearanceM,
+    beachDryDetailMaxZ() - clearanceM,
+  );
+}
+
+function addBeachGrassClumps(beachInnerX: number) {
+  const mesh = new THREE.InstancedMesh(
+    new THREE.ConeGeometry(1.1, 5.5, 5),
+    beachGrassMaterial,
+    BEACH_GRASS_CLUSTER_COUNT,
+  );
+  const matrix = new THREE.Matrix4();
+
+  for (let index = 0; index < BEACH_GRASS_CLUSTER_COUNT; index += 1) {
+    const row = Math.floor(index / 10);
+    const column = index % 10;
+    const x = clampBeachDryX(
+      beachInnerX,
+      beachInnerX +
+        12 +
+        (column % 3) * 9 +
+        3.2 * Math.sin(index * 1.7),
+    );
+    const z = clampBeachDryZ(
+      riverMouth.z +
+        312 +
+        row * 118 +
+        column * 9 +
+        7 * Math.sin(index * 0.9),
+    );
+
+    matrix.makeTranslation(x, COAST_SURFACE_Y + 2.8, z);
+    mesh.setMatrixAt(index, matrix);
+  }
+
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.name = "beach-dune-grass-clumps";
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  naturalElements.add(mesh);
+}
+
+function addBeachNaturalDetails(beachInnerX: number) {
+  const foamPlacements: XYZPlacement[] = [];
+  for (let index = 0; index < BEACH_FOAM_STRIP_COUNT; index += 1) {
+    foamPlacements.push({
+      x: mainBoundaryMaxX + 4 + (index % 2) * 2.6,
+      y: COAST_SURFACE_Y + 0.14,
+      z: clampBeachDryZ(
+        THREE.MathUtils.lerp(
+          riverMouth.z + 236,
+          mainBoundaryMaxZ - 70,
+          index / (BEACH_FOAM_STRIP_COUNT - 1),
+        ),
+      ),
+    });
+  }
+  addBoxInstances(
+    "shoreline-foam-strips",
+    7,
+    0.08,
+    38,
+    shorelineFoamMaterial,
+    foamPlacements,
+    naturalElements,
+  );
+
+  const dunePlacements: ScaledXYZPlacement[] = [];
+  for (let index = 0; index < BEACH_DUNE_COUNT; index += 1) {
+    const row = Math.floor(index / 4);
+    const column = index % 4;
+    dunePlacements.push({
+      x: clampBeachDryX(
+        beachInnerX,
+        beachInnerX + 20 + column * 14 + 4 * Math.sin(index * 0.8),
+      ),
+      y: COAST_SURFACE_Y + 1.15 + (index % 3) * 0.12,
+      z: clampBeachDryZ(riverMouth.z + 326 + row * 126 + 8 * Math.sin(index * 1.3)),
+      scaleX: 14 + (index % 4) * 2.2,
+      scaleY: 2.2 + (index % 3) * 0.32,
+      scaleZ: 8 + (index % 5) * 1.4,
+    });
+  }
+  addScaledSphereInstances("low-beach-dune-mounds", duneSandMaterial, dunePlacements);
+  addBeachGrassClumps(beachInnerX);
+}
+
+function addBeachUmbrellas(beachInnerX: number) {
+  const umbrellaPlacements: XZPlacement[] = [];
+  const canopyPlacementsByMaterial: XZPlacement[][] = beachUmbrellaMaterials.map(() => []);
+
+  for (let row = 0; row < 4; row += 1) {
+    for (let column = 0; column < 3; column += 1) {
+      const index = row * 3 + column;
+      const placement = {
+        x: clampBeachDryXWithClearance(
+          beachInnerX,
+          beachInnerX + 38 + column * 26 + (row % 2) * 3,
+          18,
+        ),
+        z: clampBeachDryZWithClearance(riverMouth.z + 350 + row * 96, 18),
+      };
+      umbrellaPlacements.push(placement);
+      canopyPlacementsByMaterial[index % beachUmbrellaMaterials.length].push(placement);
+    }
+  }
+
+  addCylinderInstances(
+    "beach-umbrella-poles",
+    0.85,
+    10,
+    dockMaterial,
+    COAST_SURFACE_Y + 10,
+    umbrellaPlacements,
+    artificialElements,
+  );
+
+  canopyPlacementsByMaterial.forEach((placements, materialIndex) => {
+    const mesh = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(10, 5.2, 18),
+      beachUmbrellaMaterials[materialIndex],
+      placements.length,
+    );
+    const matrix = new THREE.Matrix4();
+
+    placements.forEach((placement, index) => {
+      matrix.makeTranslation(placement.x, COAST_SURFACE_Y + 10.6, placement.z);
+      mesh.setMatrixAt(index, matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.name = `beach-umbrella-canopies-${materialIndex + 1}`;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    artificialElements.add(mesh);
+  });
+
+  const sunbedPlacements: XYZPlacement[] = [];
+  for (const placement of umbrellaPlacements) {
+    sunbedPlacements.push(
+      {
+        x: clampBeachDryXWithClearance(beachInnerX, placement.x - 10, 7),
+        y: COAST_SURFACE_Y + 0.7,
+        z: clampBeachDryZWithClearance(placement.z + 16, 8),
+      },
+      {
+        x: clampBeachDryXWithClearance(beachInnerX, placement.x + 10, 7),
+        y: COAST_SURFACE_Y + 0.7,
+        z: clampBeachDryZWithClearance(placement.z + 16, 8),
+      },
+    );
+  }
+  addBoxInstances(
+    "beach-sunbeds",
+    13,
+    0.9,
+    5.8,
+    beachWhiteMaterial,
+    sunbedPlacements,
+    artificialElements,
+  );
+}
+
+function addBeachTowels(beachInnerX: number) {
+  const placementsByMaterial: XYZPlacement[][] = beachTowelMaterials.map(() => []);
+
+  for (let index = 0; index < BEACH_TOWEL_COUNT; index += 1) {
+    placementsByMaterial[index % beachTowelMaterials.length].push({
+      x: clampBeachDryXWithClearance(
+        beachInnerX,
+        beachInnerX + 76 + (index % 3) * 13,
+        5,
+      ),
+      y: COAST_SURFACE_Y + 0.18,
+      z: clampBeachDryZWithClearance(
+        riverMouth.z + 326 + Math.floor(index / 3) * 108 + (index % 2) * 14,
+        8,
+      ),
+    });
+  }
+
+  placementsByMaterial.forEach((placements, materialIndex) => {
+    addBoxInstances(
+      `beach-towels-${materialIndex + 1}`,
+      9,
+      0.18,
+      15,
+      beachTowelMaterials[materialIndex],
+      placements,
+      artificialElements,
+    );
+  });
+}
+
+function addBeachVolleyballCourt(beachInnerX: number) {
+  const centerX = clampBeachDryXWithClearance(beachInnerX, beachInnerX + 58, 31);
+  const centerZ = clampBeachDryZWithClearance(riverMouth.z + 452, 45);
+  const courtWidth = 50;
+  const courtDepth = 88;
+  const lineTopY = COAST_SURFACE_Y + 0.18;
+
+  addTopAlignedBox(
+    "beach-volleyball-left-line",
+    0.8,
+    0.08,
+    courtDepth,
+    beachWhiteMaterial,
+    centerX - courtWidth * 0.5,
+    lineTopY,
+    centerZ,
+    5,
+    artificialElements,
+  );
+  addTopAlignedBox(
+    "beach-volleyball-right-line",
+    0.8,
+    0.08,
+    courtDepth,
+    beachWhiteMaterial,
+    centerX + courtWidth * 0.5,
+    lineTopY,
+    centerZ,
+    5,
+    artificialElements,
+  );
+  addTopAlignedBox(
+    "beach-volleyball-north-line",
+    courtWidth,
+    0.08,
+    0.8,
+    beachWhiteMaterial,
+    centerX,
+    lineTopY,
+    centerZ + courtDepth * 0.5,
+    5,
+    artificialElements,
+  );
+  addTopAlignedBox(
+    "beach-volleyball-south-line",
+    courtWidth,
+    0.08,
+    0.8,
+    beachWhiteMaterial,
+    centerX,
+    lineTopY,
+    centerZ - courtDepth * 0.5,
+    5,
+    artificialElements,
+  );
+  addCylinderInstances(
+    "beach-volleyball-posts",
+    0.9,
+    8,
+    dockMaterial,
+    COAST_SURFACE_Y + 8,
+    [
+      { x: centerX - courtWidth * 0.56, z: centerZ },
+      { x: centerX + courtWidth * 0.56, z: centerZ },
+    ],
+    artificialElements,
+  );
+  addBox(
+    "beach-volleyball-net",
+    courtWidth + 8,
+    3.8,
+    0.35,
+    beachWhiteMaterial,
+    centerX,
+    COAST_SURFACE_Y + 4.2,
+    centerZ,
+    artificialElements,
+  );
+}
+
+function addLifeguardTower(beachInnerX: number) {
+  const x = clampBeachDryXWithClearance(beachInnerX, beachInnerX + 92, 15);
+  const z = clampBeachDryZWithClearance(riverMouth.z + 716, 14);
+
+  for (const legX of [-8, 8]) {
+    for (const legZ of [-7, 7]) {
+      addBox(
+        `lifeguard-tower-leg-${legX}-${legZ}`,
+        1.8,
+        12,
+        1.8,
+        woodPierMaterial,
+        x + legX,
+        COAST_SURFACE_Y + 6,
+        z + legZ,
+        artificialElements,
+      );
+    }
+  }
+
+  addBox(
+    "lifeguard-tower-deck",
+    26,
+    2.4,
+    22,
+    woodPierMaterial,
+    x,
+    COAST_SURFACE_Y + 12.8,
+    z,
+    artificialElements,
+  );
+  addBox(
+    "lifeguard-tower-cabin",
+    22,
+    14,
+    18,
+    beachWhiteMaterial,
+    x,
+    COAST_SURFACE_Y + 21,
+    z,
+    artificialElements,
+  );
+  addBox(
+    "lifeguard-tower-red-panel",
+    23,
+    3,
+    19,
+    attractionRedMaterial,
+    x,
+    COAST_SURFACE_Y + 18,
+    z,
+    artificialElements,
+  );
+  addBox(
+    "lifeguard-tower-roof",
+    28,
+    2.2,
+    24,
+    attractionBlueMaterial,
+    x,
+    COAST_SURFACE_Y + 29,
+    z,
+    artificialElements,
+  );
+}
+
+function addBeachAccessAndUtilities(beachInnerX: number) {
+  const boardwalkZ = clampBeachDryZ(riverMouth.z + 642);
+  addTopAlignedBox(
+    "beach-boardwalk-access",
+    100,
+    0.7,
+    12,
+    woodPierMaterial,
+    clampBeachDryXWithClearance(beachInnerX, beachInnerX + 58, 50),
+    COAST_SURFACE_Y + 0.72,
+    boardwalkZ,
+    5,
+    artificialElements,
+  );
+
+  const plankPlacements: XYZPlacement[] = [];
+  for (let index = 0; index < 9; index += 1) {
+    plankPlacements.push({
+      x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 23 + index * 10.5, 2),
+      y: COAST_SURFACE_Y + 0.9,
+      z: boardwalkZ,
+    });
+  }
+  addBoxInstances(
+    "beach-boardwalk-cross-planks",
+    2.8,
+    0.16,
+    13.2,
+    dockMaterial,
+    plankPlacements,
+    artificialElements,
+  );
+
+  addCylinderInstances(
+    "beach-shower-poles",
+    0.8,
+    8.5,
+    roadStructureConcreteMaterial,
+    COAST_SURFACE_Y + 8.5,
+    [
+      {
+        x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 34, 1),
+        z: clampBeachDryZWithClearance(boardwalkZ + 28, 1),
+      },
+      {
+        x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 48, 1),
+        z: clampBeachDryZWithClearance(boardwalkZ + 28, 1),
+      },
+    ],
+    artificialElements,
+  );
+  addBox(
+    "beach-shower-heads",
+    23,
+    1.1,
+    2.6,
+    roadStructureConcreteMaterial,
+    clampBeachDryXWithClearance(beachInnerX, beachInnerX + 41, 12),
+    COAST_SURFACE_Y + 8.7,
+    clampBeachDryZWithClearance(boardwalkZ + 30.5, 2),
+    artificialElements,
+  );
+
+  const flagPlacements: XZPlacement[] = [
+    {
+      x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 96, 5),
+      z: clampBeachDryZWithClearance(riverMouth.z + 272, 5),
+    },
+    {
+      x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 102, 5),
+      z: clampBeachDryZWithClearance(riverMouth.z + 594, 5),
+    },
+    {
+      x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 92, 5),
+      z: clampBeachDryZWithClearance(riverMouth.z + 728, 5),
+    },
+  ];
+  addCylinderInstances(
+    "beach-safety-flag-poles",
+    0.7,
+    9,
+    dockMaterial,
+    COAST_SURFACE_Y + 9,
+    flagPlacements,
+    artificialElements,
+  );
+  addBoxInstances(
+    "beach-safety-flags",
+    7,
+    4,
+    0.45,
+    beachFlagMaterial,
+    flagPlacements.map((placement) => ({
+      x: clampBeachDryXWithClearance(beachInnerX, placement.x + 3.7, 4),
+      y: COAST_SURFACE_Y + 7.2,
+      z: placement.z,
+    })),
+    artificialElements,
+  );
+
+  const binPlacements: XYZPlacement[] = [
+    {
+      x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 38, 3),
+      y: COAST_SURFACE_Y + 1.8,
+      z: clampBeachDryZWithClearance(boardwalkZ - 19, 3),
+    },
+    {
+      x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 98, 3),
+      y: COAST_SURFACE_Y + 1.8,
+      z: clampBeachDryZWithClearance(boardwalkZ - 19, 3),
+    },
+    {
+      x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 44, 3),
+      y: COAST_SURFACE_Y + 1.8,
+      z: clampBeachDryZWithClearance(riverMouth.z + 334, 3),
+    },
+    {
+      x: clampBeachDryXWithClearance(beachInnerX, beachInnerX + 98, 3),
+      y: COAST_SURFACE_Y + 1.8,
+      z: clampBeachDryZWithClearance(riverMouth.z + 724, 3),
+    },
+  ];
+  addBoxInstances(
+    "beach-trash-bins",
+    4.4,
+    3.6,
+    4.4,
+    beachBinMaterial,
+    binPlacements,
+    artificialElements,
+  );
+}
+
+function addBeachAmenities(beachInnerX: number) {
+  addBeachUmbrellas(beachInnerX);
+  addBeachTowels(beachInnerX);
+  addBeachVolleyballCourt(beachInnerX);
+  addLifeguardTower(beachInnerX);
+  addBeachAccessAndUtilities(beachInnerX);
+}
+
 function addSimpleMainlandCoast() {
   const beachInnerX = mainBoundaryMaxX - BEACH_INLAND_WIDTH_M;
   const beachInlandSouthZ = riverMouth.z + 284;
@@ -1317,6 +1944,9 @@ function addSimpleMainlandCoast() {
     4,
     naturalElements,
   );
+
+  addBeachNaturalDetails(beachInnerX);
+  addBeachAmenities(beachInnerX);
 
   const attractionPierCenterX =
     mainBoundaryMaxX - ATTRACTION_PIER_LAND_OVERLAP_M + ATTRACTION_PIER_LENGTH_M * 0.5;
@@ -4210,6 +4840,24 @@ window.__SITY_DEBUG__ = {
       cargoContainerCount: CARGO_CONTAINER_COUNT,
       cargoCraneCount: CARGO_CRANE_COUNT,
       wetSandWidthM: WET_SAND_WIDTH_M,
+      hasShorelineFoam: true,
+      beachFoamStripCount: BEACH_FOAM_STRIP_COUNT,
+      hasBeachDunes: true,
+      beachDuneCount: BEACH_DUNE_COUNT,
+      beachGrassClusterCount: BEACH_GRASS_CLUSTER_COUNT,
+      hasBeachAmenities: true,
+      beachUmbrellaCount: BEACH_UMBRELLA_COUNT,
+      beachSunbedCount: BEACH_SUNBED_COUNT,
+      beachTowelCount: BEACH_TOWEL_COUNT,
+      hasBeachVolleyballCourt: true,
+      hasLifeguardTower: true,
+      hasBeachAccessBoardwalk: true,
+      hasBeachShowers: true,
+      hasBeachSafetyFlags: true,
+      beachTrashBinCount: BEACH_TRASH_BIN_COUNT,
+      beachAmenitiesAvoidWetSand: true,
+      beachDetailsInsideVisibleBoundary: true,
+      beachDryDetailSeaMarginM: BEACH_DRY_DETAIL_SEA_MARGIN_M,
       beachOppositePier: true,
       hasLongWoodenAttractionPier: true,
       attractionPierLengthM: ATTRACTION_PIER_LENGTH_M,
