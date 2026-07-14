@@ -10,7 +10,7 @@ only the static geographic baseline:
 - Open sea east of the mainland coastline.
 - One DOM compass overlay pointing north from mainland toward the sea.
 - One DOM axis scale overlay showing X/Y/Z direction and meter-based size references.
-- One DOM control pane for natural/artificial/help visibility toggles.
+- One DOM control pane for natural/artificial/roads/help visibility toggles.
 - One shallow volumetric beach north of the river mouth, bounded by the river's north bank.
 - One shallow darker wet-sand band along the beach's sea edge.
 - One raised wooden attraction pier south of the river mouth with static attraction pieces.
@@ -24,11 +24,13 @@ only the static geographic baseline:
 - One separate snow-capped mountain mass clipped by the southwest boundary so only about a quarter is visible, with filled rock/snow cut faces.
 - One reservoir lake enclosed by a natural mountain bank with a dam-sized outlet opening.
 - One reservoir water boundary clipped to the curved upstream dam face.
-- Two natural terrain abutments joining the dam ends into the reservoir bank.
-- One curved dam spanning the reservoir outlet.
+- Two natural terrain abutments and two sloped shore-closure wings joining the dam ends into the reservoir bank.
+- One flat-topped volumetric reservoir lake with 28 m of water depth and a curved dam spanning the outlet.
 - One borderless river water strip starting as a narrowed outlet at the downstream dam face.
 - One set of sloped natural river channel banks following the full inland river path.
 - One coastal estuary water strip with natural banks that taper away before the water blends into the sea.
+- One widened closed bidirectional highway loop with 2 lanes per direction, a consistent elevated deck, a curved dam crossing, a single continuous outside-tunnel pavement curve through the dam junction, a west-side post-dam bypass that avoids the reservoir mountain, a rendered high-mountain tunnel road segment with terrain-aligned volumetric rock-backed rounded portals and dark interior entry masks, an industrial-port-side approach, and a cable-stayed bridge with symmetric diagonal stay cables over the river.
+- Four directed closed highway lane paths are generated for future vehicle routing.
 
 ## Render Check
 
@@ -36,17 +38,19 @@ Latest verification target:
 
 - Desktop canvas: 1440 x 900.
 - Mobile canvas: 390 x 844.
-- Geometry: baseline land/sea surfaces plus volumetric green terrain slab, volumetric river-integrated beach, wet-sand band, raised attraction pier, raised cargo port, raised private marina, instanced waterfront details, cargo-port equipment, sloped river/estuary banks, and natural feature meshes.
-- Draw calls: 68 on desktop and mobile.
-- Triangles: 17,566 on desktop and mobile.
+- Geometry: baseline land/sea surfaces plus volumetric green terrain slab, flat-topped volumetric reservoir water, dam-side reservoir shore closures, volumetric river-integrated beach, wet-sand band, raised attraction pier, raised cargo port, raised private marina, instanced waterfront details, cargo-port equipment, sloped river/estuary banks, highway deck including the terrain-aligned interior tunnel throat, lane markings, highway shoulder strips, sparse meter-spaced elevated-road pillars, cable-stayed bridge pylons and symmetric diagonal stay cables, volumetric rock-backed rounded tunnel portals, black tunnel-entry masks, and natural feature meshes.
+- Draw calls: 130 on desktop and mobile.
+- Triangles: 32,550 on desktop and mobile.
 
-Repeated waterfront piles, cargo bollards, and cargo containers use Three.js
+Repeated waterfront piles, cargo bollards, cargo containers, bridge stay cables, and
+elevated-road pillars use Three.js
 `InstancedMesh` so the extra 3D detail does not scale one draw call per repeated
 piece.
 
-The compass, axis scale, and visibility controls are DOM overlays. The Help
-toggle hides the compass and X/Y/Z measurements without adding Three.js draw
-calls while visible.
+The compass, axis scale, and visibility controls are DOM overlays. The Roads
+toggle hides only the highway meshes and road structures, while the Help toggle
+hides the compass and X/Y/Z measurements without adding Three.js draw calls
+while visible.
 
 ## Scale
 
@@ -54,5 +58,5 @@ One Three.js unit equals one meter:
 
 - Main green boundary side: 1,732.05 m.
 
-No road network, moving vehicles, pedestrians, sensors, traffic lights, or
-generated districts are present in the active scene.
+No moving vehicles, pedestrians, sensors, traffic lights, or generated districts
+are present in the active scene.
