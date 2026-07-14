@@ -81,6 +81,7 @@ for (const run of runs) {
   await page.waitForSelector("#scale-axis-z");
   await page.waitForSelector("#toggle-natural");
   await page.waitForSelector("#toggle-artificial");
+  await page.waitForSelector("#toggle-roads");
   await page.waitForSelector("#toggle-help");
   await page.waitForFunction(() => Boolean(window.__SITY_DEBUG__));
   await page.waitForTimeout(900);
@@ -325,6 +326,17 @@ for (const run of runs) {
     );
   }
 
+  if (
+    !naturalFeatures.reservoir.hasVolumetricWater ||
+    naturalFeatures.reservoir.waterDepthM < 20
+  ) {
+    throw new Error(
+      `Expected reservoir lake to be a volumetric water mass with a flat top: ${JSON.stringify(
+        naturalFeatures,
+      )}.`,
+    );
+  }
+
   if (!naturalFeatures.reservoir.clippedAtDam) {
     throw new Error(
       `Expected reservoir water boundary to be clipped by the upstream dam face: ${JSON.stringify(
@@ -375,10 +387,51 @@ for (const run of runs) {
     );
   }
 
+  const roadNetwork = await page.evaluate(() => window.__SITY_DEBUG__.getRoadNetwork());
+  const highwayLoop = roadNetwork.roads.find((road) => road.id === "smart-highway-loop");
+
+  if (
+    !highwayLoop ||
+    !highwayLoop.closedLoop ||
+    highwayLoop.lanesPerDirection !== 2 ||
+    highwayLoop.totalLaneCount !== 4 ||
+    highwayLoop.laneWidthM < 3.5 ||
+    highwayLoop.totalRoadWidthM < 24 ||
+    !highwayLoop.features.crossesDam ||
+    !highwayLoop.features.hasMountainTunnel ||
+    !highwayLoop.features.reachesPort ||
+    !highwayLoop.features.hasRiverBridge ||
+    !highwayLoop.features.hasCableStayedBridge ||
+    !highwayLoop.features.hasBridgeStayCables ||
+    !highwayLoop.features.roadFitsDam
+  ) {
+    throw new Error(
+      `Expected a closed bidirectional smart highway loop with mountain tunnel, cable-stayed bridge, bridge stay cables, and dam-fit road deck: ${JSON.stringify(
+        roadNetwork,
+      )}.`,
+    );
+  }
+
+  if (
+    roadNetwork.directedLanePathCount !== 4 ||
+    roadNetwork.lanePaths.some((lanePath) => !lanePath.closedLoop || lanePath.pointCount < 180) ||
+    !roadNetwork.graph.allLanePathsClosed ||
+    roadNetwork.graph.nodeCount < 180 ||
+    !roadNetwork.graph.laneDirections.includes("clockwise") ||
+    !roadNetwork.graph.laneDirections.includes("counterclockwise")
+  ) {
+    throw new Error(
+      `Expected four directed closed lane paths for future vehicle routing: ${JSON.stringify(
+        roadNetwork,
+      )}.`,
+    );
+  }
+
   const initialCategoryVisibility = await readCategoryVisibility(page);
   if (
     !initialCategoryVisibility.natural ||
     !initialCategoryVisibility.artificial ||
+    !initialCategoryVisibility.roads ||
     !initialCategoryVisibility.help
   ) {
     throw new Error(
@@ -391,6 +444,7 @@ for (const run of runs) {
   if (
     hiddenNaturalVisibility.natural ||
     !hiddenNaturalVisibility.artificial ||
+    !hiddenNaturalVisibility.roads ||
     !hiddenNaturalVisibility.help
   ) {
     throw new Error(
@@ -403,9 +457,29 @@ for (const run of runs) {
   if (
     hiddenSceneVisibility.natural ||
     hiddenSceneVisibility.artificial ||
+    !hiddenSceneVisibility.roads ||
     !hiddenSceneVisibility.help
   ) {
-    throw new Error(`Expected scene categories hidden with help still visible: ${JSON.stringify(hiddenSceneVisibility)}.`);
+    throw new Error(
+      `Expected natural/artificial categories hidden with roads and help still visible: ${JSON.stringify(
+        hiddenSceneVisibility,
+      )}.`,
+    );
+  }
+
+  await page.locator("#toggle-roads").uncheck();
+  const hiddenRoadsVisibility = await readCategoryVisibility(page);
+  if (
+    hiddenRoadsVisibility.natural ||
+    hiddenRoadsVisibility.artificial ||
+    hiddenRoadsVisibility.roads ||
+    !hiddenRoadsVisibility.help
+  ) {
+    throw new Error(
+      `Expected roads hidden independently while help remains visible: ${JSON.stringify(
+        hiddenRoadsVisibility,
+      )}.`,
+    );
   }
 
   await page.locator("#toggle-help").uncheck();
@@ -416,6 +490,7 @@ for (const run of runs) {
   if (
     hiddenHelpVisibility.natural ||
     hiddenHelpVisibility.artificial ||
+    hiddenHelpVisibility.roads ||
     hiddenHelpVisibility.help ||
     hiddenHelpCompassCheck.visible ||
     hiddenHelpAxisScaleCheck.visible
@@ -431,6 +506,7 @@ for (const run of runs) {
 
   await page.locator("#toggle-natural").check();
   await page.locator("#toggle-artificial").check();
+  await page.locator("#toggle-roads").check();
   await page.locator("#toggle-help").check();
   const restoredCategoryVisibility = await readCategoryVisibility(page);
   const restoredHelpCompassCheck = await readCompass(page);
@@ -438,6 +514,7 @@ for (const run of runs) {
   if (
     !restoredCategoryVisibility.natural ||
     !restoredCategoryVisibility.artificial ||
+    !restoredCategoryVisibility.roads ||
     !restoredCategoryVisibility.help ||
     !restoredHelpCompassCheck.visible ||
     !restoredHelpAxisScaleCheck.visible
@@ -461,6 +538,7 @@ for (const run of runs) {
       movedAxisScaleCheck,
       siteLayout,
       naturalFeatures,
+      roadNetwork,
       categoryVisibility: restoredCategoryVisibility,
       performance: await page.evaluate(() => window.__SITY_DEBUG__.getPerformance()),
     }),

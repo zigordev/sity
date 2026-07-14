@@ -57,6 +57,8 @@ declare global {
           center: { x: number; z: number };
           radiusXM: number;
           radiusZM: number;
+          hasVolumetricWater: boolean;
+          waterDepthM: number;
           enclosedByNaturalBank: boolean;
           damOpeningWidthM: number;
           clippedAtDam: boolean;
@@ -101,9 +103,45 @@ declare global {
           privateBerthCount: number;
         };
       };
+      getRoadNetwork: () => {
+        roads: Array<{
+          id: string;
+          type: string;
+          closedLoop: boolean;
+          lanesPerDirection: number;
+          totalLaneCount: number;
+          laneWidthM: number;
+          totalRoadWidthM: number;
+          features: {
+            crossesDam: boolean;
+            hasMountainTunnel: boolean;
+            reachesPort: boolean;
+            hasRiverBridge: boolean;
+            hasCableStayedBridge: boolean;
+            hasBridgeStayCables: boolean;
+            roadFitsDam: boolean;
+          };
+        }>;
+        lanePaths: Array<{
+          id: string;
+          roadId: string;
+          direction: "clockwise" | "counterclockwise";
+          laneIndex: number;
+          centerOffsetM: number;
+          pointCount: number;
+          closedLoop: boolean;
+        }>;
+        directedLanePathCount: number;
+        graph: {
+          nodeCount: number;
+          allLanePathsClosed: boolean;
+          laneDirections: Array<"clockwise" | "counterclockwise">;
+        };
+      };
       getCategoryVisibility: () => {
         natural: boolean;
         artificial: boolean;
+        roads: boolean;
         help: boolean;
       };
       getCompassBearingDegrees: () => number;
@@ -136,6 +174,7 @@ const scaleMeasureY = document.querySelector<HTMLElement>("#scale-measure-y");
 const scaleMeasureZ = document.querySelector<HTMLElement>("#scale-measure-z");
 const naturalToggle = document.querySelector<HTMLInputElement>("#toggle-natural");
 const artificialToggle = document.querySelector<HTMLInputElement>("#toggle-artificial");
+const roadsToggle = document.querySelector<HTMLInputElement>("#toggle-roads");
 const helpToggle = document.querySelector<HTMLInputElement>("#toggle-help");
 
 if (!canvas) {
@@ -171,6 +210,11 @@ const SHIP_CABIN_COLOR = 0xe9e4d4;
 const ATTRACTION_RED_COLOR = 0xc44f4f;
 const ATTRACTION_BLUE_COLOR = 0x3f7fb0;
 const ATTRACTION_YELLOW_COLOR = 0xe5b64f;
+const HIGHWAY_ASPHALT_COLOR = 0x64696c;
+const HIGHWAY_SHOULDER_COLOR = 0x4d5254;
+const HIGHWAY_MEDIAN_COLOR = 0x7d7a70;
+const ROAD_MARKING_WHITE_COLOR = 0xe8ece6;
+const ROAD_MARKING_YELLOW_COLOR = 0xe5c94f;
 const MOUNTAIN_HEIGHT_M = 420;
 const MOUNTAIN_RADIUS_X_M = 950;
 const MOUNTAIN_RADIUS_Z_M = 880;
@@ -207,6 +251,8 @@ const ESTUARY_BANK_INNER_DROP_M = 0.24;
 const RESERVOIR_RADIUS_X_M = 170;
 const RESERVOIR_RADIUS_Z_M = 105;
 const RESERVOIR_SEGMENTS = 56;
+const RESERVOIR_WATER_DEPTH_M = 28;
+const RESERVOIR_WATER_DAM_FACE_SETBACK_M = 1.4;
 const RESERVOIR_DAM_OPENING_HALF_ANGLE_RAD = 0.72;
 const RESERVOIR_DAM_FACE_SAMPLES = 18;
 const RESERVOIR_BANK_SEGMENTS = 72;
@@ -215,12 +261,15 @@ const RESERVOIR_BANK_CREST_SCALE = 1.07;
 const RESERVOIR_BANK_OUTER_SCALE = 1.26;
 const DAM_LENGTH_M = 180;
 const DAM_HEIGHT_M = 46;
-const DAM_THICKNESS_M = 24;
+const DAM_THICKNESS_M = 36;
 const DAM_CURVE_SEGMENTS = 18;
 const DAM_CURVE_BOW_M = 10;
 const DAM_UPSTREAM_FACE_OFFSET_M = 2;
 const DAM_BANK_OPENING_MARGIN_M = 8;
 const DAM_BANK_OPENING_HALF_LENGTH_M = DAM_LENGTH_M * 0.5 + DAM_BANK_OPENING_MARGIN_M;
+const DAM_WATER_FACE_END_INSET_M = 5;
+const DAM_WATER_FACE_HALF_LENGTH_M = DAM_LENGTH_M * 0.5 - DAM_WATER_FACE_END_INSET_M;
+const DAM_NATURAL_BANK_OPENING_HALF_LENGTH_M = DAM_LENGTH_M * 0.5 + 2;
 const DAM_ABUTMENT_OUTER_LENGTH_M = 32;
 const DAM_ABUTMENT_FLARE_M = 28;
 const DAM_ABUTMENT_CREST_RISE_M = 18;
@@ -258,6 +307,41 @@ const CARGO_BERTH_DOCK_THICKNESS_M = 3;
 const CARGO_SHIP_CENTER_OFFSET_FROM_PORT_EDGE_M =
   CARGO_BERTH_DOCK_LENGTH_M + CARGO_SHIP_HULL_LENGTH_M * 0.5 + CARGO_SHIP_WATER_GAP_M;
 const PRIVATE_MARINA_SUPPORT_PILE_COUNT = PRIVATE_MARINA_BERTH_COUNT * 2 + 4;
+const HIGHWAY_LANES_PER_DIRECTION = 2;
+const HIGHWAY_LANE_WIDTH_M = 3.8;
+const HIGHWAY_MEDIAN_WIDTH_M = 5;
+const HIGHWAY_SHOULDER_WIDTH_M = 3;
+const HIGHWAY_TOTAL_LANE_COUNT = HIGHWAY_LANES_PER_DIRECTION * 2;
+const HIGHWAY_TOTAL_WIDTH_M =
+  HIGHWAY_TOTAL_LANE_COUNT * HIGHWAY_LANE_WIDTH_M +
+  HIGHWAY_MEDIAN_WIDTH_M +
+  HIGHWAY_SHOULDER_WIDTH_M * 2;
+const HIGHWAY_SAMPLE_COUNT = 224;
+const HIGHWAY_DECK_THICKNESS_M = 1.2;
+const HIGHWAY_TUNNEL_PORTAL_WIDTH_M = HIGHWAY_TOTAL_WIDTH_M + 18;
+const HIGHWAY_TUNNEL_PORTAL_HEIGHT_M = 32;
+const HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M = HIGHWAY_TUNNEL_PORTAL_WIDTH_M + 28;
+const HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M = HIGHWAY_TUNNEL_PORTAL_HEIGHT_M + 18;
+const HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M = 58;
+const HIGHWAY_TUNNEL_DARK_MASK_DEPTH_M = 30;
+const HIGHWAY_TUNNEL_MOUTH_SHADOW_WIDTH_M = HIGHWAY_TOTAL_WIDTH_M + 7;
+const HIGHWAY_TUNNEL_MOUTH_SHADOW_HEIGHT_M = HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 7;
+const HIGHWAY_TUNNEL_NORTH_EXIT_PORTAL_OUTSET_M = 32;
+const HIGHWAY_TUNNEL_ENTRY_CONTROL_INDEX = 7;
+const HIGHWAY_TUNNEL_EXIT_CONTROL_INDEX = 11;
+const HIGHWAY_RIVER_BRIDGE_START_CONTROL_INDEX = 15;
+const HIGHWAY_RIVER_BRIDGE_END_CONTROL_INDEX = 18;
+const HIGHWAY_SUPPORT_SPACING_M = 240;
+const HIGHWAY_BRIDGE_TOWER_HEIGHT_M = 78;
+const HIGHWAY_BRIDGE_TOWER_WIDTH_M = 7.5;
+const HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M = HIGHWAY_TOTAL_WIDTH_M * 0.5 + 9;
+const HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_OFFSET_M = HIGHWAY_TOTAL_WIDTH_M * 0.5 - 2.2;
+const HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_LIFT_M = 0.18;
+const HIGHWAY_BRIDGE_STAY_FAN_REACH_PROGRESS = 0.2;
+const HIGHWAY_BRIDGE_STAY_CABLE_COUNT_PER_FAN = 5;
+const HIGHWAY_BRIDGE_STAY_CABLE_RADIUS_M = 0.82;
+const HIGHWAY_DASH_SEGMENTS = 1;
+const HIGHWAY_DASH_GAP_SEGMENTS = 1;
 const SCALE_X_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
 const SCALE_Y_MEASURE_M = SNOW_MOUNTAIN_HEIGHT_M;
 const SCALE_Z_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
@@ -339,6 +423,10 @@ scene.add(naturalElements);
 const artificialElements = new THREE.Group();
 artificialElements.name = "artificial-elements";
 scene.add(artificialElements);
+
+const roadElements = new THREE.Group();
+roadElements.name = "road-elements";
+scene.add(roadElements);
 
 const camera = new THREE.PerspectiveCamera(
   48,
@@ -456,6 +544,64 @@ const attractionYellowMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.58,
   metalness: 0.02,
 });
+const highwayAsphaltMaterial = new THREE.MeshStandardMaterial({
+  color: HIGHWAY_ASPHALT_COLOR,
+  roughness: 0.84,
+  metalness: 0.02,
+  side: THREE.DoubleSide,
+});
+const highwaySideMaterial = new THREE.MeshStandardMaterial({
+  color: 0x25292a,
+  roughness: 0.86,
+  metalness: 0.02,
+  side: THREE.DoubleSide,
+});
+const highwayShoulderMaterial = new THREE.MeshStandardMaterial({
+  color: HIGHWAY_SHOULDER_COLOR,
+  roughness: 0.86,
+  metalness: 0.01,
+  side: THREE.DoubleSide,
+});
+const highwayMedianMaterial = new THREE.MeshStandardMaterial({
+  color: HIGHWAY_MEDIAN_COLOR,
+  roughness: 0.88,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
+const roadMarkingWhiteMaterial = new THREE.MeshStandardMaterial({
+  color: ROAD_MARKING_WHITE_COLOR,
+  roughness: 0.55,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
+const roadMarkingYellowMaterial = new THREE.MeshStandardMaterial({
+  color: ROAD_MARKING_YELLOW_COLOR,
+  roughness: 0.55,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
+const roadStructureConcreteMaterial = new THREE.MeshStandardMaterial({
+  color: 0x9e9c91,
+  roughness: 0.78,
+  metalness: 0.02,
+  side: THREE.DoubleSide,
+});
+const bridgeSteelMaterial = new THREE.MeshStandardMaterial({
+  color: 0x2d3437,
+  roughness: 0.58,
+  metalness: 0.24,
+});
+const bridgeCableMaterial = new THREE.MeshStandardMaterial({
+  color: 0x596368,
+  roughness: 0.42,
+  metalness: 0.42,
+});
+const tunnelOpeningMaterial = new THREE.MeshStandardMaterial({
+  color: 0x17191a,
+  roughness: 0.95,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
 const cargoContainerMaterials = [
   new THREE.MeshStandardMaterial({ color: 0xa94f3f, roughness: 0.78, metalness: 0.05 }),
   new THREE.MeshStandardMaterial({ color: 0x3f6f93, roughness: 0.78, metalness: 0.05 }),
@@ -486,6 +632,18 @@ const riverMaterial = new THREE.MeshStandardMaterial({
   side: THREE.DoubleSide,
   depthWrite: false,
 });
+const reservoirWaterTopMaterial = new THREE.MeshStandardMaterial({
+  color: SEA_COLOR,
+  roughness: 0.5,
+  metalness: 0.02,
+  side: THREE.DoubleSide,
+});
+const reservoirWaterSideMaterial = new THREE.MeshStandardMaterial({
+  color: 0x1c7198,
+  roughness: 0.66,
+  metalness: 0.02,
+  side: THREE.DoubleSide,
+});
 const riverBankMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.9,
   metalness: 0,
@@ -512,6 +670,23 @@ type GroundPathPoint = {
   z: number;
 };
 
+type ReservoirLakeBoundaryPoint = GroundPathPoint & {
+  isDamFace: boolean;
+};
+
+type RoadPathPoint = GroundPathPoint & {
+  y: number;
+};
+
+type LanePath = {
+  id: string;
+  roadId: string;
+  direction: "clockwise" | "counterclockwise";
+  laneIndex: number;
+  centerOffsetM: number;
+  points: RoadPathPoint[];
+};
+
 type XZPlacement = {
   x: number;
   z: number;
@@ -520,6 +695,9 @@ type XZPlacement = {
 type XYZPlacement = XZPlacement & {
   y: number;
 };
+
+let highwayLoopCenterPath: RoadPathPoint[] = [];
+let highwayLoopLanePaths: LanePath[] = [];
 
 const mountainCenter = {
   x: mainBoundaryMinX - 160,
@@ -1481,6 +1659,32 @@ function snowMountainHeightAt(x: number, z: number) {
   return SNOW_MOUNTAIN_HEIGHT_M * broadSlope * summitLift * ridgeLift * ridgeNoise;
 }
 
+function snowMountainFaceOutwardNormalAt(point: GroundPathPoint) {
+  const sampleStepM = 8;
+  const heightGradientX =
+    (snowMountainHeightAt(point.x + sampleStepM, point.z) -
+      snowMountainHeightAt(point.x - sampleStepM, point.z)) /
+    (sampleStepM * 2);
+  const heightGradientZ =
+    (snowMountainHeightAt(point.x, point.z + sampleStepM) -
+      snowMountainHeightAt(point.x, point.z - sampleStepM)) /
+    (sampleStepM * 2);
+  let outwardX = -heightGradientX;
+  let outwardZ = -heightGradientZ;
+  let length = Math.hypot(outwardX, outwardZ);
+
+  if (length < 0.0001) {
+    outwardX = (point.x - snowMountainCenter.x) / SNOW_MOUNTAIN_RADIUS_X_M ** 2;
+    outwardZ = (point.z - snowMountainCenter.z) / SNOW_MOUNTAIN_RADIUS_Z_M ** 2;
+    length = Math.hypot(outwardX, outwardZ) || 1;
+  }
+
+  return {
+    x: outwardX / length,
+    z: outwardZ / length,
+  };
+}
+
 function estimateSnowMountainVisiblePortion() {
   let fullFootprintSamples = 0;
   let visibleFootprintSamples = 0;
@@ -1707,12 +1911,24 @@ function reservoirLakeBoundaryPoint(angle: number, index: number) {
   return {
     x: reservoirCenter.x + Math.cos(angle) * RESERVOIR_RADIUS_X_M * edgeNoise,
     z: reservoirCenter.z + Math.sin(angle) * RESERVOIR_RADIUS_Z_M * edgeNoise,
+    isDamFace: false,
   };
 }
 
-function createReservoirLakeGeometry() {
-  const y = reservoirLakeY();
-  const boundaryPoints: GroundPathPoint[] = [];
+function reservoirWaterDamFacePoint(lengthOffset: number) {
+  const point = curvedDamPoint(
+    lengthOffset,
+    -DAM_THICKNESS_M * 0.5 - RESERVOIR_WATER_DAM_FACE_SETBACK_M,
+  );
+
+  return {
+    ...point,
+    isDamFace: true,
+  };
+}
+
+function createReservoirLakeBoundaryPoints() {
+  const boundaryPoints: ReservoirLakeBoundaryPoint[] = [];
   const outletAngle = reservoirOutletAngle();
   let damFaceInserted = false;
 
@@ -1731,31 +1947,87 @@ function createReservoirLakeGeometry() {
       for (let station = 0; station <= RESERVOIR_DAM_FACE_SAMPLES; station += 1) {
         const ratio = station / RESERVOIR_DAM_FACE_SAMPLES;
         const lengthOffset = THREE.MathUtils.lerp(
-          -DAM_LENGTH_M * 0.5,
-          DAM_LENGTH_M * 0.5,
+          -DAM_WATER_FACE_HALF_LENGTH_M,
+          DAM_WATER_FACE_HALF_LENGTH_M,
           ratio,
         );
-        boundaryPoints.push(damUpstreamFacePoint(lengthOffset));
+        boundaryPoints.push(reservoirWaterDamFacePoint(lengthOffset));
       }
 
       damFaceInserted = true;
     }
   }
 
-  const positions = [reservoirCenter.x, y, reservoirCenter.z];
-  const indices: number[] = [];
+  return boundaryPoints;
+}
+
+function createReservoirLakeGeometry() {
+  const topY = reservoirLakeY();
+  const bottomY = topY - RESERVOIR_WATER_DEPTH_M;
+  const boundaryPoints = createReservoirLakeBoundaryPoints();
+  const topTriangles = THREE.ShapeUtils.triangulateShape(
+    boundaryPoints.map((point) => new THREE.Vector2(point.x, point.z)),
+    [],
+  );
+  const signedArea =
+    boundaryPoints.reduce((area, point, index) => {
+      const next = boundaryPoints[(index + 1) % boundaryPoints.length];
+      return area + point.x * next.z - next.x * point.z;
+    }, 0) * 0.5;
+  const boundaryRunsClockwise = signedArea < 0;
+  const positions = [
+    reservoirCenter.x,
+    topY,
+    reservoirCenter.z,
+    reservoirCenter.x,
+    bottomY,
+    reservoirCenter.z,
+  ];
+  const topIndices: number[] = [];
+  const bottomIndices: number[] = [];
+  const sideIndices: number[] = [];
 
   for (const point of boundaryPoints) {
-    positions.push(point.x, y, point.z);
+    positions.push(point.x, topY, point.z, point.x, bottomY, point.z);
   }
 
-  for (let index = 1; index <= boundaryPoints.length; index += 1) {
-    indices.push(0, index, index === boundaryPoints.length ? 1 : index + 1);
+  for (const triangle of topTriangles) {
+    const topA = 2 + triangle[0] * 2;
+    const topB = 2 + triangle[1] * 2;
+    const topC = 2 + triangle[2] * 2;
+    const bottomA = topA + 1;
+    const bottomB = topB + 1;
+    const bottomC = topC + 1;
+
+    if (boundaryRunsClockwise) {
+      topIndices.push(topA, topB, topC);
+      bottomIndices.push(bottomA, bottomC, bottomB);
+    } else {
+      topIndices.push(topA, topC, topB);
+      bottomIndices.push(bottomA, bottomB, bottomC);
+    }
   }
 
+  for (let index = 0; index < boundaryPoints.length; index += 1) {
+    const nextIndex = (index + 1) % boundaryPoints.length;
+    const topCurrent = 2 + index * 2;
+    const bottomCurrent = topCurrent + 1;
+    const topNext = 2 + nextIndex * 2;
+    const bottomNext = topNext + 1;
+
+    if (boundaryPoints[index].isDamFace && boundaryPoints[nextIndex].isDamFace) {
+      sideIndices.push(topCurrent, bottomCurrent, topNext);
+      sideIndices.push(topNext, bottomCurrent, bottomNext);
+    }
+  }
+
+  const indices = [...topIndices, ...bottomIndices, ...sideIndices];
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
+  geometry.clearGroups();
+  geometry.addGroup(0, topIndices.length + bottomIndices.length, 0);
+  geometry.addGroup(topIndices.length + bottomIndices.length, sideIndices.length, 1);
   geometry.computeVertexNormals();
   return geometry;
 }
@@ -1810,7 +2082,7 @@ function isReservoirBankInDamOpening(point: GroundPathPoint) {
 
   return (
     alongOutlet > reservoirOutletScale * 0.62 &&
-    Math.abs(alongDam) < DAM_BANK_OPENING_HALF_LENGTH_M
+    Math.abs(alongDam) < DAM_NATURAL_BANK_OPENING_HALF_LENGTH_M
   );
 }
 
@@ -1838,7 +2110,7 @@ function createReservoirBasinGeometry() {
   }
 
   for (let index = 0; index < RESERVOIR_BANK_SEGMENTS; index += 1) {
-    if (stationInDamOpening[index] || stationInDamOpening[index + 1]) {
+    if (stationInDamOpening[index] && stationInDamOpening[index + 1]) {
       continue;
     }
 
@@ -1867,6 +2139,20 @@ function riverWaterYAt(point: GroundPathPoint, progress: number) {
 
 function terrainSurfaceYAt(point: GroundPathPoint) {
   return GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z);
+}
+
+function fullTerrainSurfaceYAt(point: GroundPathPoint) {
+  const snowHeight = snowMountainHeightAt(point.x, point.z);
+  const baseTerrainY = terrainSurfaceYAt(point);
+
+  if (snowHeight <= SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M) {
+    return baseTerrainY;
+  }
+
+  return Math.max(
+    baseTerrainY,
+    snowMountainSurfaceYAt(point.x, point.z, snowHeight),
+  );
 }
 
 function riverWidthAt(progress: number) {
@@ -2199,6 +2485,1264 @@ function createEstuaryBankGeometry(path: GroundPathPoint[]) {
   return geometry;
 }
 
+function lowlandRoadYAt(point: GroundPathPoint) {
+  void point;
+  return damRoadDeckY();
+}
+
+function damRoadDeckY() {
+  const damBaseY = Math.max(
+    GRASS_SURFACE_Y + mountainHeightAt(damCenter.x, damCenter.z),
+    reservoirLakeY() - DAM_HEIGHT_M * 0.46,
+  );
+  return damBaseY + DAM_HEIGHT_M + HIGHWAY_DECK_THICKNESS_M;
+}
+
+function bridgeRoadYAt(point: GroundPathPoint) {
+  void point;
+  return damRoadDeckY();
+}
+
+function roadPoint(x: number, z: number, y: number): RoadPathPoint {
+  return { x, y, z };
+}
+
+function damRoadPoint(lengthOffset: number): RoadPathPoint {
+  const point = curvedDamPoint(lengthOffset, 0);
+  return roadPoint(point.x, point.z, damRoadDeckY());
+}
+
+function getDamRoadControlPoints() {
+  return [112, 58, 0, -58, -112].map((lengthOffset) => damRoadPoint(lengthOffset));
+}
+
+function tunnelRoadYAt(point: GroundPathPoint) {
+  void point;
+  return damRoadDeckY();
+}
+
+function getHighwayLoopControlPoints() {
+  const damPoints = getDamRoadControlPoints();
+  const tunnelEntry = { x: -720, z: 55 };
+  const tunnelEntryFaceNormal = snowMountainFaceOutwardNormalAt(tunnelEntry);
+  const tunnelEntryApproach = {
+    x: tunnelEntry.x + tunnelEntryFaceNormal.x * 170,
+    z: tunnelEntry.z + tunnelEntryFaceNormal.z * 170,
+  };
+  const tunnelEntryThroat = {
+    x: tunnelEntry.x - tunnelEntryFaceNormal.x * 170,
+    z: tunnelEntry.z - tunnelEntryFaceNormal.z * 170,
+  };
+  const tunnelMid = { x: -365, z: -470 };
+  const tunnelExit = { x: 100, z: -690 };
+  const tunnelExitFaceNormal = snowMountainFaceOutwardNormalAt(tunnelExit);
+  const tunnelExitThroat = {
+    x: tunnelExit.x - tunnelExitFaceNormal.x * 170,
+    z: tunnelExit.z - tunnelExitFaceNormal.z * 170,
+  };
+  const tunnelExitApproach = {
+    x: tunnelExit.x + tunnelExitFaceNormal.x * 170,
+    z: tunnelExit.z + tunnelExitFaceNormal.z * 170,
+  };
+
+  return [
+    ...damPoints,
+    roadPoint(-630, 280, lowlandRoadYAt({ x: -630, z: 280 })),
+    roadPoint(tunnelEntryApproach.x, tunnelEntryApproach.z, lowlandRoadYAt(tunnelEntryApproach)),
+    roadPoint(tunnelEntry.x, tunnelEntry.z, tunnelRoadYAt(tunnelEntry)),
+    roadPoint(tunnelEntryThroat.x, tunnelEntryThroat.z, tunnelRoadYAt(tunnelEntryThroat)),
+    roadPoint(tunnelMid.x, tunnelMid.z, tunnelRoadYAt(tunnelMid)),
+    roadPoint(tunnelExitThroat.x, tunnelExitThroat.z, tunnelRoadYAt(tunnelExitThroat)),
+    roadPoint(tunnelExit.x, tunnelExit.z, tunnelRoadYAt(tunnelExit)),
+    roadPoint(tunnelExitApproach.x, tunnelExitApproach.z, lowlandRoadYAt(tunnelExitApproach)),
+    roadPoint(760, -610, lowlandRoadYAt({ x: 760, z: -610 })),
+    roadPoint(805, -360, lowlandRoadYAt({ x: 805, z: -360 })),
+    roadPoint(770, -85, bridgeRoadYAt({ x: 770, z: -85 })),
+    roadPoint(730, 110, bridgeRoadYAt({ x: 730, z: 110 })),
+    roadPoint(690, 280, bridgeRoadYAt({ x: 690, z: 280 })),
+    roadPoint(510, 520, lowlandRoadYAt({ x: 510, z: 520 })),
+    roadPoint(250, 640, lowlandRoadYAt({ x: 250, z: 640 })),
+    roadPoint(-40, 690, lowlandRoadYAt({ x: -40, z: 690 })),
+    roadPoint(-255, 660, lowlandRoadYAt({ x: -255, z: 660 })),
+  ];
+}
+
+function sampleRoadControlPath(
+  controlPoints: RoadPathPoint[],
+  closed: boolean,
+  samples: number,
+) {
+  const curve = new THREE.CatmullRomCurve3(
+    controlPoints.map((point) => new THREE.Vector3(point.x, point.y, point.z)),
+    closed,
+    "centripetal",
+    0.35,
+  );
+  const sampled = curve.getSpacedPoints(samples).map((point) => ({
+    x: point.x,
+    y: point.y,
+    z: point.z,
+  }));
+
+  if (closed) {
+    sampled.pop();
+  }
+
+  return sampled;
+}
+
+function pathTangent(path: RoadPathPoint[], index: number, closed: boolean) {
+  const previous =
+    index === 0
+      ? closed
+        ? path[path.length - 1]
+        : path[0]
+      : path[index - 1];
+  const next =
+    index === path.length - 1
+      ? closed
+        ? path[0]
+        : path[path.length - 1]
+      : path[index + 1];
+  const tangentX = next.x - previous.x;
+  const tangentZ = next.z - previous.z;
+  const length = Math.hypot(tangentX, tangentZ) || 1;
+  return {
+    x: tangentX / length,
+    z: tangentZ / length,
+    normalX: -tangentZ / length,
+    normalZ: tangentX / length,
+  };
+}
+
+function offsetRoadPath(path: RoadPathPoint[], offset: number, closed: boolean) {
+  return path.map((point, index) => {
+    const tangent = pathTangent(path, index, closed);
+    return {
+      x: point.x + tangent.normalX * offset,
+      y: point.y,
+      z: point.z + tangent.normalZ * offset,
+    };
+  });
+}
+
+function createRoadRibbonSurfaceGeometry(
+  path: RoadPathPoint[],
+  width: number,
+  closed: boolean,
+  yLift = 0,
+) {
+  const positions: number[] = [];
+  const indices: number[] = [];
+
+  path.forEach((point, index) => {
+    const tangent = pathTangent(path, index, closed);
+    const halfWidth = width * 0.5;
+    positions.push(
+      point.x + tangent.normalX * halfWidth,
+      point.y + yLift,
+      point.z + tangent.normalZ * halfWidth,
+      point.x - tangent.normalX * halfWidth,
+      point.y + yLift,
+      point.z - tangent.normalZ * halfWidth,
+    );
+  });
+
+  const segmentCount = closed ? path.length : path.length - 1;
+  for (let index = 0; index < segmentCount; index += 1) {
+    const nextIndex = (index + 1) % path.length;
+    const leftA = index * 2;
+    const rightA = leftA + 1;
+    const leftB = nextIndex * 2;
+    const rightB = leftB + 1;
+    indices.push(leftA, rightA, leftB, leftB, rightA, rightB);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createDashedRoadRibbonSurfaceGeometry(
+  path: RoadPathPoint[],
+  width: number,
+  closed: boolean,
+  yLift: number,
+  dashSegments: number,
+  gapSegments: number,
+) {
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const segmentCount = closed ? path.length : path.length - 1;
+  const cycleLength = dashSegments + gapSegments;
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    if (Math.floor(index / dashSegments) % Math.ceil(cycleLength / dashSegments) !== 0) {
+      continue;
+    }
+
+    const nextIndex = (index + 1) % path.length;
+    const pointA = path[index];
+    const pointB = path[nextIndex];
+    const tangent = pathTangent(path, index, closed);
+    const halfWidth = width * 0.5;
+    const baseIndex = positions.length / 3;
+
+    positions.push(
+      pointA.x + tangent.normalX * halfWidth,
+      pointA.y + yLift,
+      pointA.z + tangent.normalZ * halfWidth,
+      pointA.x - tangent.normalX * halfWidth,
+      pointA.y + yLift,
+      pointA.z - tangent.normalZ * halfWidth,
+      pointB.x + tangent.normalX * halfWidth,
+      pointB.y + yLift,
+      pointB.z + tangent.normalZ * halfWidth,
+      pointB.x - tangent.normalX * halfWidth,
+      pointB.y + yLift,
+      pointB.z - tangent.normalZ * halfWidth,
+    );
+    indices.push(
+      baseIndex,
+      baseIndex + 1,
+      baseIndex + 2,
+      baseIndex + 2,
+      baseIndex + 1,
+      baseIndex + 3,
+    );
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createRoadRibbonVolumeGeometry(
+  path: RoadPathPoint[],
+  width: number,
+  thickness: number,
+  closed: boolean,
+) {
+  const positions: number[] = [];
+  const topIndices: number[] = [];
+  const sideIndices: number[] = [];
+
+  path.forEach((point, index) => {
+    const tangent = pathTangent(path, index, closed);
+    const halfWidth = width * 0.5;
+    const leftX = point.x + tangent.normalX * halfWidth;
+    const leftZ = point.z + tangent.normalZ * halfWidth;
+    const rightX = point.x - tangent.normalX * halfWidth;
+    const rightZ = point.z - tangent.normalZ * halfWidth;
+
+    positions.push(
+      leftX,
+      point.y,
+      leftZ,
+      rightX,
+      point.y,
+      rightZ,
+      leftX,
+      point.y - thickness,
+      leftZ,
+      rightX,
+      point.y - thickness,
+      rightZ,
+    );
+  });
+
+  const segmentCount = closed ? path.length : path.length - 1;
+  for (let index = 0; index < segmentCount; index += 1) {
+    const nextIndex = (index + 1) % path.length;
+    const leftTopA = index * 4;
+    const rightTopA = leftTopA + 1;
+    const leftBottomA = leftTopA + 2;
+    const rightBottomA = leftTopA + 3;
+    const leftTopB = nextIndex * 4;
+    const rightTopB = leftTopB + 1;
+    const leftBottomB = leftTopB + 2;
+    const rightBottomB = leftTopB + 3;
+
+    topIndices.push(leftTopA, rightTopA, leftTopB, leftTopB, rightTopA, rightTopB);
+    sideIndices.push(
+      leftBottomA,
+      leftBottomB,
+      rightBottomA,
+      rightBottomA,
+      leftBottomB,
+      rightBottomB,
+      leftTopA,
+      leftTopB,
+      leftBottomA,
+      leftBottomA,
+      leftTopB,
+      leftBottomB,
+      rightTopA,
+      rightBottomA,
+      rightTopB,
+      rightTopB,
+      rightBottomA,
+      rightBottomB,
+    );
+  }
+  const indices = [...topIndices, ...sideIndices];
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.clearGroups();
+  geometry.addGroup(0, topIndices.length, 0);
+  geometry.addGroup(topIndices.length, sideIndices.length, 1);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function addRoadRibbon(
+  name: string,
+  path: RoadPathPoint[],
+  width: number,
+  material: THREE.Material,
+  closed: boolean,
+  yLift: number,
+) {
+  const mesh = new THREE.Mesh(
+    createRoadRibbonSurfaceGeometry(path, width, closed, yLift),
+    material,
+  );
+  mesh.name = name;
+  mesh.renderOrder = 10;
+  mesh.receiveShadow = true;
+  roadElements.add(mesh);
+}
+
+function addDashedRoadRibbon(
+  name: string,
+  path: RoadPathPoint[],
+  width: number,
+  material: THREE.Material,
+  closed: boolean,
+  yLift: number,
+) {
+  const mesh = new THREE.Mesh(
+    createDashedRoadRibbonSurfaceGeometry(
+      path,
+      width,
+      closed,
+      yLift,
+      HIGHWAY_DASH_SEGMENTS,
+      HIGHWAY_DASH_GAP_SEGMENTS,
+    ),
+    material,
+  );
+  mesh.name = name;
+  mesh.renderOrder = 11;
+  mesh.receiveShadow = true;
+  roadElements.add(mesh);
+}
+
+function addRoadDeck(name: string, path: RoadPathPoint[], closed: boolean) {
+  const mesh = new THREE.Mesh(
+    createRoadRibbonVolumeGeometry(
+      path,
+      HIGHWAY_TOTAL_WIDTH_M,
+      HIGHWAY_DECK_THICKNESS_M,
+      closed,
+    ),
+    [highwayAsphaltMaterial, highwaySideMaterial],
+  );
+  mesh.name = name;
+  mesh.renderOrder = 9;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  roadElements.add(mesh);
+}
+
+function highwayLaneOffset(direction: "clockwise" | "counterclockwise", laneIndex: number) {
+  const offset =
+    HIGHWAY_MEDIAN_WIDTH_M * 0.5 +
+    HIGHWAY_LANE_WIDTH_M * 0.5 +
+    laneIndex * HIGHWAY_LANE_WIDTH_M;
+  return direction === "clockwise" ? -offset : offset;
+}
+
+function buildHighwayLanePaths(centerPath: RoadPathPoint[]) {
+  const lanes: LanePath[] = [];
+
+  for (let laneIndex = 0; laneIndex < HIGHWAY_LANES_PER_DIRECTION; laneIndex += 1) {
+    const clockwiseOffset = highwayLaneOffset("clockwise", laneIndex);
+    const counterclockwiseOffset = highwayLaneOffset("counterclockwise", laneIndex);
+    lanes.push({
+      id: `highway-loop-cw-lane-${laneIndex + 1}`,
+      roadId: "smart-highway-loop",
+      direction: "clockwise",
+      laneIndex,
+      centerOffsetM: clockwiseOffset,
+      points: offsetRoadPath(centerPath, clockwiseOffset, true),
+    });
+    lanes.push({
+      id: `highway-loop-ccw-lane-${laneIndex + 1}`,
+      roadId: "smart-highway-loop",
+      direction: "counterclockwise",
+      laneIndex,
+      centerOffsetM: counterclockwiseOffset,
+      points: offsetRoadPath(centerPath, counterclockwiseOffset, true).reverse(),
+    });
+  }
+
+  return lanes;
+}
+
+function addHighwayMarkings(centerPath: RoadPathPoint[], closed: boolean) {
+  for (const offset of [
+    -(HIGHWAY_TOTAL_WIDTH_M * 0.5 - HIGHWAY_SHOULDER_WIDTH_M * 0.5),
+    HIGHWAY_TOTAL_WIDTH_M * 0.5 - HIGHWAY_SHOULDER_WIDTH_M * 0.5,
+  ]) {
+    addRoadRibbon(
+      `highway-loop-outer-shoulder-${offset < 0 ? "cw" : "ccw"}`,
+      offsetRoadPath(centerPath, offset, closed),
+      HIGHWAY_SHOULDER_WIDTH_M,
+      highwayShoulderMaterial,
+      closed,
+      0.06,
+    );
+  }
+
+  addRoadRibbon(
+    "highway-loop-raised-median",
+    centerPath,
+    HIGHWAY_MEDIAN_WIDTH_M,
+    highwayMedianMaterial,
+    closed,
+    0.11,
+  );
+  addRoadRibbon(
+    "highway-loop-concrete-median-barrier",
+    centerPath,
+    1.2,
+    roadStructureConcreteMaterial,
+    closed,
+    0.75,
+  );
+
+  for (const offset of [
+    -HIGHWAY_MEDIAN_WIDTH_M * 0.5,
+    HIGHWAY_MEDIAN_WIDTH_M * 0.5,
+  ]) {
+    addRoadRibbon(
+      `highway-loop-yellow-median-line-${offset < 0 ? "cw" : "ccw"}`,
+      offsetRoadPath(centerPath, offset, closed),
+      0.62,
+      roadMarkingYellowMaterial,
+      closed,
+      0.18,
+    );
+  }
+
+  for (const offset of [
+    -(HIGHWAY_MEDIAN_WIDTH_M * 0.5 + HIGHWAY_LANE_WIDTH_M),
+    HIGHWAY_MEDIAN_WIDTH_M * 0.5 + HIGHWAY_LANE_WIDTH_M,
+  ]) {
+    addDashedRoadRibbon(
+      `highway-loop-dashed-lane-line-${offset.toFixed(1)}`,
+      offsetRoadPath(centerPath, offset, closed),
+      0.56,
+      roadMarkingWhiteMaterial,
+      closed,
+      0.21,
+    );
+  }
+
+  for (const offset of [
+    -(HIGHWAY_TOTAL_WIDTH_M * 0.5 - HIGHWAY_SHOULDER_WIDTH_M),
+    HIGHWAY_TOTAL_WIDTH_M * 0.5 - HIGHWAY_SHOULDER_WIDTH_M,
+  ]) {
+    addRoadRibbon(
+      `highway-loop-white-lane-line-${offset.toFixed(1)}`,
+      offsetRoadPath(centerPath, offset, closed),
+      0.56,
+      roadMarkingWhiteMaterial,
+      closed,
+      0.19,
+    );
+  }
+}
+
+function getRiverBridgePath() {
+  const controlPoints = getHighwayLoopControlPoints().slice(
+    HIGHWAY_RIVER_BRIDGE_START_CONTROL_INDEX,
+    HIGHWAY_RIVER_BRIDGE_END_CONTROL_INDEX,
+  );
+  return sampleRoadControlPath(controlPoints, false, 44);
+}
+
+function getDamCrossingPath() {
+  return sampleRoadControlPath(getDamRoadControlPoints(), false, 32);
+}
+
+function getVisibleHighwaySegments() {
+  const controlPoints = getHighwayLoopControlPoints();
+
+  return [
+    {
+      name: "outside-mountain-tunnel-highway",
+      path: sampleRoadControlPath(
+        [
+          ...controlPoints.slice(HIGHWAY_TUNNEL_EXIT_CONTROL_INDEX),
+          ...controlPoints.slice(0, HIGHWAY_TUNNEL_ENTRY_CONTROL_INDEX + 1),
+        ],
+        false,
+        272,
+      ),
+    },
+  ];
+}
+
+function addRoadEdgeRails(name: string, path: RoadPathPoint[]) {
+  const edgeOffset = HIGHWAY_TOTAL_WIDTH_M * 0.5 + 1.2;
+  for (const [index, offset] of [-edgeOffset, edgeOffset].entries()) {
+    addRoadRibbon(
+      `${name}-${index + 1}`,
+      offsetRoadPath(path, offset, false),
+      1.25,
+      roadStructureConcreteMaterial,
+      false,
+      1.35,
+    );
+  }
+}
+
+function isOnDamCrossing(point: GroundPathPoint) {
+  const fromDam = {
+    x: point.x - damCenter.x,
+    z: point.z - damCenter.z,
+  };
+  const alongDam = fromDam.x * damLongAxis.x + fromDam.z * damLongAxis.z;
+  const acrossDam =
+    fromDam.x * reservoirOutletDirection.x + fromDam.z * reservoirOutletDirection.z;
+
+  return (
+    Math.abs(alongDam) <= DAM_LENGTH_M * 0.72 &&
+    Math.abs(acrossDam) <= DAM_THICKNESS_M * 1.55
+  );
+}
+
+function isOnRiverBridge(point: GroundPathPoint) {
+  return point.x >= 655 && point.x <= 820 && point.z >= -125 && point.z <= 310;
+}
+
+function isNearTunnelPortal(point: GroundPathPoint) {
+  const controlPoints = getHighwayLoopControlPoints();
+  const tunnelEntry = controlPoints[HIGHWAY_TUNNEL_ENTRY_CONTROL_INDEX];
+  const tunnelExit = controlPoints[HIGHWAY_TUNNEL_EXIT_CONTROL_INDEX];
+
+  return (
+    Math.hypot(point.x - tunnelEntry.x, point.z - tunnelEntry.z) < 80 ||
+    Math.hypot(point.x - tunnelExit.x, point.z - tunnelExit.z) < 80
+  );
+}
+
+function shouldSkipGeneralHighwaySupport(point: GroundPathPoint) {
+  return isOnDamCrossing(point) || isOnRiverBridge(point) || isNearTunnelPortal(point);
+}
+
+function addRoadSupportColumns(
+  name: string,
+  path: RoadPathPoint[],
+  useWaterBase = false,
+  skipPoint: (point: RoadPathPoint, index: number) => boolean = () => false,
+) {
+  const placements: Array<{ x: number; y: number; z: number; height: number }> = [];
+  let distanceSinceLastSupport = 0;
+
+  for (let index = 1; index < path.length; index += 1) {
+    const previousPoint = path[index - 1];
+    const point = path[index];
+
+    distanceSinceLastSupport += Math.hypot(
+      point.x - previousPoint.x,
+      point.z - previousPoint.z,
+    );
+
+    if (distanceSinceLastSupport < HIGHWAY_SUPPORT_SPACING_M) {
+      continue;
+    }
+
+    if (skipPoint(point, index)) {
+      continue;
+    }
+
+    const baseY = useWaterBase ? SEA_Y : fullTerrainSurfaceYAt(point);
+    const topY = point.y - HIGHWAY_DECK_THICKNESS_M * 0.55;
+    const height = topY - baseY;
+
+    if (height < 5) {
+      continue;
+    }
+
+    placements.push({
+      x: point.x,
+      y: baseY + height * 0.5,
+      z: point.z,
+      height,
+    });
+    distanceSinceLastSupport = 0;
+  }
+
+  if (placements.length === 0) {
+    return;
+  }
+
+  const mesh = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(7, 1, 7),
+    roadStructureConcreteMaterial,
+    placements.length,
+  );
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+
+  placements.forEach((placement, index) => {
+    position.set(placement.x, placement.y, placement.z);
+    scale.set(1, placement.height, 1);
+    matrix.compose(position, quaternion, scale);
+    mesh.setMatrixAt(index, matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.name = name;
+  mesh.renderOrder = 8;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  roadElements.add(mesh);
+}
+
+function addOrientedBox(
+  name: string,
+  width: number,
+  height: number,
+  depth: number,
+  material: THREE.Material,
+  x: number,
+  y: number,
+  z: number,
+  rotationY: number,
+) {
+  const box = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+  box.name = name;
+  box.position.set(x, y, z);
+  box.rotation.y = rotationY;
+  box.castShadow = true;
+  box.receiveShadow = true;
+  roadElements.add(box);
+}
+
+function bridgeFrameAtProgress(path: RoadPathPoint[], progress: number) {
+  const clampedProgress = THREE.MathUtils.clamp(progress, 0, 1);
+  const scaledIndex = clampedProgress * (path.length - 1);
+  const lowerIndex = Math.floor(scaledIndex);
+  const upperIndex = Math.min(path.length - 1, lowerIndex + 1);
+  const localProgress = scaledIndex - lowerIndex;
+  const lowerPoint = path[lowerIndex];
+  const upperPoint = path[upperIndex];
+  const tangent = pathTangent(path, Math.round(scaledIndex), false);
+
+  return {
+    point: {
+      x: THREE.MathUtils.lerp(lowerPoint.x, upperPoint.x, localProgress),
+      y: THREE.MathUtils.lerp(lowerPoint.y, upperPoint.y, localProgress),
+      z: THREE.MathUtils.lerp(lowerPoint.z, upperPoint.z, localProgress),
+    },
+    tangent,
+  };
+}
+
+function bridgeSideVectorAtProgress(
+  path: RoadPathPoint[],
+  progress: number,
+  offset: number,
+  yLift = 0,
+) {
+  const { point, tangent } = bridgeFrameAtProgress(path, progress);
+
+  return new THREE.Vector3(
+    point.x + tangent.normalX * offset,
+    point.y + yLift,
+    point.z + tangent.normalZ * offset,
+  );
+}
+
+function addBridgeStayCableSegments(
+  name: string,
+  segments: Array<{ start: THREE.Vector3; end: THREE.Vector3 }>,
+) {
+  if (segments.length === 0) {
+    return;
+  }
+
+  const mesh = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(
+      HIGHWAY_BRIDGE_STAY_CABLE_RADIUS_M,
+      HIGHWAY_BRIDGE_STAY_CABLE_RADIUS_M,
+      1,
+      10,
+    ),
+    bridgeCableMaterial,
+    segments.length,
+  );
+  const matrix = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const direction = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  const verticalAxis = new THREE.Vector3(0, 1, 0);
+
+  segments.forEach((segment, index) => {
+    direction.subVectors(segment.end, segment.start);
+    const length = direction.length();
+
+    if (length <= 0.01) {
+      return;
+    }
+
+    position.copy(segment.start).add(segment.end).multiplyScalar(0.5);
+    quaternion.setFromUnitVectors(verticalAxis, direction.normalize());
+    scale.set(1, length, 1);
+    matrix.compose(position, quaternion, scale);
+    mesh.setMatrixAt(index, matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.name = name;
+  mesh.renderOrder = 14;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  roadElements.add(mesh);
+}
+
+function addBridgeStayDeckAnchors(
+  name: string,
+  anchors: Array<{ position: THREE.Vector3; rotationY: number }>,
+) {
+  if (anchors.length === 0) {
+    return;
+  }
+
+  const mesh = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(4.4, 0.9, 2.8),
+    bridgeSteelMaterial,
+    anchors.length,
+  );
+  const matrix = new THREE.Matrix4();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3(1, 1, 1);
+  const yAxis = new THREE.Vector3(0, 1, 0);
+
+  anchors.forEach((anchor, index) => {
+    quaternion.setFromAxisAngle(yAxis, anchor.rotationY);
+    matrix.compose(anchor.position, quaternion, scale);
+    mesh.setMatrixAt(index, matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.name = name;
+  mesh.renderOrder = 13;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  roadElements.add(mesh);
+}
+
+function bridgeStayFanTargetProgress(towerProgress: number, fanDirection: -1 | 1) {
+  return THREE.MathUtils.clamp(
+    towerProgress + fanDirection * HIGHWAY_BRIDGE_STAY_FAN_REACH_PROGRESS,
+    0.02,
+    0.98,
+  );
+}
+
+function addBridgeStayCables(name: string, path: RoadPathPoint[]) {
+  const towerOffsets = [
+    -HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M,
+    HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M,
+  ];
+  const towerProgresses = [0.24, 0.76];
+  const segments: Array<{ start: THREE.Vector3; end: THREE.Vector3 }> = [];
+  const anchors: Array<{ position: THREE.Vector3; rotationY: number }> = [];
+
+  for (const towerProgress of towerProgresses) {
+    for (const offset of towerOffsets) {
+      const deckOffset = Math.sign(offset) * HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_OFFSET_M;
+
+      for (const fanDirection of [-1, 1] as const) {
+        const targetProgress = bridgeStayFanTargetProgress(towerProgress, fanDirection);
+
+        for (
+          let cableIndex = 1;
+          cableIndex <= HIGHWAY_BRIDGE_STAY_CABLE_COUNT_PER_FAN;
+          cableIndex += 1
+        ) {
+          const progress = cableIndex / (HIGHWAY_BRIDGE_STAY_CABLE_COUNT_PER_FAN + 1);
+          const towerAnchorLift = THREE.MathUtils.lerp(
+            HIGHWAY_BRIDGE_TOWER_HEIGHT_M - 30,
+            HIGHWAY_BRIDGE_TOWER_HEIGHT_M - 6,
+            progress,
+          );
+          const deckProgress = THREE.MathUtils.lerp(towerProgress, targetProgress, progress);
+          const towerAnchor = bridgeSideVectorAtProgress(
+            path,
+            towerProgress,
+            offset,
+            towerAnchorLift,
+          );
+          const deckAnchor = bridgeSideVectorAtProgress(
+            path,
+            deckProgress,
+            deckOffset,
+            HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_LIFT_M,
+          );
+          const { tangent } = bridgeFrameAtProgress(path, deckProgress);
+          segments.push({ start: towerAnchor.clone(), end: deckAnchor });
+          anchors.push({
+            position: deckAnchor.clone().setY(deckAnchor.y - HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_LIFT_M + 0.46),
+            rotationY: Math.atan2(tangent.x, tangent.z),
+          });
+        }
+      }
+    }
+  }
+
+  addBridgeStayDeckAnchors(`${name}-deck-anchors`, anchors);
+  addBridgeStayCableSegments(name, segments);
+}
+
+function addCableStayedBridgeTower(name: string, path: RoadPathPoint[], progress: number) {
+  const { point, tangent } = bridgeFrameAtProgress(path, progress);
+  const rotationY = Math.atan2(tangent.x, tangent.z);
+  const towerTopY = point.y + HIGHWAY_BRIDGE_TOWER_HEIGHT_M;
+  const towerHeight = towerTopY - SEA_Y;
+  const towerOffsets = [
+    -HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M,
+    HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M,
+  ];
+
+  towerOffsets.forEach((offset, sideIndex) => {
+    const sidePoint = bridgeSideVectorAtProgress(path, progress, offset);
+    addOrientedBox(
+      `${name}-tower-${sideIndex + 1}`,
+      HIGHWAY_BRIDGE_TOWER_WIDTH_M,
+      towerHeight,
+      HIGHWAY_BRIDGE_TOWER_WIDTH_M,
+      bridgeSteelMaterial,
+      sidePoint.x,
+      SEA_Y + towerHeight * 0.5,
+      sidePoint.z,
+      rotationY,
+    );
+  });
+
+  addOrientedBox(
+    `${name}-upper-crossbeam`,
+    HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M * 2 + 10,
+    5,
+    7,
+    bridgeSteelMaterial,
+    point.x,
+    towerTopY,
+    point.z,
+    rotationY,
+  );
+  addOrientedBox(
+    `${name}-deck-crossbeam`,
+    HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M * 2 + 7,
+    3.5,
+    6,
+    bridgeSteelMaterial,
+    point.x,
+    point.y + 12,
+    point.z,
+    rotationY,
+  );
+}
+
+function addCableStayedBridgeStructure(name: string, path: RoadPathPoint[]) {
+  addCableStayedBridgeTower(`${name}-south-pylon`, path, 0.24);
+  addCableStayedBridgeTower(`${name}-north-pylon`, path, 0.76);
+  addBridgeStayCables(`${name}-tirantes`, path);
+}
+
+function createArchShape(width: number, height: number) {
+  const radius = width * 0.5;
+  const springY = Math.max(0, height - radius);
+  const shape = new THREE.Shape();
+
+  shape.moveTo(-width * 0.5, 0);
+  shape.lineTo(-width * 0.5, springY);
+  for (let index = 1; index <= 32; index += 1) {
+    const angle = Math.PI - (index / 32) * Math.PI;
+    shape.lineTo(Math.cos(angle) * radius, springY + Math.sin(angle) * radius);
+  }
+  shape.lineTo(width * 0.5, 0);
+  shape.lineTo(-width * 0.5, 0);
+  return shape;
+}
+
+function createArchHolePath(width: number, height: number) {
+  const radius = width * 0.5;
+  const springY = Math.max(0, height - radius);
+  const path = new THREE.Path();
+
+  path.moveTo(-width * 0.5, 0);
+  path.lineTo(width * 0.5, 0);
+  path.lineTo(width * 0.5, springY);
+  for (let index = 1; index <= 32; index += 1) {
+    const angle = (index / 32) * Math.PI;
+    path.lineTo(Math.cos(angle) * radius, springY + Math.sin(angle) * radius);
+  }
+  path.lineTo(-width * 0.5, 0);
+  return path;
+}
+
+function createArchRingGeometry(
+  outerWidth: number,
+  outerHeight: number,
+  innerWidth: number,
+  innerHeight: number,
+) {
+  const shape = createArchShape(outerWidth, outerHeight);
+  shape.holes.push(createArchHolePath(innerWidth, innerHeight));
+  const geometry = new THREE.ShapeGeometry(shape, 32);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createArchFaceGeometry(width: number, height: number) {
+  const geometry = new THREE.ShapeGeometry(createArchShape(width, height), 32);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createTunnelRockSleeveGeometry(
+  outerWidth: number,
+  outerHeight: number,
+  innerWidth: number,
+  innerHeight: number,
+  depth: number,
+) {
+  const shape = createArchShape(outerWidth, outerHeight);
+  shape.holes.push(createArchHolePath(innerWidth, innerHeight));
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: false,
+    curveSegments: 24,
+    steps: 1,
+  });
+  geometry.translate(0, 0, -depth);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function addOrientedArchRing(
+  name: string,
+  outerWidth: number,
+  outerHeight: number,
+  innerWidth: number,
+  innerHeight: number,
+  material: THREE.Material,
+  x: number,
+  bottomY: number,
+  z: number,
+  rotationY: number,
+  normalOffset: number,
+  renderOrder: number,
+) {
+  const mesh = new THREE.Mesh(
+    createArchRingGeometry(outerWidth, outerHeight, innerWidth, innerHeight),
+    material,
+  );
+  const normalX = Math.sin(rotationY);
+  const normalZ = Math.cos(rotationY);
+
+  mesh.name = name;
+  mesh.position.set(x + normalX * normalOffset, bottomY, z + normalZ * normalOffset);
+  mesh.rotation.y = rotationY;
+  mesh.renderOrder = renderOrder;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  roadElements.add(mesh);
+}
+
+function addOrientedArchFace(
+  name: string,
+  width: number,
+  height: number,
+  material: THREE.Material,
+  x: number,
+  bottomY: number,
+  z: number,
+  rotationY: number,
+  normalOffset: number,
+  renderOrder: number,
+) {
+  const mesh = new THREE.Mesh(createArchFaceGeometry(width, height), material);
+  const normalX = Math.sin(rotationY);
+  const normalZ = Math.cos(rotationY);
+
+  mesh.name = name;
+  mesh.position.set(x + normalX * normalOffset, bottomY, z + normalZ * normalOffset);
+  mesh.rotation.y = rotationY;
+  mesh.renderOrder = renderOrder;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  roadElements.add(mesh);
+}
+
+function addOrientedTunnelRockSleeve(
+  name: string,
+  outerWidth: number,
+  outerHeight: number,
+  innerWidth: number,
+  innerHeight: number,
+  depth: number,
+  x: number,
+  bottomY: number,
+  z: number,
+  rotationY: number,
+  normalOffset: number,
+  renderOrder: number,
+  material: THREE.Material = mountainCutMaterial,
+) {
+  const mesh = new THREE.Mesh(
+    createTunnelRockSleeveGeometry(
+      outerWidth,
+      outerHeight,
+      innerWidth,
+      innerHeight,
+      depth,
+    ),
+    material,
+  );
+  const normalX = Math.sin(rotationY);
+  const normalZ = Math.cos(rotationY);
+
+  mesh.name = name;
+  mesh.position.set(x + normalX * normalOffset, bottomY, z + normalZ * normalOffset);
+  mesh.rotation.y = rotationY;
+  mesh.renderOrder = renderOrder;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  roadElements.add(mesh);
+}
+
+function addTunnelPortal(
+  name: string,
+  point: RoadPathPoint,
+  outwardNormal: GroundPathPoint,
+  portalOutsetM = 0,
+) {
+  const normalLength = Math.hypot(outwardNormal.x, outwardNormal.z) || 1;
+  const outwardX = outwardNormal.x / normalLength;
+  const outwardZ = outwardNormal.z / normalLength;
+  const portalX = point.x + outwardX * portalOutsetM;
+  const portalZ = point.z + outwardZ * portalOutsetM;
+  const rotationY = Math.atan2(outwardX, outwardZ);
+  const portalBaseY = point.y - HIGHWAY_DECK_THICKNESS_M;
+  const centerY = portalBaseY + HIGHWAY_TUNNEL_PORTAL_HEIGHT_M * 0.34;
+  const frameOffset = HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M * 0.5 + 3;
+  const frameAxisX = Math.cos(rotationY);
+  const frameAxisZ = -Math.sin(rotationY);
+  const sideWallDepth = HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M * 0.88;
+  const sideWallNormalOffset = -sideWallDepth * 0.38;
+  const wallCenterX = outwardX * sideWallNormalOffset;
+  const wallCenterZ = outwardZ * sideWallNormalOffset;
+
+  addOrientedTunnelRockSleeve(
+    `${name}-mountain-backfill`,
+    HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M + 48,
+    HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M + 26,
+    HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M - 4,
+    HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M - 3,
+    HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M * 0.9,
+    portalX,
+    portalBaseY - 12,
+    portalZ,
+    rotationY,
+    -7.5,
+    8,
+  );
+  addOrientedTunnelRockSleeve(
+    `${name}-rock-sleeve`,
+    HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M,
+    HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M,
+    HIGHWAY_TOTAL_WIDTH_M + 6,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 7,
+    HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M,
+    portalX,
+    portalBaseY - 5,
+    portalZ,
+    rotationY,
+    -3.5,
+    9,
+  );
+  addOrientedArchRing(
+    `${name}-rock-collar`,
+    HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M,
+    HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M,
+    HIGHWAY_TUNNEL_PORTAL_WIDTH_M + 8,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M + 5,
+    mountainCutMaterial,
+    portalX,
+    portalBaseY - 5,
+    portalZ,
+    rotationY,
+    -1.25,
+    10,
+  );
+  addOrientedArchRing(
+    `${name}-concrete-rounded-frame`,
+    HIGHWAY_TUNNEL_PORTAL_WIDTH_M,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M,
+    HIGHWAY_TOTAL_WIDTH_M + 9,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 6,
+    roadStructureConcreteMaterial,
+    portalX,
+    portalBaseY - 0.5,
+    portalZ,
+    rotationY,
+    0,
+    11,
+  );
+  addOrientedArchFace(
+    `${name}-black-mouth-shadow`,
+    HIGHWAY_TUNNEL_MOUTH_SHADOW_WIDTH_M,
+    HIGHWAY_TUNNEL_MOUTH_SHADOW_HEIGHT_M,
+    tunnelOpeningMaterial,
+    portalX,
+    portalBaseY + 0.25,
+    portalZ,
+    rotationY,
+    0.18,
+    11.5,
+  );
+  addOrientedArchRing(
+    `${name}-dark-tunnel-liner`,
+    HIGHWAY_TOTAL_WIDTH_M + 5,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 8,
+    HIGHWAY_TOTAL_WIDTH_M + 1.5,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 14,
+    tunnelOpeningMaterial,
+    portalX,
+    portalBaseY + 0.6,
+    portalZ,
+    rotationY,
+    0.45,
+    12,
+  );
+  addOrientedTunnelRockSleeve(
+    `${name}-dark-interior-throat`,
+    HIGHWAY_TOTAL_WIDTH_M + 5,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 8,
+    HIGHWAY_TOTAL_WIDTH_M + 1.5,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 14,
+    HIGHWAY_TUNNEL_DARK_MASK_DEPTH_M,
+    portalX,
+    portalBaseY + 0.6,
+    portalZ,
+    rotationY,
+    -0.85,
+    12,
+    tunnelOpeningMaterial,
+  );
+  addOrientedArchFace(
+    `${name}-dark-depth-mask`,
+    HIGHWAY_TOTAL_WIDTH_M + 1.5,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 14,
+    tunnelOpeningMaterial,
+    portalX,
+    portalBaseY + 0.6,
+    portalZ,
+    rotationY,
+    -HIGHWAY_TUNNEL_DARK_MASK_DEPTH_M - 1.1,
+    13,
+  );
+  addOrientedBox(
+    `${name}-left-retaining-wall`,
+    5,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M * 0.68,
+    sideWallDepth,
+    mountainCutMaterial,
+    portalX + frameAxisX * frameOffset + wallCenterX,
+    centerY,
+    portalZ + frameAxisZ * frameOffset + wallCenterZ,
+    rotationY,
+  );
+  addOrientedBox(
+    `${name}-right-retaining-wall`,
+    5,
+    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M * 0.68,
+    sideWallDepth,
+    mountainCutMaterial,
+    portalX - frameAxisX * frameOffset + wallCenterX,
+    centerY,
+    portalZ - frameAxisZ * frameOffset + wallCenterZ,
+    rotationY,
+  );
+}
+
+function addMountainTunnelPortals(controlPoints: RoadPathPoint[]) {
+  addTunnelPortal(
+    "high-mountain-tunnel-entry-portal",
+    controlPoints[HIGHWAY_TUNNEL_ENTRY_CONTROL_INDEX],
+    snowMountainFaceOutwardNormalAt(controlPoints[HIGHWAY_TUNNEL_ENTRY_CONTROL_INDEX]),
+  );
+  addTunnelPortal(
+    "high-mountain-tunnel-north-exit-portal",
+    controlPoints[HIGHWAY_TUNNEL_EXIT_CONTROL_INDEX],
+    snowMountainFaceOutwardNormalAt(controlPoints[HIGHWAY_TUNNEL_EXIT_CONTROL_INDEX]),
+    HIGHWAY_TUNNEL_NORTH_EXIT_PORTAL_OUTSET_M,
+  );
+}
+
+function getMountainTunnelRoadPath() {
+  const controlPoints = getHighwayLoopControlPoints();
+  return sampleRoadControlPath(
+    controlPoints.slice(
+      HIGHWAY_TUNNEL_ENTRY_CONTROL_INDEX,
+      HIGHWAY_TUNNEL_EXIT_CONTROL_INDEX + 1,
+    ),
+    false,
+    112,
+  );
+}
+
+function addHighwayLoopRoadNetwork() {
+  const controlPoints = getHighwayLoopControlPoints();
+  highwayLoopCenterPath = sampleRoadControlPath(controlPoints, true, HIGHWAY_SAMPLE_COUNT);
+  highwayLoopLanePaths = buildHighwayLanePaths(highwayLoopCenterPath);
+
+  for (const segment of getVisibleHighwaySegments()) {
+    addRoadDeck(`${segment.name}-road-deck`, segment.path, false);
+    addHighwayMarkings(segment.path, false);
+    addRoadSupportColumns(
+      `${segment.name}-support-columns`,
+      segment.path,
+      false,
+      shouldSkipGeneralHighwaySupport,
+    );
+  }
+
+  const tunnelRoadPath = getMountainTunnelRoadPath();
+  const riverBridgePath = getRiverBridgePath();
+  const damCrossingPath = getDamCrossingPath();
+
+  addRoadDeck("high-mountain-tunnel-interior-road-deck", tunnelRoadPath, false);
+  addHighwayMarkings(tunnelRoadPath, false);
+  addRoadEdgeRails("river-bridge-guard-rail", riverBridgePath);
+  addRoadEdgeRails("dam-crossing-guard-rail", damCrossingPath);
+  addCableStayedBridgeStructure("river-cable-stayed-bridge", riverBridgePath);
+  addMountainTunnelPortals(controlPoints);
+}
+
 function reservoirLakeY() {
   return GRASS_SURFACE_Y + mountainHeightAt(reservoirCenter.x, reservoirCenter.z) + 4;
 }
@@ -2295,6 +3839,80 @@ function createDamAbutmentGeometry(sideSign: -1 | 1) {
   return geometry;
 }
 
+function createDamSideShoreClosureGeometry(sideSign: -1 | 1) {
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const indices: number[] = [];
+  const lakeY = reservoirLakeY();
+  const topPoints = [
+    {
+      point: curvedDamPoint(sideSign * (DAM_LENGTH_M * 0.5 - 12), -DAM_THICKNESS_M * 0.5 - 4),
+      liftM: 1.8,
+    },
+    {
+      point: curvedDamPoint(sideSign * (DAM_LENGTH_M * 0.5 + 10), -DAM_THICKNESS_M * 0.5 - 14),
+      liftM: 3.4,
+    },
+    {
+      point: curvedDamPoint(sideSign * (DAM_LENGTH_M * 0.5 + 48), -DAM_THICKNESS_M * 0.5 - 46),
+      liftM: 8,
+    },
+    {
+      point: curvedDamPoint(sideSign * (DAM_LENGTH_M * 0.5 + 38), -DAM_THICKNESS_M * 0.5 - 82),
+      liftM: 12,
+    },
+    {
+      point: curvedDamPoint(sideSign * (DAM_LENGTH_M * 0.5 - 14), -DAM_THICKNESS_M * 0.5 - 62),
+      liftM: 6.5,
+    },
+  ];
+  const terrainPointY = (point: GroundPathPoint) =>
+    GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z) + 0.6;
+
+  topPoints.forEach(({ point, liftM }) => {
+    addReservoirBankVertex(
+      positions,
+      colors,
+      point,
+      Math.max(lakeY + liftM, terrainPointY(point) + 1),
+    );
+  });
+
+  topPoints.forEach(({ point }) => {
+    addReservoirBankVertex(positions, colors, point, Math.min(lakeY - 6, terrainPointY(point)));
+  });
+
+  indices.push(0, 1, 2, 0, 2, 3, 0, 3, 4);
+
+  for (let index = 0; index < topPoints.length; index += 1) {
+    const next = (index + 1) % topPoints.length;
+    const bottom = index + topPoints.length;
+    const nextBottom = next + topPoints.length;
+    indices.push(index, bottom, next, next, bottom, nextBottom);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function addDamSideShoreClosures() {
+  for (const sideSign of [-1, 1] as const) {
+    const closure = new THREE.Mesh(createDamSideShoreClosureGeometry(sideSign), mountainMaterial);
+    closure.name =
+      sideSign < 0
+        ? "reservoir-dam-left-shore-closure"
+        : "reservoir-dam-right-shore-closure";
+    closure.renderOrder = 6;
+    closure.castShadow = true;
+    closure.receiveShadow = true;
+    naturalElements.add(closure);
+  }
+}
+
 function addDamAbutments() {
   for (const sideSign of [-1, 1] as const) {
     const abutment = new THREE.Mesh(createDamAbutmentGeometry(sideSign), mountainMaterial);
@@ -2376,7 +3994,10 @@ function addReservoirBasin() {
 }
 
 function addReservoirLake() {
-  const lake = new THREE.Mesh(createReservoirLakeGeometry(), riverMaterial);
+  const lake = new THREE.Mesh(createReservoirLakeGeometry(), [
+    reservoirWaterTopMaterial,
+    reservoirWaterSideMaterial,
+  ]);
   lake.name = "mountain-reservoir-lake";
   lake.renderOrder = 5;
   naturalElements.add(lake);
@@ -2435,6 +4056,7 @@ addMountainFoothillBlend();
 addClippedMountain();
 addSnowCappedMountain();
 addReservoirBasin();
+addDamSideShoreClosures();
 addReservoirLake();
 addDamAbutments();
 addDam();
@@ -2442,6 +4064,7 @@ addRiverChannelBanks();
 addCoastalEstuaryBanks();
 addRiver();
 addCoastalEstuary();
+addHighwayLoopRoadNetwork();
 
 function handleResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -2454,6 +4077,7 @@ window.addEventListener("resize", handleResize);
 function updateCategoryVisibility() {
   naturalElements.visible = naturalToggle?.checked ?? true;
   artificialElements.visible = artificialToggle?.checked ?? true;
+  roadElements.visible = roadsToggle?.checked ?? true;
 
   const helpVisible = helpToggle?.checked ?? true;
   if (compass) {
@@ -2489,6 +4113,7 @@ function updateScaleMeasureLabels() {
 
 naturalToggle?.addEventListener("change", updateCategoryVisibility);
 artificialToggle?.addEventListener("change", updateCategoryVisibility);
+roadsToggle?.addEventListener("change", updateCategoryVisibility);
 helpToggle?.addEventListener("change", updateCategoryVisibility);
 updateCategoryVisibility();
 updateScaleMeasureLabels();
@@ -2552,6 +4177,8 @@ window.__SITY_DEBUG__ = {
       center: reservoirCenter,
       radiusXM: RESERVOIR_RADIUS_X_M,
       radiusZM: RESERVOIR_RADIUS_Z_M,
+      hasVolumetricWater: true,
+      waterDepthM: RESERVOIR_WATER_DEPTH_M,
       enclosedByNaturalBank: true,
       damOpeningWidthM: DAM_BANK_OPENING_HALF_LENGTH_M * 2,
       clippedAtDam: true,
@@ -2598,9 +4225,55 @@ window.__SITY_DEBUG__ = {
       privateBerthCount: PRIVATE_MARINA_BERTH_COUNT,
     },
   }),
+  getRoadNetwork: () => {
+    const laneSummaries = highwayLoopLanePaths.map((lanePath) => ({
+      id: lanePath.id,
+      roadId: lanePath.roadId,
+      direction: lanePath.direction,
+      laneIndex: lanePath.laneIndex,
+      centerOffsetM: lanePath.centerOffsetM,
+      pointCount: lanePath.points.length,
+      closedLoop:
+        highwayLoopCenterPath.length > 0 &&
+        lanePath.points.length === highwayLoopCenterPath.length,
+    }));
+
+    return {
+      roads: [
+        {
+          id: "smart-highway-loop",
+          type: "bidirectional-highway-loop",
+          closedLoop: true,
+          lanesPerDirection: HIGHWAY_LANES_PER_DIRECTION,
+          totalLaneCount: HIGHWAY_TOTAL_LANE_COUNT,
+          laneWidthM: HIGHWAY_LANE_WIDTH_M,
+          totalRoadWidthM: HIGHWAY_TOTAL_WIDTH_M,
+          features: {
+            crossesDam: true,
+            hasMountainTunnel: true,
+            reachesPort: true,
+            hasRiverBridge: true,
+            hasCableStayedBridge: true,
+            hasBridgeStayCables: true,
+            roadFitsDam: DAM_THICKNESS_M >= HIGHWAY_TOTAL_WIDTH_M,
+          },
+        },
+      ],
+      lanePaths: laneSummaries,
+      directedLanePathCount: laneSummaries.length,
+      graph: {
+        nodeCount: highwayLoopCenterPath.length,
+        allLanePathsClosed: laneSummaries.every((lanePath) => lanePath.closedLoop),
+        laneDirections: Array.from(
+          new Set(laneSummaries.map((lanePath) => lanePath.direction)),
+        ),
+      },
+    };
+  },
   getCategoryVisibility: () => ({
     natural: naturalElements.visible,
     artificial: artificialElements.visible,
+    roads: roadElements.visible,
     help: (compass ? !compass.hidden : true) && (axisScale ? !axisScale.hidden : true),
   }),
   getCompassBearingDegrees: () => compassBearingDegrees,
