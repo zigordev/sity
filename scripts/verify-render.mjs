@@ -84,6 +84,18 @@ for (const run of runs) {
   await page.waitForSelector("#toggle-roads");
   await page.waitForSelector("#toggle-help");
   await page.waitForFunction(() => Boolean(window.__SITY_DEBUG__));
+  await page.waitForFunction(
+    async () => {
+      if (!window.__SITY_ASSETS_READY__) {
+        return false;
+      }
+
+      await window.__SITY_ASSETS_READY__;
+      return window.__SITY_DEBUG__.getNaturalFeatures().realism.assetLoadComplete;
+    },
+    undefined,
+    { timeout: 15_000 },
+  );
   await page.waitForTimeout(900);
 
   const canvasCheck = await page.evaluate(() => {
@@ -239,11 +251,23 @@ for (const run of runs) {
     !naturalFeatures.coast.hasCargoPortEquipment ||
     naturalFeatures.coast.cargoContainerCount !== 12 ||
     naturalFeatures.coast.cargoCraneCount !== 2 ||
+    !naturalFeatures.coast.hasConcreteSeams ||
+    naturalFeatures.coast.cargoPortSeamCount < 12 ||
+    !naturalFeatures.coast.hasQuayFenders ||
+    naturalFeatures.coast.quayFenderCount < 10 ||
+    !naturalFeatures.coast.hasMarinaCleats ||
+    naturalFeatures.coast.marinaCleatCount < 20 ||
     naturalFeatures.coast.wetSandWidthM < 20 ||
+    !naturalFeatures.coast.hasShallowWaterShelf ||
+    naturalFeatures.coast.shallowWaterShelfWidthM < 300 ||
     !naturalFeatures.coast.beachOppositePier ||
     !naturalFeatures.coast.hasLongWoodenAttractionPier ||
     naturalFeatures.coast.attractionPierLengthM < 400 ||
     naturalFeatures.coast.pierDeckThicknessM < 4 ||
+    !naturalFeatures.coast.hasPierRailings ||
+    naturalFeatures.coast.pierRailPostCount < 40 ||
+    !naturalFeatures.coast.hasPierUnderstructure ||
+    naturalFeatures.coast.pierBeamCount < 20 ||
     !naturalFeatures.coast.hasConcreteShipPort ||
     naturalFeatures.coast.cargoPortHeightM < 6 ||
     naturalFeatures.coast.cargoShipBerthCount !== 2 ||
@@ -251,6 +275,8 @@ for (const run of runs) {
       naturalFeatures.coast.cargoShipHullLengthM * 0.5 <
       naturalFeatures.coast.cargoBerthDockLengthM + naturalFeatures.coast.cargoShipWaterGapM ||
     naturalFeatures.coast.cargoShipWaterGapM < 20 ||
+    !naturalFeatures.coast.hasAssetStyleVessels ||
+    naturalFeatures.coast.vesselLodCount < 6 ||
     !naturalFeatures.coast.hasPrivateMarina ||
     naturalFeatures.coast.privateBerthCount !== 4
   ) {
@@ -268,6 +294,8 @@ for (const run of runs) {
     naturalFeatures.coast.beachDuneCount < 12 ||
     naturalFeatures.coast.beachGrassClusterCount < 30 ||
     !naturalFeatures.coast.hasBeachAmenities ||
+    !naturalFeatures.coast.hasBeachShells ||
+    naturalFeatures.coast.beachShellCount < 60 ||
     naturalFeatures.coast.beachUmbrellaCount < 10 ||
     naturalFeatures.coast.beachSunbedCount < 20 ||
     naturalFeatures.coast.beachTowelCount < 8 ||
@@ -330,18 +358,30 @@ for (const run of runs) {
   if (
     !naturalFeatures.river.hasCarvedChannel ||
     naturalFeatures.river.channelBankWidthM < 35 ||
-    naturalFeatures.river.channelReliefM < 1.5
+    naturalFeatures.river.channelReliefM < 1.5 ||
+    !naturalFeatures.river.hasErosionEdges ||
+    !naturalFeatures.river.hasReedClusters ||
+    naturalFeatures.river.reedClusterCount < 80 ||
+    !naturalFeatures.river.hasPebbleFields ||
+    naturalFeatures.river.pebbleCount < 80
   ) {
     throw new Error(
-      `Expected river to sit in a visible natural 3D channel: ${JSON.stringify(
+      `Expected river to sit in a visible natural 3D channel with erosion edges, reeds, and pebble fields: ${JSON.stringify(
         naturalFeatures,
       )}.`,
     );
   }
 
-  if (!naturalFeatures.estuary.hasSlopedBanks || !naturalFeatures.estuary.banksTaperIntoSea) {
+  if (
+    !naturalFeatures.estuary.hasSlopedBanks ||
+    !naturalFeatures.estuary.banksTaperIntoSea ||
+    !naturalFeatures.estuary.hasSeamlessSeaBlend ||
+    naturalFeatures.estuary.blendStartsBeforeCoastlineM < 30 ||
+    naturalFeatures.estuary.fadeLengthM < 180 ||
+    naturalFeatures.estuary.finalWaterHeightDeltaM > 0.05
+  ) {
     throw new Error(
-      `Expected estuary banks to slope and taper into the sea: ${JSON.stringify(
+      `Expected estuary banks and water to slope, fade, and blend seamlessly into the sea: ${JSON.stringify(
         naturalFeatures,
       )}.`,
     );
@@ -394,6 +434,19 @@ for (const run of runs) {
     );
   }
 
+  if (
+    !naturalFeatures.dam.hasCrestRail ||
+    !naturalFeatures.dam.hasSpillwayGates ||
+    naturalFeatures.dam.spillwayGateCount < 5 ||
+    !naturalFeatures.dam.hasServiceGallery
+  ) {
+    throw new Error(
+      `Expected dam crest rail, spillway gates, and service gallery: ${JSON.stringify(
+        naturalFeatures,
+      )}.`,
+    );
+  }
+
   const damThicknessDirection = {
     x: naturalFeatures.dam.downstreamEdge.x - naturalFeatures.dam.upstreamEdge.x,
     z: naturalFeatures.dam.downstreamEdge.z - naturalFeatures.dam.upstreamEdge.z,
@@ -414,6 +467,60 @@ for (const run of runs) {
     );
   }
 
+  if (
+    !naturalFeatures.realism.hasToneMappedRenderer ||
+    !naturalFeatures.realism.hasProceduralMaterialTextures ||
+    !naturalFeatures.realism.hasWaterSurfaceBump ||
+    !naturalFeatures.realism.hasAnimatedWaterMaterial ||
+    !naturalFeatures.realism.hasShaderWater ||
+    !naturalFeatures.realism.hasPostprocessingComposer ||
+    !naturalFeatures.realism.hasSsao ||
+    !naturalFeatures.realism.hasBloom ||
+    !naturalFeatures.realism.hasPbrEnvironmentMap ||
+    !naturalFeatures.realism.hasPhysicalSky ||
+    !naturalFeatures.realism.usesUnifiedSeaWaterMaterial ||
+    !naturalFeatures.realism.allWaterUsesExactSeaShader ||
+    naturalFeatures.realism.sharedWaterMaterialName !== "sity-shared-sea-water-shader" ||
+    naturalFeatures.realism.waterTextureVariantCount !== 1 ||
+    naturalFeatures.realism.unifiedWaterSurfaceCount < 5 ||
+    !naturalFeatures.realism.hasTerrainDisplacementMesh ||
+    !naturalFeatures.realism.hasTerrainSplatShader ||
+    !naturalFeatures.realism.hasPlanarSurfaceUvs ||
+    !naturalFeatures.realism.usesRoundedBuiltGeometry ||
+    !naturalFeatures.realism.hasContactShadowPlanes ||
+    !naturalFeatures.realism.hasWeatheringDecals ||
+    !naturalFeatures.realism.hasNaturalRockClusters ||
+    naturalFeatures.realism.naturalRockClusterCount < 30 ||
+    !naturalFeatures.realism.hasAssetPipelineScaffold ||
+    !naturalFeatures.realism.hasAssetManifest ||
+    !naturalFeatures.realism.hasImportedTextureAssets ||
+    naturalFeatures.realism.importedTextureCount < 9 ||
+    !naturalFeatures.realism.hasPbrTextureMaps ||
+    naturalFeatures.realism.pbrTextureMapCount < 27 ||
+    !naturalFeatures.realism.hasImportedModelAssets ||
+    naturalFeatures.realism.importedModelSourceCount < 2 ||
+    naturalFeatures.realism.importedModelInstanceCount < 6 ||
+    !naturalFeatures.realism.importedAssetKinds.includes("cargoShip") ||
+    !naturalFeatures.realism.importedAssetKinds.includes("privateBoat") ||
+    !naturalFeatures.realism.assetLoadComplete ||
+    naturalFeatures.realism.assetLoadFailures.length > 0 ||
+    !naturalFeatures.realism.hasGltfLoader ||
+    !naturalFeatures.realism.hasKtx2Loader ||
+    !naturalFeatures.realism.hasDracoLoader ||
+    !naturalFeatures.realism.hasMeshoptDecoder ||
+    !naturalFeatures.realism.hasDecoderRuntimeAssets ||
+    !naturalFeatures.realism.supportedAssetFormats.includes("glb") ||
+    !naturalFeatures.realism.supportedAssetFormats.includes("ktx2") ||
+    !naturalFeatures.realism.supportedAssetFormats.includes("drc") ||
+    !naturalFeatures.realism.supportedAssetFormats.includes("meshopt")
+  ) {
+    throw new Error(
+      `Expected scene-wide realism pass with tone mapping, postprocessing, physical sky, one exact shared sea water shader for every water body, file-backed PBR texture assets, imported GLTF model assets, decoder runtimes, terrain shaders, displaced terrain, rounded built geometry, natural rock clusters, and asset pipeline scaffold: ${JSON.stringify(
+        naturalFeatures,
+      )}.`,
+    );
+  }
+
   const roadNetwork = await page.evaluate(() => window.__SITY_DEBUG__.getRoadNetwork());
   const highwayLoop = roadNetwork.roads.find((road) => road.id === "smart-highway-loop");
 
@@ -430,10 +537,21 @@ for (const run of runs) {
     !highwayLoop.features.hasRiverBridge ||
     !highwayLoop.features.hasCableStayedBridge ||
     !highwayLoop.features.hasBridgeStayCables ||
-    !highwayLoop.features.roadFitsDam
+    !highwayLoop.features.roadFitsDam ||
+    !highwayLoop.features.hasTireWearStrips ||
+    !highwayLoop.features.hasContinuousSideBarriers ||
+    !highwayLoop.features.hasExpansionJoints ||
+    highwayLoop.features.expansionJointCount < 16 ||
+    !highwayLoop.features.hasRoadCrackDecals ||
+    highwayLoop.features.roadCrackCount < 50 ||
+    !highwayLoop.features.hasDrainageChannels ||
+    !highwayLoop.features.hasReflectorPosts ||
+    highwayLoop.features.reflectorPostCount < 40 ||
+    !highwayLoop.features.hasTunnelLiningRibs ||
+    highwayLoop.features.tunnelLiningRibCount < 10
   ) {
     throw new Error(
-      `Expected a closed bidirectional smart highway loop with mountain tunnel, cable-stayed bridge, bridge stay cables, and dam-fit road deck: ${JSON.stringify(
+      `Expected a closed bidirectional smart highway loop with mountain tunnel, cable-stayed bridge, bridge stay cables, dam-fit road deck, tire wear, continuous barriers, drainage, decals, reflectors, and tunnel lining ribs: ${JSON.stringify(
         roadNetwork,
       )}.`,
     );

@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "units": "meters",
+  "renderer": "three.js",
+  "compressionReady": [
+    "ktx2",
+    "draco",
+    "meshopt"
+  ],
+  "decoders": {
+    "basis": "/assets/sity/decoders/basis/",
+    "draco": "/assets/sity/decoders/draco/gltf/",
+    "meshopt": "bundled"
+  },
+  "models": {
+    "cargoShip": "/assets/sity/models/cargo_ship_optimized.gltf",
+    "privateBoat": "/assets/sity/models/private_boat_optimized.gltf"
+  },
+  "textures": {
+    "grass_meadow_albedo": "/assets/sity/textures/grass_meadow_albedo.png",
+    "asphalt_aggregate_albedo": "/assets/sity/textures/asphalt_aggregate_albedo.png",
+    "concrete_weathered_albedo": "/assets/sity/textures/concrete_weathered_albedo.png",
+    "sand_dry_albedo": "/assets/sity/textures/sand_dry_albedo.png",
+    "sand_wet_albedo": "/assets/sity/textures/sand_wet_albedo.png",
+    "rock_strata_albedo": "/assets/sity/textures/rock_strata_albedo.png",
+    "wood_planks_albedo": "/assets/sity/textures/wood_planks_albedo.png",
+    "sea_ripple_albedo": "/assets/sity/textures/sea_ripple_albedo.png",
+    "metal_worn_albedo": "/assets/sity/textures/metal_worn_albedo.png",
+    "hull_painted_metal": "/assets/sity/textures/hull_painted_metal.png",
+    "boat_fiberglass": "/assets/sity/textures/boat_fiberglass.png",
+    "cabin_offwhite": "/assets/sity/textures/cabin_offwhite.png",
+    "cargo_container_worn": "/assets/sity/textures/cargo_container_worn.png",
+    "dark_rubber": "/assets/sity/textures/dark_rubber.png",
+    "blue_green_glass": "/assets/sity/textures/blue_green_glass.png"
+  },
+  "pbrTextures": {
+    "grass_meadow_albedo": {
+      "albedo": "/assets/sity/textures/grass_meadow_albedo.png",
+      "normal": "/assets/sity/textures/grass_meadow_albedo_normal.png",
+      "orm": "/assets/sity/textures/grass_meadow_albedo_orm.png"
+    },
+    "asphalt_aggregate_albedo": {
+      "albedo": "/assets/sity/textures/asphalt_aggregate_albedo.png",
+      "normal": "/assets/sity/textures/asphalt_aggregate_albedo_normal.png",
+      "orm": "/assets/sity/textures/asphalt_aggregate_albedo_orm.png"
+    },
+    "concrete_weathered_albedo": {
+      "albedo": "/assets/sity/textures/concrete_weathered_albedo.png",
+      "normal": "/assets/sity/textures/concrete_weathered_albedo_normal.png",
+      "orm": "/assets/sity/textures/concrete_weathered_albedo_orm.png"
+    },
+    "sand_dry_albedo": {
+      "albedo": "/assets/sity/textures/sand_dry_albedo.png",
+      "normal": "/assets/sity/textures/sand_dry_albedo_normal.png",
+      "orm": "/assets/sity/textures/sand_dry_albedo_orm.png"
+    },
+    "sand_wet_albedo": {
+      "albedo": "/assets/sity/textures/sand_wet_albedo.png",
+      "normal": "/assets/sity/textures/sand_wet_albedo_normal.png",
+      "orm": "/assets/sity/textures/sand_wet_albedo_orm.png"
+    },
+    "rock_strata_albedo": {
+      "albedo": "/assets/sity/textures/rock_strata_albedo.png",
+      "normal": "/assets/sity/textures/rock_strata_albedo_normal.png",
+      "orm": "/assets/sity/textures/rock_strata_albedo_orm.png"
+    },
+    "wood_planks_albedo": {
+      "albedo": "/assets/sity/textures/wood_planks_albedo.png",
+      "normal": "/assets/sity/textures/wood_planks_albedo_normal.png",
+      "orm": "/assets/sity/textures/wood_planks_albedo_orm.png"
+    },
+    "sea_ripple_albedo": {
+      "albedo": "/assets/sity/textures/sea_ripple_albedo.png",
+      "normal": "/assets/sity/textures/sea_ripple_albedo_normal.png",
+      "orm": "/assets/sity/textures/sea_ripple_albedo_orm.png"
+    },
+    "metal_worn_albedo": {
+      "albedo": "/assets/sity/textures/metal_worn_albedo.png",
+      "normal": "/assets/sity/textures/metal_worn_albedo_normal.png",
+      "orm": "/assets/sity/textures/metal_worn_albedo_orm.png"
+    },
+    "hull_painted_metal": {
+      "albedo": "/assets/sity/textures/hull_painted_metal.png",
+      "normal": "/assets/sity/textures/hull_painted_metal_normal.png",
+      "orm": "/assets/sity/textures/hull_painted_metal_orm.png"
+    },
+    "boat_fiberglass": {
+      "albedo": "/assets/sity/textures/boat_fiberglass.png",
+      "normal": "/assets/sity/textures/boat_fiberglass_normal.png",
+      "orm": "/assets/sity/textures/boat_fiberglass_orm.png"
+    },
+    "cabin_offwhite": {
+      "albedo": "/assets/sity/textures/cabin_offwhite.png",
+      "normal": "/assets/sity/textures/cabin_offwhite_normal.png",
+      "orm": "/assets/sity/textures/cabin_offwhite_orm.png"
+    },
+    "cargo_container_worn": {
+      "albedo": "/assets/sity/textures/cargo_container_worn.png",
+      "normal": "/assets/sity/textures/cargo_container_worn_normal.png",
+      "orm": "/assets/sity/textures/cargo_container_worn_orm.png"
+    },
+    "dark_rubber": {
+      "albedo": "/assets/sity/textures/dark_rubber.png",
+      "normal": "/assets/sity/textures/dark_rubber_normal.png",
+      "orm": "/assets/sity/textures/dark_rubber_orm.png"
+    },
+    "blue_green_glass": {
+      "albedo": "/assets/sity/textures/blue_green_glass.png",
+      "normal": "/assets/sity/textures/blue_green_glass_normal.png",
+      "orm": "/assets/sity/textures/blue_green_glass_orm.png"
+    }
+  }
+}
