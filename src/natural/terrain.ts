@@ -1,11 +1,10 @@
+import { corridorClearance, cutLimitAt, terrainReliefFactor, zoneFlattenFactor } from "../world/occupancy";
 import * as THREE from "three";
-import { BEACH_INLAND_WIDTH_M, GRASS_SURFACE_Y, HIGHWAY_TOTAL_WIDTH_M, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAINLAND_Y, MAIN_BOUNDARY_SIDE_M, MAIN_BOUNDARY_TERRAIN_THICKNESS_M, MICRO_TERRAIN_GRID_SEGMENTS, MICRO_TERRAIN_HEIGHT_M, MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, MOUNTAIN_GRID_SEGMENTS, MOUNTAIN_HEIGHT_M, MOUNTAIN_MIN_RENDER_HEIGHT_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, MOUNTAIN_STRATA_RIDGE_COUNT, MOUNTAIN_SURFACE_LIFT_M, MOUNTAIN_TALUS_BOULDER_COUNT, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, RIVER_WIDTH_M, SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, SNOW_MOUNTAIN_GRID_SEGMENTS, SNOW_MOUNTAIN_HEIGHT_M, SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_SNOWLINE_M, SNOW_MOUNTAIN_STRATA_RIDGE_COUNT, SNOW_MOUNTAIN_SURFACE_LIFT_M, SNOW_MOUNTAIN_TALUS_BOULDER_COUNT } from "../config/constants";
+import { BEACH_INLAND_WIDTH_M, GRASS_SURFACE_Y, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAINLAND_Y, MAIN_BOUNDARY_SIDE_M, MAIN_BOUNDARY_TERRAIN_THICKNESS_M, MICRO_TERRAIN_GRID_SEGMENTS, MICRO_TERRAIN_HEIGHT_M, MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, MOUNTAIN_GRID_SEGMENTS, MOUNTAIN_HEIGHT_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, MOUNTAIN_STRATA_RIDGE_COUNT, MOUNTAIN_SURFACE_LIFT_M, MOUNTAIN_TALUS_BOULDER_COUNT, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, RIVER_WIDTH_M, SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, SNOW_MOUNTAIN_GRID_SEGMENTS, SNOW_MOUNTAIN_HEIGHT_M, SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_SNOWLINE_M, SNOW_MOUNTAIN_STRATA_RIDGE_COUNT, SNOW_MOUNTAIN_SURFACE_LIFT_M, SNOW_MOUNTAIN_TALUS_BOULDER_COUNT } from "../config/constants";
 import { addFlatPlane, addLayeredPolygonVolume, addPlanarXZUVs, addScaledSphereInstances, distanceToPath2D, isInsideBounds } from "../geometry/helpers";
-import { sampleRoadControlPath } from "../geometry/ribbons";
 import { GroundPathPoint, ScaledXYZPlacement } from "../geometry/types";
 import { naturalElements } from "../render/context";
-import { grassMaterial, mainlandMaterial, mountainCutMaterial, mountainHighColor, mountainLowColor, mountainMaterial, mountainMidColor, mountainRidgeMaterial, smallRockMaterial, snowColor, snowPatchMaterial, snowShadowColor, terrainCutMaterial, terrainGrassColor, terrainMicroDisplacementMaterial } from "../render/materials";
-import { getHighwayLoopControlPoints } from "../roads/legacyHighway";
+import { grassMaterial, mainlandMaterial, mountainCutMaterial, mountainHighColor, mountainLowColor, mountainMaterial, mountainMidColor, mountainRidgeMaterial, talusRockMaterial, snowColor, snowPatchMaterial, snowShadowColor, terrainCutMaterial, terrainGrassColor, terrainMicroDisplacementMaterial } from "../render/materials";
 import { mainBoundaryCenterX, mainBoundaryCoastlinePoints, mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, mainlandCenterZ, mainlandDepth, mainlandMaxZ, mainlandMinX, mainlandMinZ, mountainCenter, mountainVisibleBounds, reservoirCenter, riverPath, snowMountainCenter, snowMountainVisibleBounds } from "../world/frame";
 
 export let mountainStrataRidgeMeshCount = 0;
@@ -28,30 +27,11 @@ export function addMainBoundarySurface() {
   );
 }
 
-export let terrainRoadAvoidancePathCache: GroundPathPoint[] | undefined;
-
-export function terrainRoadAvoidancePath() {
-  if (!terrainRoadAvoidancePathCache) {
-    terrainRoadAvoidancePathCache = sampleRoadControlPath(
-      getHighwayLoopControlPoints(),
-      true,
-      72,
-    );
-  }
-
-  return terrainRoadAvoidancePathCache;
-}
-
 export function terrainMicroNoise(x: number, z: number) {
   const point = { x, z };
   const riverDistance = distanceToPath2D(point, riverPath);
-  const roadDistance = distanceToPath2D(
-    point,
-    terrainRoadAvoidancePath(),
-    true,
-  );
   const riverMask = THREE.MathUtils.smoothstep(riverDistance, RIVER_WIDTH_M * 1.1, RIVER_WIDTH_M * 3.4);
-  const roadMask = THREE.MathUtils.smoothstep(roadDistance, HIGHWAY_TOTAL_WIDTH_M * 1.8, HIGHWAY_TOTAL_WIDTH_M * 4.6);
+  const roadMask = terrainReliefFactor(x, z);
   const mountainMask =
     1 -
     THREE.MathUtils.smoothstep(
@@ -72,33 +52,33 @@ export function terrainMicroNoise(x: number, z: number) {
   return relief * riverMask * roadMask * mountainMask * coastMask;
 }
 
+export const TERRAIN_SKIN_MAX_MOUNTAIN_HEIGHT_M = 34;
+
+export function groundSurfaceYAt(x: number, z: number) {
+  const height = Math.max(mountainHeightAt(x, z), snowMountainHeightAt(x, z));
+  const foothill = THREE.MathUtils.smoothstep(height, 2, 22);
+  const base = fullTerrainSurfaceYAt({ x, z }) + 0.11 + 0.25 * foothill;
+  return Math.min(base, cutLimitAt(x, z));
+}
+
 export function addMicroDisplacedGrassTerrain() {
-  const westX = mainBoundaryMinX + 70;
+  const westX = mainBoundaryMinX + 1;
   const eastX = mainBoundaryMaxX - BEACH_INLAND_WIDTH_M - 55;
-  const southZ = mainBoundaryMinZ + 70;
-  const northZ = mainBoundaryMaxZ - 70;
+  const southZ = mainBoundaryMinZ + 1;
+  const northZ = mainBoundaryMaxZ - 1;
   const positions: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
+  const heights: number[] = [];
 
   for (let row = 0; row <= MICRO_TERRAIN_GRID_SEGMENTS; row += 1) {
-    const z = THREE.MathUtils.lerp(
-      southZ,
-      northZ,
-      row / MICRO_TERRAIN_GRID_SEGMENTS,
-    );
+    const z = THREE.MathUtils.lerp(southZ, northZ, row / MICRO_TERRAIN_GRID_SEGMENTS);
 
     for (let column = 0; column <= MICRO_TERRAIN_GRID_SEGMENTS; column += 1) {
-      const x = THREE.MathUtils.lerp(
-        westX,
-        eastX,
-        column / MICRO_TERRAIN_GRID_SEGMENTS,
-      );
-      const displacedY =
-        GRASS_SURFACE_Y +
-        0.11 +
-        terrainMicroNoise(x, z);
-
+      const x = THREE.MathUtils.lerp(westX, eastX, column / MICRO_TERRAIN_GRID_SEGMENTS);
+      const height = Math.max(mountainHeightAt(x, z), snowMountainHeightAt(x, z));
+      heights.push(height);
+      const displacedY = Math.min(groundSurfaceYAt(x, z) + terrainMicroNoise(x, z), cutLimitAt(x, z));
       positions.push(x, displacedY, z);
       uvs.push(x / 95, z / 95);
     }
@@ -111,6 +91,10 @@ export function addMicroDisplacedGrassTerrain() {
       const b = a + 1;
       const c = a + rowStride;
       const d = c + 1;
+      const cellMaxHeight = Math.max(heights[a], heights[b], heights[c], heights[d]);
+      if (cellMaxHeight > TERRAIN_SKIN_MAX_MOUNTAIN_HEIGHT_M) {
+        continue;
+      }
       indices.push(a, c, b, b, c, d);
     }
   }
@@ -162,7 +146,7 @@ export function isLowlandDetailAllowed(point: GroundPathPoint) {
     return false;
   }
 
-  if (distanceToPath2D(point, terrainRoadAvoidancePath(), true) < HIGHWAY_TOTAL_WIDTH_M * 3.2) {
+  if (corridorClearance(point.x, point.z) < 14 || zoneFlattenFactor(point.x, point.z) < 1) {
     return false;
   }
 
@@ -260,7 +244,7 @@ export function addMountainStrataRidges() {
     MOUNTAIN_STRATA_RIDGE_COUNT,
     mountainHeightAt,
     (_x, _z, height) => mountainSurfaceYAt(height),
-    MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M * 0.9,
+    MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M * 2.6,
     mountainRidgeMaterial,
     4.2,
   );
@@ -273,7 +257,7 @@ export function addMountainStrataRidges() {
     SNOW_MOUNTAIN_STRATA_RIDGE_COUNT,
     snowMountainHeightAt,
     snowMountainSurfaceYAt,
-    SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M * 0.68,
+    SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M * 1.9,
     mountainRidgeMaterial,
     4.6,
   );
@@ -366,7 +350,7 @@ export function addMountainTalusField(
       !isInsideBounds(point, bounds, 10) ||
       height < minHeight ||
       height > maxHeight ||
-      distanceToPath2D(point, terrainRoadAvoidancePath(), true) < HIGHWAY_TOTAL_WIDTH_M * 2.2
+      corridorClearance(x, z) < 20
     ) {
       continue;
     }
@@ -381,7 +365,7 @@ export function addMountainTalusField(
     });
   }
 
-  addScaledSphereInstances(name, smallRockMaterial, placements);
+  addScaledSphereInstances(name, talusRockMaterial, placements);
   talusBoulderInstanceCount += placements.length;
 }
 
@@ -395,8 +379,8 @@ export function addMountainTalusFields() {
     MOUNTAIN_TALUS_BOULDER_COUNT,
     mountainHeightAt,
     (_x, _z, height) => mountainSurfaceYAt(height),
-    22,
-    MOUNTAIN_HEIGHT_M * 0.62,
+    MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M * 1.6,
+    MOUNTAIN_HEIGHT_M * 0.7,
   );
   addMountainTalusField(
     "snow-mountain-talus-boulder-field",
@@ -407,8 +391,8 @@ export function addMountainTalusFields() {
     SNOW_MOUNTAIN_TALUS_BOULDER_COUNT,
     snowMountainHeightAt,
     snowMountainSurfaceYAt,
-    34,
-    SNOW_MOUNTAIN_SNOWLINE_M * 0.84,
+    SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M * 1.35,
+    SNOW_MOUNTAIN_SNOWLINE_M * 0.9,
   );
 }
 
@@ -518,7 +502,7 @@ export function createMountainSurfaceGeometry(
       heights.push(height);
       setMountainVertexColor(height, color);
 
-      positions.push(x, mountainSurfaceYAt(height), z);
+      positions.push(x, Math.min(mountainSurfaceYAt(height), cutLimitAt(x, z)), z);
       colors.push(color.r, color.g, color.b);
     }
   }
@@ -550,7 +534,7 @@ export function addMountainFoothillBlend() {
   const foothill = new THREE.Mesh(
     createMountainSurfaceGeometry(
       (cellMaxHeight) =>
-        cellMaxHeight > MOUNTAIN_MIN_RENDER_HEIGHT_M &&
+        cellMaxHeight > TERRAIN_SKIN_MAX_MOUNTAIN_HEIGHT_M - 6 &&
         cellMaxHeight <= MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M,
     ),
     mountainMaterial,
@@ -779,7 +763,7 @@ export function createSnowMountainSurfaceGeometry() {
 
       heights.push(height);
       setSnowMountainVertexColor(height, color);
-      positions.push(x, snowMountainSurfaceYAt(x, z, height), z);
+      positions.push(x, Math.min(snowMountainSurfaceYAt(x, z, height), cutLimitAt(x, z)), z);
       colors.push(color.r, color.g, color.b);
     }
   }
@@ -793,7 +777,7 @@ export function createSnowMountainSurfaceGeometry() {
       const d = c + 1;
       const cellMaxHeight = Math.max(heights[a], heights[b], heights[c], heights[d]);
 
-      if (cellMaxHeight > SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M) {
+      if (cellMaxHeight > TERRAIN_SKIN_MAX_MOUNTAIN_HEIGHT_M - 6) {
         indices.push(a, c, b, b, c, d);
       }
     }

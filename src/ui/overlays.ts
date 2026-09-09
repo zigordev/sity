@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { NORTH_SAMPLE_DISTANCE_M, SCALE_AXIS_SAMPLE_M, SCALE_X_MEASURE_M, SCALE_Y_MEASURE_M, SCALE_Z_MEASURE_M } from "../config/constants";
-import { artificialElements, camera, controls, naturalElements, roadElements } from "../render/context";
+import { artificialElements, camera, controls, naturalElements } from "../render/context";
 
 export const compass = document.querySelector<HTMLElement>(".compass");
 
@@ -20,15 +20,11 @@ export const scaleMeasureY = document.querySelector<HTMLElement>("#scale-measure
 
 export const scaleMeasureZ = document.querySelector<HTMLElement>("#scale-measure-z");
 
-export const naturalToggle = document.querySelector<HTMLInputElement>("#toggle-natural");
 
-export const artificialToggle = document.querySelector<HTMLInputElement>("#toggle-artificial");
 
-export const roadsToggle = document.querySelector<HTMLInputElement>("#toggle-roads");
 
-export const helpToggle = document.querySelector<HTMLInputElement>("#toggle-help");
 
-export const worldNorth = new THREE.Vector3(NORTH_SAMPLE_DISTANCE_M, 0, 0);
+export const worldNorth = new THREE.Vector3(0, 0, -NORTH_SAMPLE_DISTANCE_M);
 
 export const compassOriginWorld = new THREE.Vector3();
 
@@ -69,17 +65,11 @@ export const scaleAxisScreen = new THREE.Vector3();
 export let scaleAxisAnglesDegrees = { x: 0, y: 0, z: 0 };
 
 export function updateCategoryVisibility() {
-  naturalElements.visible = naturalToggle?.checked ?? true;
-  artificialElements.visible = artificialToggle?.checked ?? true;
-  roadElements.visible = roadsToggle?.checked ?? true;
-
-  const helpVisible = helpToggle?.checked ?? true;
-  if (compass) {
-    compass.hidden = !helpVisible;
-  }
-  if (axisScale) {
-    axisScale.hidden = !helpVisible;
-  }
+  document.addEventListener("sity:layers", (event) => {
+    const detail = (event as CustomEvent<{ natural: boolean; artificial: boolean }>).detail;
+    naturalElements.visible = detail.natural;
+    artificialElements.visible = detail.artificial;
+  });
 }
 
 export function formatScaleMeasure(measureM: number) {
@@ -105,15 +95,7 @@ export function updateScaleMeasureLabels() {
   }
 }
 
-naturalToggle?.addEventListener("change", updateCategoryVisibility);
 
-artificialToggle?.addEventListener("change", updateCategoryVisibility);
-
-roadsToggle?.addEventListener("change", updateCategoryVisibility);
-
-helpToggle?.addEventListener("change", updateCategoryVisibility);
-
-updateCategoryVisibility();
 
 updateScaleMeasureLabels();
 

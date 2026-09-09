@@ -93,6 +93,14 @@ artificialElements.name = "artificial-elements";
 
 scene.add(artificialElements);
 
+export const cityElements = new THREE.Group();
+cityElements.name = "city-elements";
+scene.add(cityElements);
+
+export const vegetationElements = new THREE.Group();
+vegetationElements.name = "vegetation-elements";
+scene.add(vegetationElements);
+
 export const roadElements = new THREE.Group();
 
 roadElements.name = "road-elements";
@@ -102,7 +110,7 @@ scene.add(roadElements);
 export const camera = new THREE.PerspectiveCamera(
   48,
   window.innerWidth / window.innerHeight,
-  10,
+  2.5,
   20_000,
 );
 
@@ -116,11 +124,11 @@ controls.enableDamping = true;
 
 controls.dampingFactor = 0.06;
 
-controls.minDistance = 650;
+controls.minDistance = 6;
 
 controls.maxDistance = 7_500;
 
-controls.maxPolarAngle = Math.PI * 0.48;
+controls.maxPolarAngle = Math.PI * 0.495;
 
 controls.target.copy(viewTarget);
 

@@ -46,7 +46,7 @@ export function addSurroundingShaderSea() {
   seaWater.rotation.x = -Math.PI / 2;
   seaWater.position.set(
     mainBoundaryMaxX + shaderSeaWidth * 0.5 - COASTAL_INLET_OVERLAP_M,
-    SEA_Y - 0.025,
+    SEA_Y - 0.06,
     seaCenter.z,
   );
 }
@@ -672,9 +672,9 @@ export function createEstuaryStripGeometry(path: GroundPathPoint[]) {
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
+  void uvs;
   return geometry;
 }
 

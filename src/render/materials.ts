@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { ATTRACTION_BLUE_COLOR, ATTRACTION_RED_COLOR, ATTRACTION_YELLOW_COLOR, BEACH_SAND_COLOR, CONCRETE_PORT_COLOR, DOCK_COLOR, GRASS_COLOR, HIGHWAY_ASPHALT_COLOR, HIGHWAY_MEDIAN_COLOR, HIGHWAY_SHOULDER_COLOR, MICRO_TERRAIN_OPACITY, MOUNTAIN_HIGH_COLOR, MOUNTAIN_LOW_COLOR, MOUNTAIN_MID_COLOR, PRIVATE_BOAT_COLOR, ROAD_MARKING_WHITE_COLOR, ROAD_MARKING_YELLOW_COLOR, SEA_SHADER_WATER_COLOR, SHIP_CABIN_COLOR, SHIP_HULL_COLOR, SNOW_COLOR, SNOW_SHADOW_COLOR, WET_SAND_COLOR, WOOD_PIER_COLOR } from "../config/constants";
 import { sunLight } from "./context";
-import { asphaltTexture, concreteTexture, darkWearTexture, drySandTexture, grassTexture, mainlandTexture, metalTexture, terrainCutTexture, waterNormalTexture, wetSandTexture, woodTexture } from "./textures";
+import { asphaltTexture, concreteTexture, darkWearTexture, drySandTexture, grassTexture, metalTexture, terrainCutTexture, waterNormalTexture, wetSandTexture, woodTexture } from "./textures";
 
 export function createSharedSeaWaterMaterial() {
   return new THREE.ShaderMaterial({
@@ -65,16 +65,16 @@ export function createSharedSeaWaterMaterial() {
     `,
     side: THREE.DoubleSide,
     fog: true,
-    depthWrite: false,
+    depthWrite: true,
   });
 }
 
 export const sharedSeaWaterMaterial = createSharedSeaWaterMaterial();
 
 export const mainlandMaterial = new THREE.MeshStandardMaterial({
-  color: 0x9da19b,
-  map: mainlandTexture,
-  roughness: 0.86,
+  color: 0x8fb478,
+  map: grassTexture,
+  roughness: 0.96,
   metalness: 0,
 });
 
@@ -602,3 +602,193 @@ installTerrainSplatShader(grassMaterial);
 installTerrainSplatShader(terrainMicroDisplacementMaterial);
 
 installMountainSurfaceShader(mountainMaterial);
+
+export const sidewalkMaterial = new THREE.MeshStandardMaterial({
+  color: 0xc4c0b6,
+  map: concreteTexture,
+  bumpMap: concreteTexture,
+  bumpScale: 0.03,
+  roughness: 0.92,
+  metalness: 0.0,
+});
+
+export const kerbMaterial = new THREE.MeshStandardMaterial({
+  color: 0x8e8c86,
+  roughness: 0.9,
+  metalness: 0.0,
+});
+
+export const medianGrassMaterial = new THREE.MeshStandardMaterial({
+  color: 0x6f9c52,
+  map: grassTexture,
+  roughness: 0.95,
+  metalness: 0.0,
+});
+
+export const guardrailMaterial = new THREE.MeshStandardMaterial({
+  color: 0xa7adb1,
+  map: metalTexture,
+  roughness: 0.42,
+  metalness: 0.72,
+});
+
+export const lampPoleMaterial = new THREE.MeshStandardMaterial({
+  color: 0x5d6368,
+  roughness: 0.55,
+  metalness: 0.65,
+});
+
+export const lampHeadMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe4e8e2,
+  emissive: 0x3a3f36,
+  roughness: 0.5,
+  metalness: 0.2,
+});
+
+export const signalHeadMaterial = new THREE.MeshStandardMaterial({
+  color: 0x24272a,
+  roughness: 0.6,
+  metalness: 0.3,
+});
+
+export const signalLensDarkMaterial = new THREE.MeshStandardMaterial({
+  color: 0x1d1f21,
+  roughness: 0.4,
+  metalness: 0.1,
+});
+
+export const signalLensRedMaterial = new THREE.MeshStandardMaterial({
+  color: 0xff3b2f,
+  emissive: 0xff2a1a,
+  emissiveIntensity: 1.6,
+  roughness: 0.3,
+});
+
+export const signalLensGreenMaterial = new THREE.MeshStandardMaterial({
+  color: 0x36e07a,
+  emissive: 0x1fd465,
+  emissiveIntensity: 1.5,
+  roughness: 0.3,
+});
+
+export const signPoleMaterial = new THREE.MeshStandardMaterial({
+  color: 0x8d9296,
+  roughness: 0.5,
+  metalness: 0.6,
+});
+
+export const pierConcreteMaterial = new THREE.MeshStandardMaterial({
+  color: 0xa5a29a,
+  map: concreteTexture,
+  bumpMap: concreteTexture,
+  bumpScale: 0.04,
+  roughness: 0.88,
+  metalness: 0.02,
+});
+
+export const gravelVergeMaterial = new THREE.MeshStandardMaterial({
+  color: 0x8f9276,
+  roughness: 0.96,
+  metalness: 0.0,
+});
+
+export function createSignTexture(kind: "stop" | "yield" | "speed30" | "speed50" | "noentry") {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return new THREE.Texture();
+  }
+  context.clearRect(0, 0, size, size);
+  const center = size / 2;
+  if (kind === "stop") {
+    context.fillStyle = "#c8232c";
+    context.beginPath();
+    for (let index = 0; index < 8; index += 1) {
+      const angle = Math.PI / 8 + (index * Math.PI) / 4;
+      const x = center + Math.cos(angle) * 60;
+      const y = center + Math.sin(angle) * 60;
+      if (index === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+    }
+    context.closePath();
+    context.fill();
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = 5;
+    context.stroke();
+    context.fillStyle = "#ffffff";
+    context.font = "bold 40px Arial";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText("STOP", center, center + 2);
+  } else if (kind === "yield") {
+    context.fillStyle = "#c8232c";
+    context.beginPath();
+    context.moveTo(6, 14);
+    context.lineTo(size - 6, 14);
+    context.lineTo(center, size - 8);
+    context.closePath();
+    context.fill();
+    context.fillStyle = "#ffffff";
+    context.beginPath();
+    context.moveTo(24, 24);
+    context.lineTo(size - 24, 24);
+    context.lineTo(center, size - 30);
+    context.closePath();
+    context.fill();
+  } else if (kind === "noentry") {
+    context.fillStyle = "#c8232c";
+    context.beginPath();
+    context.arc(center, center, 60, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = "#ffffff";
+    context.fillRect(24, center - 12, size - 48, 24);
+  } else {
+    context.fillStyle = "#ffffff";
+    context.beginPath();
+    context.arc(center, center, 60, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = "#c8232c";
+    context.lineWidth = 12;
+    context.beginPath();
+    context.arc(center, center, 54, 0, Math.PI * 2);
+    context.stroke();
+    context.fillStyle = "#111111";
+    context.font = "bold 52px Arial";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(kind === "speed30" ? "30" : "50", center, center + 3);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+export const signMaterials = {
+  stop: new THREE.MeshStandardMaterial({ map: createSignTexture("stop"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
+  yield: new THREE.MeshStandardMaterial({ map: createSignTexture("yield"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
+  speed30: new THREE.MeshStandardMaterial({ map: createSignTexture("speed30"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
+  speed50: new THREE.MeshStandardMaterial({ map: createSignTexture("speed50"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
+  noentry: new THREE.MeshStandardMaterial({ map: createSignTexture("noentry"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
+};
+
+export const talusRockMaterial = new THREE.MeshStandardMaterial({
+  color: 0x9a9384,
+  map: terrainCutTexture,
+  roughness: 0.94,
+  metalness: 0,
+});
+
+export const embankmentMaterial = new THREE.MeshStandardMaterial({
+  color: 0x7f9d5c,
+  map: grassTexture,
+  roughness: 0.96,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});

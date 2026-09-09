@@ -7,8 +7,11 @@ import { addClippedMountain, addMainBoundarySurface, addMainlandOutsideBoundary,
 import { addCoastalEstuary, addCoastalEstuaryBanks, addCoastalShallowWaterShelf, addNaturalDetailPass, addReservoirBasin, addReservoirLake, addRiver, addRiverChannelBanks, addSurroundingShaderSea } from "./natural/water";
 import { animationClock, composer, controls } from "./render/context";
 import { sharedSeaWaterMaterial } from "./render/materials";
-import { addHighwayLoopRoadNetwork } from "./roads/legacyHighway";
-import { updateAxisScale, updateCompass } from "./ui/overlays";
+import { addRoadNetworkMeshes } from "./roads/render";
+import { addCity } from "./city";
+import "./roads/build";
+import { updateAxisScale, updateCategoryVisibility, updateCompass } from "./ui/overlays";
+import { flyToViewId, initPanel, updateCameraFlight } from "./ui/panel";
 
 addSurroundingShaderSea();
 
@@ -60,13 +63,20 @@ addRiver();
 
 addCoastalEstuary();
 
-addHighwayLoopRoadNetwork();
+addRoadNetworkMeshes();
+
+addCity();
+
+updateCategoryVisibility();
+initPanel();
+flyToViewId("overview", true);
 
 window.__SITY_ASSETS_READY__ = startImportedAssetPipeline();
 
 export function animate() {
   const elapsedSeconds = animationClock.getElapsedTime();
   sharedSeaWaterMaterial.uniforms.sityTime.value = elapsedSeconds;
+  updateCameraFlight();
   controls.update();
   updateCompass();
   updateAxisScale();

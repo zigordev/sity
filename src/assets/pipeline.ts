@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { ASSET_MANIFEST_URL, SEA_Y } from "../config/constants";
 import { artificialElements, gltfLoader, renderer, textureLoader } from "../render/context";
-import { beachGrassMaterial, beachSandMaterial, bridgeCableMaterial, bridgeSteelMaterial, concretePortMaterial, damMaterial, dockMaterial, duneSandMaterial, grassMaterial, highwayAsphaltMaterial, lowlandDryGrassMaterial, lowlandScrubMaterial, mountainCutMaterial, portCraneMaterial, reedMaterial, roadStructureConcreteMaterial, smallPebbleMaterial, smallRockMaterial, terrainCutMaterial, terrainMicroDisplacementMaterial, wetSandMaterial, woodPierMaterial } from "../render/materials";
+import { mainlandMaterial, beachGrassMaterial, beachSandMaterial, bridgeCableMaterial, bridgeSteelMaterial, concretePortMaterial, damMaterial, dockMaterial, duneSandMaterial, grassMaterial, highwayAsphaltMaterial, lowlandDryGrassMaterial, lowlandScrubMaterial, mountainCutMaterial, portCraneMaterial, reedMaterial, roadStructureConcreteMaterial, smallPebbleMaterial, smallRockMaterial, terrainCutMaterial, terrainMicroDisplacementMaterial, wetSandMaterial, woodPierMaterial } from "../render/materials";
 
 export const TEXTURE_ASSET_KEYS = [
   "grass_meadow_albedo",
@@ -78,6 +78,7 @@ export const textureAssetTargets: Record<(typeof TEXTURE_ASSET_KEYS)[number], Te
   grass_meadow_albedo: [
     { material: grassMaterial, repeatX: 34, repeatY: 34 },
     { material: terrainMicroDisplacementMaterial, repeatX: 34, repeatY: 34 },
+    { material: mainlandMaterial, repeatX: 220, repeatY: 220 },
     { material: beachGrassMaterial, repeatX: 18, repeatY: 18 },
     { material: reedMaterial, repeatX: 18, repeatY: 18 },
     { material: lowlandScrubMaterial, repeatX: 18, repeatY: 18 },

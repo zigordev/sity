@@ -272,44 +272,129 @@ canvas {
   left: 18px;
   z-index: 2;
   display: grid;
-  gap: 10px;
-  width: 168px;
+  gap: 12px;
+  width: 232px;
+  max-height: calc(100vh - 36px);
   padding: 14px;
+  overflow-y: auto;
   border: 1px solid rgba(16, 25, 20, 0.18);
-  background: rgba(246, 250, 244, 0.72);
+  border-radius: 8px;
+  background: rgba(246, 250, 244, 0.8);
   box-shadow: 0 12px 34px rgba(16, 25, 20, 0.14);
   color: #101914;
+  backdrop-filter: blur(6px);
 }
 
 .layer-panel-title {
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.layer-panel-subtitle {
+  margin-top: -10px;
+  color: rgba(16, 25, 20, 0.66);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.panel-section {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(16, 25, 20, 0.12);
+}
+
+.panel-section-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(16, 25, 20, 0.62);
 }
 
 .layer-panel label {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 30px;
+  min-height: 24px;
   cursor: pointer;
-  font-size: 0.92rem;
+  font-size: 0.84rem;
   font-weight: 700;
 }
 
 .layer-panel input {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   margin: 0;
   accent-color: #258fba;
+}
+
+.view-buttons,
+.route-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.layer-panel button {
+  padding: 5px 9px;
+  border: 1px solid rgba(16, 25, 20, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #101914;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.layer-panel button:hover {
+  border-color: #258fba;
+  background: #e7f3f8;
+}
+
+.layer-panel button.active {
+  border-color: #258fba;
+  background: #258fba;
+  color: #ffffff;
+}
+
+.route-info {
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgba(16, 25, 20, 0.78);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.stats dt {
+  color: rgba(16, 25, 20, 0.62);
+}
+
+.stats dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 620px) {
   .layer-panel {
     top: 10px;
     left: 10px;
-    width: 148px;
-    padding: 12px;
+    width: 190px;
+    max-height: calc(100vh - 20px);
+    padding: 10px;
+    font-size: 0.9rem;
   }
 
   .compass {

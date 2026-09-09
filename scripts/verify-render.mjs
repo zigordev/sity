@@ -1,695 +1,179 @@
+import { mkdirSync } from "node:fs";
 import { chromium } from "playwright";
 
 const baseUrl = process.env.SITY_VERIFY_BASE_URL ?? "http://localhost:5173";
+const outDir = process.env.SITY_VERIFY_OUT_DIR ?? "verify-output";
+const softwareGl = process.env.SITY_VERIFY_SOFTWARE_GL !== "0";
 
 const runs = [
-  { name: "mainland-desktop", width: 1440, height: 900, url: `${baseUrl}/?verify` },
-  { name: "mainland-mobile", width: 390, height: 844, url: `${baseUrl}/?verify` },
+  { name: "desktop", width: 1440, height: 900, views: ["overview", "downtown", "interchange", "street"] },
+  { name: "mobile", width: 390, height: 844, views: ["overview", "downtown"] },
 ];
 
-const browser = await chromium.launch();
+mkdirSync(outDir, { recursive: true });
 
-async function readCompass(page) {
-  return page.evaluate(() => {
-    const compass = document.querySelector(".compass");
-    const needle = document.querySelector("#compass-needle");
-
-    if (!(compass instanceof HTMLElement) || !(needle instanceof HTMLElement)) {
-      throw new Error("Compass UI was not found.");
-    }
-
-    return {
-      visible: getComputedStyle(compass).display !== "none",
-      transform: needle.style.transform,
-      bearingDegrees: window.__SITY_DEBUG__.getCompassBearingDegrees(),
-    };
-  });
+function assert(condition, message, detail) {
+  if (!condition) {
+    throw new Error(`${message}${detail === undefined ? "" : `: ${JSON.stringify(detail)}`}`);
+  }
 }
 
-async function readAxisScale(page) {
-  return page.evaluate(() => {
-    const axisScale = document.querySelector(".axis-scale");
-    const axisX = document.querySelector("#scale-axis-x");
-    const axisY = document.querySelector("#scale-axis-y");
-    const axisZ = document.querySelector("#scale-axis-z");
-    const measureX = document.querySelector("#scale-measure-x");
-    const measureY = document.querySelector("#scale-measure-y");
-    const measureZ = document.querySelector("#scale-measure-z");
-
-    if (
-      !(axisScale instanceof HTMLElement) ||
-      !(axisX instanceof HTMLElement) ||
-      !(axisY instanceof HTMLElement) ||
-      !(axisZ instanceof HTMLElement) ||
-      !(measureX instanceof HTMLElement) ||
-      !(measureY instanceof HTMLElement) ||
-      !(measureZ instanceof HTMLElement)
-    ) {
-      throw new Error("Axis scale UI was not found.");
-    }
-
-    return {
-      visible: getComputedStyle(axisScale).display !== "none",
-      labels: {
-        x: measureX.textContent,
-        y: measureY.textContent,
-        z: measureZ.textContent,
-      },
-      rotations: {
-        x: axisX.style.getPropertyValue("--axis-rotation"),
-        y: axisY.style.getPropertyValue("--axis-rotation"),
-        z: axisZ.style.getPropertyValue("--axis-rotation"),
-      },
-      debug: window.__SITY_DEBUG__.getAxisScale(),
-    };
-  });
-}
-
-async function readCategoryVisibility(page) {
-  return page.evaluate(() => window.__SITY_DEBUG__.getCategoryVisibility());
-}
-
-for (const run of runs) {
-  const page = await browser.newPage({
-    viewport: { width: run.width, height: run.height },
-  });
-  await page.goto(run.url, { waitUntil: "networkidle" });
+async function waitForScene(page) {
   await page.waitForSelector("canvas");
-  await page.waitForSelector("#compass-needle");
-  await page.waitForSelector("#scale-axis-x");
-  await page.waitForSelector("#scale-axis-y");
-  await page.waitForSelector("#scale-axis-z");
-  await page.waitForSelector("#toggle-natural");
-  await page.waitForSelector("#toggle-artificial");
-  await page.waitForSelector("#toggle-roads");
-  await page.waitForSelector("#toggle-help");
-  await page.waitForFunction(() => Boolean(window.__SITY_DEBUG__));
+  await page.waitForFunction(() => Boolean(window.__SITY_DEBUG__), undefined, { timeout: 120_000 });
   await page.waitForFunction(
     async () => {
       if (!window.__SITY_ASSETS_READY__) {
         return false;
       }
-
       await window.__SITY_ASSETS_READY__;
-      return window.__SITY_DEBUG__.getNaturalFeatures().realism.assetLoadComplete;
+      return window.__SITY_DEBUG__.getNaturalFeatures().assets.loadComplete;
     },
     undefined,
-    { timeout: 15_000 },
+    { timeout: 120_000 },
   );
-  await page.waitForTimeout(900);
+}
 
-  const canvasCheck = await page.evaluate(() => {
+async function settleFrames(page, frames = 5) {
+  await page.evaluate(
+    (count) =>
+      new Promise((resolve) => {
+        let done = 0;
+        const step = () => {
+          done += 1;
+          if (done >= count) {
+            resolve(undefined);
+          } else {
+            requestAnimationFrame(step);
+          }
+        };
+        requestAnimationFrame(step);
+      }),
+    frames,
+  );
+}
+
+async function sampleCanvas(page) {
+  return page.evaluate(() => {
     const canvas = document.querySelector("canvas");
-    if (!(canvas instanceof HTMLCanvasElement)) {
-      throw new Error("Canvas element was not found.");
-    }
-
     const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
     if (!gl) {
       throw new Error("WebGL context was not available.");
     }
-
-    const samples = [];
-    for (const xFactor of [0.2, 0.4, 0.6, 0.8]) {
-      for (const yFactor of [0.25, 0.45, 0.65, 0.82]) {
+    const colors = new Set();
+    let visible = 0;
+    let black = 0;
+    let total = 0;
+    for (const xFactor of [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]) {
+      for (const yFactor of [0.2, 0.4, 0.6, 0.8]) {
         const pixel = new Uint8Array(4);
-        gl.readPixels(
-          Math.floor(canvas.width * xFactor),
-          Math.floor(canvas.height * yFactor),
-          1,
-          1,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          pixel,
-        );
-        samples.push(Array.from(pixel));
+        gl.readPixels(Math.floor(canvas.width * xFactor), Math.floor(canvas.height * yFactor), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        total += 1;
+        const sum = pixel[0] + pixel[1] + pixel[2];
+        if (sum > 24) {
+          visible += 1;
+        } else {
+          black += 1;
+        }
+        colors.add(`${pixel[0] >> 4}:${pixel[1] >> 4}:${pixel[2] >> 4}`);
       }
     }
-
-    const unique = new Set(samples.map((pixel) => pixel.join(",")));
-    const visibleSamples = samples.filter(
-      (pixel) => pixel[3] > 0 && pixel[0] + pixel[1] + pixel[2] > 20,
-    );
-
-    return {
-      width: canvas.width,
-      height: canvas.height,
-      uniqueColors: unique.size,
-      visibleSamples: visibleSamples.length,
-    };
+    return { uniqueColors: colors.size, visible, black, total };
   });
-  const compassCheck = await readCompass(page);
-  const axisScaleCheck = await readAxisScale(page);
-
-  if (!Number.isFinite(compassCheck.bearingDegrees)) {
-    throw new Error(`Compass bearing is invalid: ${JSON.stringify(compassCheck)}.`);
-  }
-
-  if (
-    !axisScaleCheck.visible ||
-    axisScaleCheck.debug.unit !== "meter" ||
-    axisScaleCheck.debug.xMeasureM < 1_700 ||
-    axisScaleCheck.debug.yMeasureM < 850 ||
-    axisScaleCheck.debug.zMeasureM < 1_700 ||
-    !axisScaleCheck.labels.x ||
-    !axisScaleCheck.labels.y ||
-    !axisScaleCheck.labels.z ||
-    !axisScaleCheck.rotations.x ||
-    !axisScaleCheck.rotations.y ||
-    !axisScaleCheck.rotations.z
-  ) {
-    throw new Error(`Axis scale is invalid: ${JSON.stringify(axisScaleCheck)}.`);
-  }
-
-  await page.mouse.move(run.width * 0.5, run.height * 0.5);
-  await page.mouse.down();
-  await page.mouse.move(run.width * 0.68, run.height * 0.5, { steps: 12 });
-  await page.mouse.up();
-  await page.waitForTimeout(300);
-
-  const movedCompassCheck = await readCompass(page);
-  const movedAxisScaleCheck = await readAxisScale(page);
-  const compassMoved =
-    Math.abs(movedCompassCheck.bearingDegrees - compassCheck.bearingDegrees) > 0.1;
-  const axisScaleMoved = ["x", "y", "z"].some(
-    (axis) =>
-      Math.abs(
-        movedAxisScaleCheck.debug.axisAnglesDegrees[axis] -
-          axisScaleCheck.debug.axisAnglesDegrees[axis],
-      ) > 0.1,
-  );
-
-  if (!compassMoved) {
-    throw new Error(
-      `Compass did not react to camera movement: ${JSON.stringify({
-        before: compassCheck,
-        after: movedCompassCheck,
-      })}.`,
-    );
-  }
-
-  if (!axisScaleMoved) {
-    throw new Error(
-      `Axis scale did not react to camera movement: ${JSON.stringify({
-        before: axisScaleCheck,
-        after: movedAxisScaleCheck,
-      })}.`,
-    );
-  }
-  const naturalFeatures = await page.evaluate(() => window.__SITY_DEBUG__.getNaturalFeatures());
-
-  if (!naturalFeatures.mountain.clippedToMainBoundary) {
-    throw new Error(`Expected clipped mountain feature: ${JSON.stringify(naturalFeatures)}.`);
-  }
-
-  if (
-    naturalFeatures.mountain.foothillBlendHeightM <= 0 ||
-    naturalFeatures.mountain.surfaceLiftM <= 0
-  ) {
-    throw new Error(
-      `Expected lifted foothill blend to avoid mountain/grass z-fighting: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (
-    naturalFeatures.snowMountain.corner !== "southwest" ||
-    naturalFeatures.snowMountain.maxHeightM < 850 ||
-    naturalFeatures.snowMountain.radiusXM < 1_200 ||
-    naturalFeatures.snowMountain.radiusZM < 1_100 ||
-    !naturalFeatures.snowMountain.clippedToMainBoundary ||
-    !naturalFeatures.snowMountain.centerOutsideMainBoundary ||
-    naturalFeatures.snowMountain.estimatedVisiblePortion <= 0.12 ||
-    naturalFeatures.snowMountain.estimatedVisiblePortion >= 0.3 ||
-    !naturalFeatures.snowMountain.solidCutFaces ||
-    naturalFeatures.snowMountain.foothillBlendHeightM < 120 ||
-    !naturalFeatures.snowMountain.higherThanReservoirMountain ||
-    !naturalFeatures.snowMountain.separateFromReservoirMountain ||
-    !naturalFeatures.snowMountain.hasSnowCap ||
-    naturalFeatures.snowMountain.snowLineM >= naturalFeatures.snowMountain.maxHeightM
-  ) {
-    throw new Error(
-      `Expected a higher snow-capped mountain clipped to roughly a southwest visible quadrant: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (
-    !naturalFeatures.coast.hasVolumetricTerrain ||
-    naturalFeatures.coast.terrainSlabThicknessM < 1.5 ||
-    !naturalFeatures.coast.mainlandCoastSimple ||
-    !naturalFeatures.coast.parallelCoastEdges ||
-    !naturalFeatures.coast.hasIntegratedRiverBeach ||
-    !naturalFeatures.coast.hasWetSandBand ||
-    !naturalFeatures.coast.beachBoundedByNorthRiverBank ||
-    !naturalFeatures.coast.hasVolumetricBeach ||
-    !naturalFeatures.coast.hasRaisedWaterfrontStructures ||
-    !naturalFeatures.coast.hasPierSupportPiles ||
-    naturalFeatures.coast.pierSupportPileCount < 20 ||
-    !naturalFeatures.coast.hasCargoPortEquipment ||
-    naturalFeatures.coast.cargoContainerCount !== 12 ||
-    naturalFeatures.coast.cargoCraneCount !== 2 ||
-    !naturalFeatures.coast.hasConcreteSeams ||
-    naturalFeatures.coast.cargoPortSeamCount < 12 ||
-    !naturalFeatures.coast.hasQuayFenders ||
-    naturalFeatures.coast.quayFenderCount < 10 ||
-    !naturalFeatures.coast.hasMarinaCleats ||
-    naturalFeatures.coast.marinaCleatCount < 20 ||
-    naturalFeatures.coast.wetSandWidthM < 20 ||
-    !naturalFeatures.coast.hasShallowWaterShelf ||
-    naturalFeatures.coast.shallowWaterShelfWidthM < 300 ||
-    !naturalFeatures.coast.beachOppositePier ||
-    !naturalFeatures.coast.hasLongWoodenAttractionPier ||
-    naturalFeatures.coast.attractionPierLengthM < 400 ||
-    naturalFeatures.coast.pierDeckThicknessM < 4 ||
-    !naturalFeatures.coast.hasPierRailings ||
-    naturalFeatures.coast.pierRailPostCount < 40 ||
-    !naturalFeatures.coast.hasPierUnderstructure ||
-    naturalFeatures.coast.pierBeamCount < 20 ||
-    !naturalFeatures.coast.hasConcreteShipPort ||
-    naturalFeatures.coast.cargoPortHeightM < 6 ||
-    naturalFeatures.coast.cargoShipBerthCount !== 2 ||
-    naturalFeatures.coast.cargoShipCenterOffsetFromPortEdgeM -
-      naturalFeatures.coast.cargoShipHullLengthM * 0.5 <
-      naturalFeatures.coast.cargoBerthDockLengthM + naturalFeatures.coast.cargoShipWaterGapM ||
-    naturalFeatures.coast.cargoShipWaterGapM < 20 ||
-    !naturalFeatures.coast.hasAssetStyleVessels ||
-    naturalFeatures.coast.vesselLodCount < 6 ||
-    !naturalFeatures.coast.hasPrivateMarina ||
-    naturalFeatures.coast.privateBerthCount !== 4
-  ) {
-    throw new Error(
-      `Expected volumetric terrain, river-integrated beach, supported pier/marina, separate cargo port, and 3D port equipment: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (
-    !naturalFeatures.coast.hasShorelineFoam ||
-    naturalFeatures.coast.beachFoamStripCount < 6 ||
-    !naturalFeatures.coast.hasBeachDunes ||
-    naturalFeatures.coast.beachDuneCount < 12 ||
-    naturalFeatures.coast.beachGrassClusterCount < 30 ||
-    !naturalFeatures.coast.hasBeachAmenities ||
-    !naturalFeatures.coast.hasBeachShells ||
-    naturalFeatures.coast.beachShellCount < 60 ||
-    naturalFeatures.coast.beachUmbrellaCount < 10 ||
-    naturalFeatures.coast.beachSunbedCount < 20 ||
-    naturalFeatures.coast.beachTowelCount < 8 ||
-    !naturalFeatures.coast.hasBeachVolleyballCourt ||
-    !naturalFeatures.coast.hasLifeguardTower ||
-    !naturalFeatures.coast.hasBeachAccessBoardwalk ||
-    !naturalFeatures.coast.hasBeachShowers ||
-    !naturalFeatures.coast.hasBeachSafetyFlags ||
-    naturalFeatures.coast.beachTrashBinCount < 4 ||
-    !naturalFeatures.coast.beachAmenitiesAvoidWetSand ||
-    !naturalFeatures.coast.beachDetailsInsideVisibleBoundary ||
-    naturalFeatures.coast.beachDryDetailSeaMarginM <= naturalFeatures.coast.wetSandWidthM
-  ) {
-    throw new Error(
-      `Expected detailed beach amenities and natural shoreline details: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (naturalFeatures.river.mouth.x <= naturalFeatures.river.source.x) {
-    throw new Error(`Expected river to flow toward the sea: ${JSON.stringify(naturalFeatures)}.`);
-  }
-
-  const siteLayout = await page.evaluate(() => window.__SITY_DEBUG__.getSiteLayout());
-  const coastlineX = siteLayout.mainBoundarySideM / 2;
-
-  if (Math.abs(naturalFeatures.river.mouth.x - coastlineX) > 0.001) {
-    throw new Error(`Expected river mouth to meet coastline exactly: ${JSON.stringify({
-      coastlineX,
-      naturalFeatures,
-    })}.`);
-  }
-
-  if (
-    naturalFeatures.estuary.start.x >= coastlineX ||
-    naturalFeatures.estuary.extendsPastCoastlineM <= 0
-  ) {
-    throw new Error(
-      `Expected estuary to blend from inland river into the sea: ${JSON.stringify({
-        coastlineX,
-        naturalFeatures,
-      })}.`,
-    );
-  }
-
-  if (naturalFeatures.reservoir.radiusXM < naturalFeatures.river.widthM) {
-    throw new Error(`Expected reservoir to be wider than the river: ${JSON.stringify(naturalFeatures)}.`);
-  }
-
-  if (
-    naturalFeatures.river.sourceWidthM <= 0 ||
-    naturalFeatures.river.sourceWidthM >= naturalFeatures.river.widthM
-  ) {
-    throw new Error(
-      `Expected river to start as a narrower dam outlet channel: ${JSON.stringify(naturalFeatures)}.`,
-    );
-  }
-
-  if (
-    !naturalFeatures.river.hasCarvedChannel ||
-    naturalFeatures.river.channelBankWidthM < 35 ||
-    naturalFeatures.river.channelReliefM < 1.5 ||
-    !naturalFeatures.river.hasErosionEdges ||
-    !naturalFeatures.river.hasReedClusters ||
-    naturalFeatures.river.reedClusterCount < 80 ||
-    !naturalFeatures.river.hasPebbleFields ||
-    naturalFeatures.river.pebbleCount < 80
-  ) {
-    throw new Error(
-      `Expected river to sit in a visible natural 3D channel with erosion edges, reeds, and pebble fields: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (
-    !naturalFeatures.estuary.hasSlopedBanks ||
-    !naturalFeatures.estuary.banksTaperIntoSea ||
-    !naturalFeatures.estuary.hasSeamlessSeaBlend ||
-    naturalFeatures.estuary.blendStartsBeforeCoastlineM < 30 ||
-    naturalFeatures.estuary.fadeLengthM < 180 ||
-    naturalFeatures.estuary.finalWaterHeightDeltaM > 0.05
-  ) {
-    throw new Error(
-      `Expected estuary banks and water to slope, fade, and blend seamlessly into the sea: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (!naturalFeatures.reservoir.enclosedByNaturalBank) {
-    throw new Error(
-      `Expected reservoir water to be enclosed by natural terrain: ${JSON.stringify(naturalFeatures)}.`,
-    );
-  }
-
-  if (
-    !naturalFeatures.reservoir.hasVolumetricWater ||
-    naturalFeatures.reservoir.waterDepthM < 20
-  ) {
-    throw new Error(
-      `Expected reservoir lake to be a volumetric water mass with a flat top: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (!naturalFeatures.reservoir.clippedAtDam) {
-    throw new Error(
-      `Expected reservoir water boundary to be clipped by the upstream dam face: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (naturalFeatures.reservoir.damOpeningWidthM <= naturalFeatures.dam.lengthM) {
-    throw new Error(
-      `Expected natural reservoir bank to leave an opening around the dam: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  if (naturalFeatures.dam.heightM <= 0 || naturalFeatures.dam.lengthM <= 0) {
-    throw new Error(`Expected proportional dam dimensions: ${JSON.stringify(naturalFeatures)}.`);
-  }
-
-  if (!naturalFeatures.dam.curved) {
-    throw new Error(`Expected curved dam to match reservoir opening: ${JSON.stringify(naturalFeatures)}.`);
-  }
-
-  if (!naturalFeatures.dam.abuttedByNaturalTerrain) {
-    throw new Error(
-      `Expected natural terrain abutments at both dam ends: ${JSON.stringify(naturalFeatures)}.`,
-    );
-  }
-
-  if (
-    !naturalFeatures.dam.hasCrestRail ||
-    !naturalFeatures.dam.hasSpillwayGates ||
-    naturalFeatures.dam.spillwayGateCount < 5 ||
-    !naturalFeatures.dam.hasServiceGallery
-  ) {
-    throw new Error(
-      `Expected dam crest rail, spillway gates, and service gallery: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  const damThicknessDirection = {
-    x: naturalFeatures.dam.downstreamEdge.x - naturalFeatures.dam.upstreamEdge.x,
-    z: naturalFeatures.dam.downstreamEdge.z - naturalFeatures.dam.upstreamEdge.z,
-  };
-
-  if (Math.hypot(damThicknessDirection.x, damThicknessDirection.z) <= 0) {
-    throw new Error(`Expected dam upstream and downstream faces to be distinct: ${JSON.stringify(naturalFeatures)}.`);
-  }
-
-  const damFaceToRiverStart = Math.hypot(
-    naturalFeatures.river.source.x - naturalFeatures.dam.downstreamEdge.x,
-    naturalFeatures.river.source.z - naturalFeatures.dam.downstreamEdge.z,
-  );
-
-  if (damFaceToRiverStart > 0.001 || naturalFeatures.river.source.x <= naturalFeatures.dam.center.x) {
-    throw new Error(
-      `Expected river to start exactly at the downstream dam face: ${JSON.stringify(naturalFeatures)}.`,
-    );
-  }
-
-  if (
-    !naturalFeatures.realism.hasToneMappedRenderer ||
-    !naturalFeatures.realism.hasProceduralMaterialTextures ||
-    !naturalFeatures.realism.hasWaterSurfaceBump ||
-    !naturalFeatures.realism.hasAnimatedWaterMaterial ||
-    !naturalFeatures.realism.hasShaderWater ||
-    !naturalFeatures.realism.hasPostprocessingComposer ||
-    !naturalFeatures.realism.hasSsao ||
-    !naturalFeatures.realism.hasBloom ||
-    !naturalFeatures.realism.hasPbrEnvironmentMap ||
-    !naturalFeatures.realism.hasPhysicalSky ||
-    !naturalFeatures.realism.usesUnifiedSeaWaterMaterial ||
-    !naturalFeatures.realism.allWaterUsesExactSeaShader ||
-    naturalFeatures.realism.sharedWaterMaterialName !== "sity-shared-sea-water-shader" ||
-    naturalFeatures.realism.waterTextureVariantCount !== 1 ||
-    naturalFeatures.realism.unifiedWaterSurfaceCount < 5 ||
-    !naturalFeatures.realism.hasTerrainDisplacementMesh ||
-    !naturalFeatures.realism.hasTerrainSplatShader ||
-    !naturalFeatures.realism.hasPlanarSurfaceUvs ||
-    !naturalFeatures.realism.usesRoundedBuiltGeometry ||
-    !naturalFeatures.realism.hasContactShadowPlanes ||
-    !naturalFeatures.realism.hasWeatheringDecals ||
-    !naturalFeatures.realism.hasNaturalRockClusters ||
-    naturalFeatures.realism.naturalRockClusterCount < 30 ||
-    !naturalFeatures.realism.hasAssetPipelineScaffold ||
-    !naturalFeatures.realism.hasAssetManifest ||
-    !naturalFeatures.realism.hasImportedTextureAssets ||
-    naturalFeatures.realism.importedTextureCount < 9 ||
-    !naturalFeatures.realism.hasPbrTextureMaps ||
-    naturalFeatures.realism.pbrTextureMapCount < 27 ||
-    !naturalFeatures.realism.hasImportedModelAssets ||
-    naturalFeatures.realism.importedModelSourceCount < 2 ||
-    naturalFeatures.realism.importedModelInstanceCount < 6 ||
-    !naturalFeatures.realism.importedAssetKinds.includes("cargoShip") ||
-    !naturalFeatures.realism.importedAssetKinds.includes("privateBoat") ||
-    !naturalFeatures.realism.assetLoadComplete ||
-    naturalFeatures.realism.assetLoadFailures.length > 0 ||
-    !naturalFeatures.realism.hasGltfLoader ||
-    !naturalFeatures.realism.hasKtx2Loader ||
-    !naturalFeatures.realism.hasDracoLoader ||
-    !naturalFeatures.realism.hasMeshoptDecoder ||
-    !naturalFeatures.realism.hasDecoderRuntimeAssets ||
-    !naturalFeatures.realism.supportedAssetFormats.includes("glb") ||
-    !naturalFeatures.realism.supportedAssetFormats.includes("ktx2") ||
-    !naturalFeatures.realism.supportedAssetFormats.includes("drc") ||
-    !naturalFeatures.realism.supportedAssetFormats.includes("meshopt")
-  ) {
-    throw new Error(
-      `Expected scene-wide realism pass with tone mapping, postprocessing, physical sky, one exact shared sea water shader for every water body, file-backed PBR texture assets, imported GLTF model assets, decoder runtimes, terrain shaders, displaced terrain, rounded built geometry, natural rock clusters, and asset pipeline scaffold: ${JSON.stringify(
-        naturalFeatures,
-      )}.`,
-    );
-  }
-
-  const roadNetwork = await page.evaluate(() => window.__SITY_DEBUG__.getRoadNetwork());
-  const highwayLoop = roadNetwork.roads.find((road) => road.id === "smart-highway-loop");
-
-  if (
-    !highwayLoop ||
-    !highwayLoop.closedLoop ||
-    highwayLoop.lanesPerDirection !== 2 ||
-    highwayLoop.totalLaneCount !== 4 ||
-    highwayLoop.laneWidthM < 3.5 ||
-    highwayLoop.totalRoadWidthM < 24 ||
-    !highwayLoop.features.crossesDam ||
-    !highwayLoop.features.hasMountainTunnel ||
-    !highwayLoop.features.reachesPort ||
-    !highwayLoop.features.hasRiverBridge ||
-    !highwayLoop.features.hasCableStayedBridge ||
-    !highwayLoop.features.hasBridgeStayCables ||
-    !highwayLoop.features.roadFitsDam ||
-    !highwayLoop.features.hasTireWearStrips ||
-    !highwayLoop.features.hasContinuousSideBarriers ||
-    !highwayLoop.features.hasExpansionJoints ||
-    highwayLoop.features.expansionJointCount < 16 ||
-    !highwayLoop.features.hasRoadCrackDecals ||
-    highwayLoop.features.roadCrackCount < 50 ||
-    !highwayLoop.features.hasDrainageChannels ||
-    !highwayLoop.features.hasReflectorPosts ||
-    highwayLoop.features.reflectorPostCount < 40 ||
-    !highwayLoop.features.hasTunnelLiningRibs ||
-    highwayLoop.features.tunnelLiningRibCount < 10
-  ) {
-    throw new Error(
-      `Expected a closed bidirectional smart highway loop with mountain tunnel, cable-stayed bridge, bridge stay cables, dam-fit road deck, tire wear, continuous barriers, drainage, decals, reflectors, and tunnel lining ribs: ${JSON.stringify(
-        roadNetwork,
-      )}.`,
-    );
-  }
-
-  if (
-    roadNetwork.directedLanePathCount !== 4 ||
-    roadNetwork.lanePaths.some((lanePath) => !lanePath.closedLoop || lanePath.pointCount < 180) ||
-    !roadNetwork.graph.allLanePathsClosed ||
-    roadNetwork.graph.nodeCount < 180 ||
-    !roadNetwork.graph.laneDirections.includes("clockwise") ||
-    !roadNetwork.graph.laneDirections.includes("counterclockwise")
-  ) {
-    throw new Error(
-      `Expected four directed closed lane paths for future vehicle routing: ${JSON.stringify(
-        roadNetwork,
-      )}.`,
-    );
-  }
-
-  const initialCategoryVisibility = await readCategoryVisibility(page);
-  if (
-    !initialCategoryVisibility.natural ||
-    !initialCategoryVisibility.artificial ||
-    !initialCategoryVisibility.roads ||
-    !initialCategoryVisibility.help
-  ) {
-    throw new Error(
-      `Expected all categories visible initially: ${JSON.stringify(initialCategoryVisibility)}.`,
-    );
-  }
-
-  await page.locator("#toggle-natural").uncheck();
-  const hiddenNaturalVisibility = await readCategoryVisibility(page);
-  if (
-    hiddenNaturalVisibility.natural ||
-    !hiddenNaturalVisibility.artificial ||
-    !hiddenNaturalVisibility.roads ||
-    !hiddenNaturalVisibility.help
-  ) {
-    throw new Error(
-      `Expected natural category hidden only: ${JSON.stringify(hiddenNaturalVisibility)}.`,
-    );
-  }
-
-  await page.locator("#toggle-artificial").uncheck();
-  const hiddenSceneVisibility = await readCategoryVisibility(page);
-  if (
-    hiddenSceneVisibility.natural ||
-    hiddenSceneVisibility.artificial ||
-    !hiddenSceneVisibility.roads ||
-    !hiddenSceneVisibility.help
-  ) {
-    throw new Error(
-      `Expected natural/artificial categories hidden with roads and help still visible: ${JSON.stringify(
-        hiddenSceneVisibility,
-      )}.`,
-    );
-  }
-
-  await page.locator("#toggle-roads").uncheck();
-  const hiddenRoadsVisibility = await readCategoryVisibility(page);
-  if (
-    hiddenRoadsVisibility.natural ||
-    hiddenRoadsVisibility.artificial ||
-    hiddenRoadsVisibility.roads ||
-    !hiddenRoadsVisibility.help
-  ) {
-    throw new Error(
-      `Expected roads hidden independently while help remains visible: ${JSON.stringify(
-        hiddenRoadsVisibility,
-      )}.`,
-    );
-  }
-
-  await page.locator("#toggle-help").uncheck();
-  const hiddenHelpVisibility = await readCategoryVisibility(page);
-  const hiddenHelpCompassCheck = await readCompass(page);
-  const hiddenHelpAxisScaleCheck = await readAxisScale(page);
-
-  if (
-    hiddenHelpVisibility.natural ||
-    hiddenHelpVisibility.artificial ||
-    hiddenHelpVisibility.roads ||
-    hiddenHelpVisibility.help ||
-    hiddenHelpCompassCheck.visible ||
-    hiddenHelpAxisScaleCheck.visible
-  ) {
-    throw new Error(
-      `Expected help category hidden without restoring scene categories: ${JSON.stringify({
-        hiddenHelpVisibility,
-        hiddenHelpCompassCheck,
-        hiddenHelpAxisScaleCheck,
-      })}.`,
-    );
-  }
-
-  await page.locator("#toggle-natural").check();
-  await page.locator("#toggle-artificial").check();
-  await page.locator("#toggle-roads").check();
-  await page.locator("#toggle-help").check();
-  const restoredCategoryVisibility = await readCategoryVisibility(page);
-  const restoredHelpCompassCheck = await readCompass(page);
-  const restoredHelpAxisScaleCheck = await readAxisScale(page);
-  if (
-    !restoredCategoryVisibility.natural ||
-    !restoredCategoryVisibility.artificial ||
-    !restoredCategoryVisibility.roads ||
-    !restoredCategoryVisibility.help ||
-    !restoredHelpCompassCheck.visible ||
-    !restoredHelpAxisScaleCheck.visible
-  ) {
-    throw new Error(
-      `Expected categories restored: ${JSON.stringify({
-        restoredCategoryVisibility,
-        restoredHelpCompassCheck,
-        restoredHelpAxisScaleCheck,
-      })}.`,
-    );
-  }
-
-  console.log(
-    JSON.stringify({
-      run: run.name,
-      canvasCheck,
-      compassCheck,
-      movedCompassCheck,
-      axisScaleCheck,
-      movedAxisScaleCheck,
-      siteLayout,
-      naturalFeatures,
-      roadNetwork,
-      categoryVisibility: restoredCategoryVisibility,
-      performance: await page.evaluate(() => window.__SITY_DEBUG__.getPerformance()),
-    }),
-  );
-
-  await page.close();
 }
 
-await browser.close();
+const browser = await chromium.launch({
+  args: softwareGl ? ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] : [],
+});
+
+try {
+  for (const run of runs) {
+    const page = await browser.newPage({ viewport: { width: run.width, height: run.height } });
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        pageErrors.push(message.text());
+      }
+    });
+    await page.goto(`${baseUrl}/?verify`, { waitUntil: "networkidle" });
+    await waitForScene(page);
+    await settleFrames(page, 6);
+
+    const layout = await page.evaluate(() => window.__SITY_DEBUG__.getSiteLayout());
+    assert(layout.unit === "meter" && layout.mainBoundaryAreaM2 === 3_000_000, "Unexpected site layout", layout);
+    assert(layout.northDirection.z === -1 && layout.seaSide === "east", "Compass frame must be north = -Z with the sea to the east", layout);
+
+    const natural = await page.evaluate(() => window.__SITY_DEBUG__.getNaturalFeatures());
+    assert(natural.assets.loadComplete && natural.assets.failures.length === 0, "Asset pack failed to load", natural.assets);
+    assert(natural.assets.importedModelInstances >= 6 && natural.assets.textureFamilies >= 9, "Imported assets missing", natural.assets);
+    assert(natural.river.mouth.x > natural.river.source.x, "River must flow toward the eastern sea", natural.river);
+    assert(natural.water.sharedSurfaceCount >= 5, "Expected the shared water shader on every water body", natural.water);
+
+    const graph = await page.evaluate(() => window.__SITY_DEBUG__.getRoadGraph());
+    assert(graph.stats.roadCount >= 90, "Road network too small", graph.stats);
+    assert(graph.stats.laneCount >= 600, "Lane graph too small", graph.stats);
+    assert(graph.stats.roundaboutCount >= 3 && graph.stats.junctionCount >= 50, "Junction inventory incomplete", graph.stats);
+    assert(graph.stats.laneCountByKind.ramp >= 8, "Interchange ramps missing", graph.stats);
+    assert(graph.invariants.everyLaneHasPoints && graph.invariants.noNaNCoordinates, "Lane geometry invalid", graph.invariants);
+    assert(graph.invariants.connectorsTouchNeighbours && graph.invariants.everyLinkIsBidirectional, "Lane links inconsistent", graph.invariants);
+    assert(graph.invariants.strandedLaneIds.length === 0, "Stranded lanes found", graph.invariants.strandedLaneIds);
+
+    const exported = await page.evaluate(() => window.__SITY_DEBUG__.exportRoadGraph());
+    assert(Array.isArray(exported.lanes) && exported.lanes.length === graph.stats.laneCount, "Exported graph size mismatch");
+    const ringLane = exported.lanes.find((lane) => lane.roadId === "ring-highway" && lane.direction === "forward" && lane.laneIndex === 0);
+    const mainLane = exported.lanes.find((lane) => lane.roadId === "main-street-1" && lane.direction === "forward" && lane.laneIndex === 0);
+    assert(ringLane && mainLane, "Expected ring highway and Main Street lanes", { ringLane: Boolean(ringLane), mainLane: Boolean(mainLane) });
+    const route = await page.evaluate(([from, to]) => window.__SITY_DEBUG__.findRoute(from, to), [ringLane.id, mainLane.id]);
+    assert(route && route.laneIds.length > 2 && route.lengthM > 200, "Route search failed between highway and Main Street", route);
+    const reverse = await page.evaluate(([from, to]) => window.__SITY_DEBUG__.findRoute(from, to), [mainLane.id, ringLane.id]);
+    assert(reverse && reverse.laneIds.length > 2, "Reverse route search failed", reverse);
+    const randomRoute = await page.evaluate(() => window.__SITY_DEBUG__.showRandomRoute(11));
+    assert(randomRoute && randomRoute.lengthM >= 900, "Random route demo failed", randomRoute);
+
+    const city = await page.evaluate(() => window.__SITY_DEBUG__.getCity());
+    assert(city.buildingCount >= 250 && city.lotCount >= 180, "City is underbuilt", city);
+    assert(city.treeCount >= 2000, "Vegetation is too sparse", city);
+
+    const visibility = await page.evaluate(() => window.__SITY_DEBUG__.getCategoryVisibility());
+    assert(visibility.natural && visibility.roads && visibility.buildings && visibility.vegetation && visibility.help, "Default layers hidden", visibility);
+
+    const compassBefore = await page.evaluate(() => window.__SITY_DEBUG__.getCompassBearingDegrees());
+    assert(Number.isFinite(compassBefore), "Compass bearing invalid", compassBefore);
+    const views = await page.evaluate(() => window.__SITY_DEBUG__.listViews());
+    assert(views.length >= 10, "Camera views missing", views);
+
+    const performance = await page.evaluate(() => window.__SITY_DEBUG__.getPerformance());
+    assert(performance.drawCalls > 0 && performance.drawCalls <= 420, "Draw call budget exceeded", performance);
+    assert(performance.triangles > 0 && performance.triangles <= 2_500_000, "Triangle budget exceeded", performance);
+    assert(performance.postprocessingPassCount === 4 && performance.usesComposer, "Postprocessing chain changed", performance);
+
+    for (const viewId of run.views) {
+      await page.evaluate((id) => window.__SITY_DEBUG__.flyTo(id), viewId);
+      await settleFrames(page, 6);
+      const sample = await sampleCanvas(page);
+      assert(sample.visible >= sample.total * 0.9 && sample.uniqueColors >= 6, `View "${viewId}" rendered blank`, sample);
+      await page.screenshot({ path: `${outDir}/${run.name}-${viewId}.png` });
+    }
+
+    const compassAfter = await page.evaluate(() => window.__SITY_DEBUG__.getCompassBearingDegrees());
+    assert(Number.isFinite(compassAfter), "Compass bearing invalid after flying", compassAfter);
+    if (run.views[run.views.length - 1] !== "overview") {
+      assert(Math.abs(compassAfter - compassBefore) > 0.01, "Compass did not follow the camera", { compassBefore, compassAfter });
+    }
+
+    assert(pageErrors.length === 0, "Page reported errors", pageErrors);
+    console.log(
+      JSON.stringify({
+        run: run.name,
+        graph: graph.stats,
+        city: { lots: city.lotCount, buildings: city.buildingCount, trees: city.treeCount },
+        performance,
+        route: { lanes: route.laneIds.length, lengthM: Math.round(route.lengthM) },
+      }),
+    );
+    await page.close();
+  }
+} finally {
+  await browser.close();
+}
