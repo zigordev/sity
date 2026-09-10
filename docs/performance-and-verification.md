@@ -29,8 +29,13 @@ fullscreen pass; the debug API exposes both the renderer counters and the traver
 
 ## Verification
 
-`npm run verify:render` starts from a running dev server (`npm run dev`), loads the page in headless Chromium
-with software WebGL, and checks:
+Unit tests (`npm run test -w @sity/web`, Vitest, no browser) build synthetic networks and the real city
+plan with a flat terrain and check the builder: trims and turn connectors at a crossroads, lane-turn
+assignment and adjacency, roundabout rings with entries and exits, ramp diverges and merges, graph
+invariants, routing, path enumeration and random routes.
+
+The Playwright suite (`npm run e2e -w @sity/web`, after `npm run build`) serves the built site with
+`vite preview` and loads it in headless Chromium with software WebGL, on a desktop and a mobile viewport:
 
 - assets loaded without failures (manifest, texture families, imported vessels);
 - the site frame (north is `-Z`, the sea is east, the river flows to the sea);
@@ -39,8 +44,8 @@ with software WebGL, and checks:
 - routing: a route from the ring highway to Main Street and back, and a random route of at least 900 m;
 - city size: lots, buildings and trees above minimum counts;
 - default layer visibility, camera views, compass movement and the draw-call and triangle budgets;
-- rendered pixels for the overview, downtown, interchange and street views on desktop and the overview on
-  mobile, saved as PNG files under `verify-output/`.
+- rendered pixels for each camera view, with a screenshot kept in the test output;
+- the control panel against WCAG A and AA with axe (the canvas itself is excluded).
 
 ## Simulation readiness
 

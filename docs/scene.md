@@ -18,12 +18,13 @@ One Three.js unit is one meter. North is `-Z`, east is `+X`, and the sea lies ea
 
 ## Road network
 
-Every road is described once in `src/roads/plan.ts` as nodes and roads (class, lane counts, control points,
-elevation mode, structures, junction control). `src/roads/network.ts` turns that plan into geometry and a
-directed lane graph, `src/roads/graph.ts` answers routing queries over it, and `src/roads/render.ts` draws it.
+Every road is described once in `apps/web/src/roads/plan.ts` as nodes and roads (class, lane counts,
+control points, elevation mode, structures, junction control). `apps/web/src/roads/network.ts` turns that
+plan into geometry and a directed lane graph, `apps/web/src/roads/graph.ts` answers routing queries over it,
+and `apps/web/src/roads/render.ts` draws it.
 
 Road classes: highway, ramp, arterial, collector, local, industrial, mountain and service roads, each with its
-own lane width, shoulders, median, sidewalk, speed and marking rules (`src/roads/classes.ts`).
+own lane width, shoulders, median, sidewalk, speed and marking rules (`apps/web/src/roads/classes.ts`).
 
 Scenarios in the plan:
 
@@ -58,7 +59,7 @@ traffic-signal masts with heads, and stop, yield, speed and no-entry signs.
 
 ## City
 
-`src/city` fills the blocks between the streets:
+`apps/web/src/city` fills the blocks between the streets:
 
 - Districts (`districts.ts`) decide lot sizes and building types: downtown towers on podiums, mid-rise
   plaster, brick and concrete blocks, suburban houses with pitched roofs and gardens, industrial sheds by the
@@ -85,7 +86,7 @@ traffic-signal masts with heads, and stop, yield, speed and no-entry signs.
 `window.__SITY_DEBUG__` exposes the site layout, natural features, road graph statistics and invariants,
 the exported graph (`exportRoadGraph`), `findRoute`, `showRandomRoute`, city statistics, layer visibility,
 performance estimates, camera views (`listViews`, `flyTo`, `setView`) and the lane overlay toggle. The
-render verification script drives the scene through this API.
+Playwright suite drives the scene through this API.
 
 ## Next steps
 
