@@ -107,6 +107,12 @@ roadElements.name = "road-elements";
 
 scene.add(roadElements);
 
+export const vehicleElements = new THREE.Group();
+
+vehicleElements.name = "vehicle-elements";
+
+scene.add(vehicleElements);
+
 export const camera = new THREE.PerspectiveCamera(
   48,
   window.innerWidth / window.innerHeight,
@@ -144,13 +150,13 @@ sunLight.castShadow = true;
 
 sunLight.shadow.mapSize.set(4096, 4096);
 
-sunLight.shadow.camera.left = -1_500;
+sunLight.shadow.camera.left = -1_900;
 
-sunLight.shadow.camera.right = 1_500;
+sunLight.shadow.camera.right = 1_900;
 
-sunLight.shadow.camera.top = 1_500;
+sunLight.shadow.camera.top = 1_900;
 
-sunLight.shadow.camera.bottom = -1_500;
+sunLight.shadow.camera.bottom = -1_900;
 
 sunLight.shadow.camera.near = 200;
 

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { COASTAL_INLET_OVERLAP_M, DAM_CURVE_BOW_M, DAM_LENGTH_M, DAM_THICKNESS_M, DAM_UPSTREAM_FACE_OFFSET_M, ESTUARY_SEA_BLEND_END_OFFSET_M, ESTUARY_SEA_BLEND_START_OFFSET_M, MAINLAND_EAST_MARGIN_M, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAIN_BOUNDARY_SIDE_M, MOUNTAIN_VISIBLE_SPAN_M, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, SNOW_MOUNTAIN_VISIBLE_SPAN_M } from "../config/constants";
+import { COASTAL_INLET_OVERLAP_M, DAM_CURVE_BOW_M, DAM_LENGTH_M, DAM_THICKNESS_M, DAM_UPSTREAM_FACE_OFFSET_M, ESTUARY_SEA_BLEND_END_OFFSET_M, ESTUARY_SEA_BLEND_START_OFFSET_M, MAINLAND_EAST_MARGIN_M, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAIN_BOUNDARY_NORTH_EXTENSION_M, MAIN_BOUNDARY_SIDE_M, MOUNTAIN_VISIBLE_SPAN_M, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_VISIBLE_SPAN_M } from "../config/constants";
 import { GroundPathPoint } from "../geometry/types";
 
 export const mainBoundaryCenterX = 0;
@@ -10,7 +10,7 @@ export const mainBoundaryMinX = mainBoundaryCenterX - MAIN_BOUNDARY_SIDE_M / 2;
 
 export const mainBoundaryMaxX = mainBoundaryCenterX + MAIN_BOUNDARY_SIDE_M / 2;
 
-export const mainBoundaryMinZ = mainBoundaryCenterZ - MAIN_BOUNDARY_SIDE_M / 2;
+export const mainBoundaryMinZ = mainBoundaryCenterZ - MAIN_BOUNDARY_SIDE_M / 2 - MAIN_BOUNDARY_NORTH_EXTENSION_M;
 
 export const mainBoundaryMaxZ = mainBoundaryCenterZ + MAIN_BOUNDARY_SIDE_M / 2;
 
@@ -58,14 +58,14 @@ export const mountainVisibleBounds = {
 
 export const snowMountainCenter = {
   x: mainBoundaryMinX - 35,
-  z: mainBoundaryMinZ - 35,
+  z: mainBoundaryCenterZ - MAIN_BOUNDARY_SIDE_M / 2 - 35,
 };
 
 export const snowMountainVisibleBounds = {
   minX: mainBoundaryMinX,
   maxX: Math.min(mainBoundaryMinX + SNOW_MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMaxX),
   minZ: mainBoundaryMinZ,
-  maxZ: Math.min(mainBoundaryMinZ + SNOW_MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMaxZ),
+  maxZ: Math.min(snowMountainCenter.z + SNOW_MOUNTAIN_RADIUS_Z_M, mainBoundaryMaxZ),
 };
 
 export const reservoirCenter = {

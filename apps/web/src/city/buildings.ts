@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { cityElements } from "../render/context";
+import { rooftopPropMaterial } from "../render/materials";
 import type { Lot } from "./lots";
 import { DISTRICT_STYLES } from "./districts";
 import { createRandom, hash2 } from "./random";
@@ -234,6 +235,45 @@ export class BuildingBatch {
     this.roofs.push(instance);
   }
 
+  private commitRooftopProps(name: string) {
+    const props: THREE.Matrix4[] = [];
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const yAxis = new THREE.Vector3(0, 1, 0);
+    for (const instance of this.walls) {
+      if (instance.height < 9 || instance.width < 11 || instance.depth < 11 || instance.windowRatio < 0.3 || instance.floorHeight > 12) {
+        continue;
+      }
+      const count = 1 + Math.floor(hash2(instance.x, instance.z, instance.seed) * 3);
+      for (let index = 0; index < count; index += 1) {
+        const u = (hash2(instance.x + index * 7, instance.z, 11) - 0.5) * (instance.width - 6);
+        const v = (hash2(instance.x, instance.z + index * 5, 13) - 0.5) * (instance.depth - 6);
+        const cos = Math.cos(instance.rotationY);
+        const sin = Math.sin(instance.rotationY);
+        const width = 1.6 + hash2(u, v, 3) * 1.6;
+        const depth = 1.4 + hash2(v, u, 5) * 1.2;
+        const height = 1.1 + hash2(u, v, 9) * 1.4;
+        position.set(instance.x + u * cos + v * sin, instance.y + instance.height + height * 0.5, instance.z - u * sin + v * cos);
+        quaternion.setFromAxisAngle(yAxis, instance.rotationY);
+        scale.set(width, height, depth);
+        matrix.compose(position, quaternion, scale);
+        props.push(matrix.clone());
+      }
+    }
+    if (props.length === 0) {
+      return;
+    }
+    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), rooftopPropMaterial, props.length);
+    props.forEach((prop, index) => mesh.setMatrixAt(index, prop));
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.name = `${name}-rooftop-props`;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    cityElements.add(mesh);
+  }
+
   commit(name: string) {
     if (this.walls.length > 0) {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -264,6 +304,7 @@ export class BuildingBatch {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       cityElements.add(mesh);
+      this.commitRooftopProps(name);
     }
     if (this.roofs.length > 0) {
       const geometry = createGableRoofGeometry();

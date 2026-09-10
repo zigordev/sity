@@ -82,7 +82,9 @@ test.describe('scene', () => {
     const errors = await openScene(page);
     const layout = await page.evaluate(() => window.__SITY_DEBUG__.getSiteLayout());
     expect(layout.unit).toBe('meter');
-    expect(layout.mainBoundaryAreaM2).toBe(3_000_000);
+    expect(layout.mainBoundaryWidthM).toBeCloseTo(1_732, 0);
+    expect(layout.mainBoundaryDepthM).toBeCloseTo(2_432, 0);
+    expect(layout.mainBoundaryAreaM2).toBeGreaterThan(4_200_000);
     expect(layout.northDirection).toEqual({ x: 0, z: -1 });
     expect(layout.seaSide).toBe('east');
 

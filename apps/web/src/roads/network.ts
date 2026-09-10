@@ -10,7 +10,7 @@ export interface Vec3 extends Vec2 {
   y: number;
 }
 
-export type JunctionControl = "signal" | "stop" | "yield" | "priority" | "none";
+export type JunctionControl = "signal" | "stop" | "yield" | "priority" | "crossing" | "none";
 export type LaneDirection = "forward" | "backward";
 export type LaneKind = "road" | "connector" | "ring" | "ramp";
 export type TurnKind = "straight" | "left" | "right" | "uturn" | "merge" | "diverge" | "circulate" | "enter" | "exit";

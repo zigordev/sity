@@ -76,10 +76,16 @@ export const roadFurnitureGroup = new THREE.Group();
 roadFurnitureGroup.name = "road-furniture";
 roadElements.add(roadFurnitureGroup);
 
+export interface OrientedSlot extends Vec3 {
+  heading: number;
+}
+
 export const roadSideSlots = {
   streetTrees: [] as Vec3[],
   medianTrees: [] as Vec3[],
   lamps: [] as Vec3[],
+  parkingBays: [] as OrientedSlot[],
+  busStops: [] as OrientedSlot[],
 };
 
 interface Placement {
@@ -339,6 +345,17 @@ function buildRoadMarkings() {
         for (let s = s0 + 8; s < s1 - 8; s += 6) {
           const stations = stationsBetween(road.samples, s - 0.06, s + 0.06);
           whiteMarkings.push(stripFromStations(stations, sign * inner, sign * (inner + 2.0), 0.02));
+          if (s + 6 < s1 - 8) {
+            const bay = sampleAtStation(road.samples, s + 3);
+            const right = perpRight({ x: bay.tx, z: bay.tz });
+            const across = sign * (inner + 1.05);
+            roadSideSlots.parkingBays.push({
+              x: bay.x + right.x * across,
+              y: bay.y,
+              z: bay.z + right.z * across,
+              heading: sign > 0 ? Math.atan2(bay.tx, bay.tz) : Math.atan2(-bay.tx, -bay.tz),
+            });
+          }
         }
       }
     }
@@ -426,6 +443,24 @@ function buildSidewalksAndMedians() {
         const volume = volumeFromStations(stations, Math.min(a, b), Math.max(a, b), 0.15, 0.6);
         sidewalkTops.push(volume.top);
         kerbSides.push(volume.side);
+      }
+      if ((road.spec.class === "arterial" || road.spec.class === "collector") && s1 - s0 > 260) {
+        let stopSide = road.spec.id.length % 2 === 0 ? 1 : -1;
+        for (let s = s0 + 130; s < s1 - 60; s += 240) {
+          const station = sampleAtStation(road.samples, s);
+          if (station.structure !== "ground") {
+            continue;
+          }
+          const right = perpRight({ x: station.tx, z: station.tz });
+          const offset = stopSide * (road.halfWidth + cls.sidewalkWidth * 0.62);
+          roadSideSlots.busStops.push({
+            x: station.x + right.x * offset,
+            y: station.y + 0.15,
+            z: station.z + right.z * offset,
+            heading: stopSide > 0 ? Math.atan2(station.tx, station.tz) : Math.atan2(-station.tx, -station.tz),
+          });
+          stopSide *= -1;
+        }
       }
       const treeSpacing = cls.streetTrees ? 13 : 0;
       if (treeSpacing > 0) {
@@ -524,6 +559,10 @@ function buildParkingStalls(destination: BuiltDestination, alongFrom: number, al
       lineStrip(at(alongFrom, outer), at(alongTo, outer), 0.12, 0.02, whiteMarkings);
       for (let along = alongFrom; along <= alongTo + 0.01; along += 2.6) {
         lineStrip(at(along, inner), at(along, outer), 0.12, 0.02, whiteMarkings);
+        if (along + 2.6 <= alongTo + 0.01) {
+          const bay = at(along + 1.3, (inner + outer) * 0.5);
+          roadSideSlots.parkingBays.push({ ...bay, heading: Math.atan2(right.x * side, right.z * side) });
+        }
       }
     }
     lineStrip(at(alongFrom, centre), at(alongTo, centre), 0.14, 0.02, yellowMarkings);
@@ -716,6 +755,71 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
     buildParkingStalls(destination, 12, depth - 3, 9, half - 1.2);
     buildParkingStalls(destination, 12, depth - 3, -half + 1.2, -9);
   }
+}
+
+function buildBusStops() {
+  const posts: THREE.BufferGeometry[] = [];
+  const roofs: THREE.BufferGeometry[] = [];
+  const glass: THREE.BufferGeometry[] = [];
+  const signs: THREE.BufferGeometry[] = [];
+  for (const stop of roadSideSlots.busStops) {
+    const forward = { x: Math.sin(stop.heading), z: Math.cos(stop.heading) };
+    const outward = { x: -perpRight(forward).x, z: -perpRight(forward).z };
+    const at = (along: number, out: number, lift: number): Vec3 => ({
+      x: stop.x + forward.x * along + outward.x * out,
+      y: stop.y + lift,
+      z: stop.z + forward.z * along + outward.z * out,
+    });
+    for (const along of [-2.1, 2.1]) {
+      for (const out of [-0.9, 0.9]) {
+        const post = at(along, out, 0);
+        postBox(post.x, post.y, post.z, 0.1, 2.6, posts);
+      }
+    }
+    const roof = new THREE.BoxGeometry(4.6, 0.14, 2.2);
+    roof.rotateY(stop.heading);
+    const roofAt = at(0, 0, 2.62);
+    roof.translate(roofAt.x, roofAt.y, roofAt.z);
+    roofs.push(roof);
+    const back = new THREE.BoxGeometry(4.4, 2.3, 0.05);
+    back.rotateY(stop.heading);
+    const backAt = at(0, 0.92, 1.4);
+    back.translate(backAt.x, backAt.y, backAt.z);
+    glass.push(back);
+    for (const along of [-2.15, 2.15]) {
+      const side = new THREE.BoxGeometry(0.05, 2.3, 1.8);
+      side.rotateY(stop.heading);
+      const sideAt = at(along, 0, 1.4);
+      side.translate(sideAt.x, sideAt.y, sideAt.z);
+      glass.push(side);
+    }
+    const bench = new THREE.BoxGeometry(3.2, 0.08, 0.45);
+    bench.rotateY(stop.heading);
+    const benchAt = at(0, 0.55, 0.5);
+    bench.translate(benchAt.x, benchAt.y, benchAt.z);
+    posts.push(bench);
+    const pole = at(3.4, -0.6, 0);
+    postBox(pole.x, pole.y, pole.z, 0.07, 3.0, posts);
+    const flag = new THREE.BoxGeometry(0.06, 0.5, 0.5);
+    flag.rotateY(stop.heading);
+    flag.translate(pole.x, pole.y + 2.7, pole.z);
+    signs.push(flag);
+  }
+  const attach = (name: string, parts: THREE.BufferGeometry[], material: THREE.Material, castShadow: boolean) => {
+    const merged = mergeAll(parts);
+    if (!merged) {
+      return;
+    }
+    const mesh = new THREE.Mesh(merged, material);
+    mesh.name = name;
+    mesh.castShadow = castShadow;
+    mesh.receiveShadow = true;
+    roadFurnitureGroup.add(mesh);
+  };
+  attach("bus-stop-frames", posts, guardrailMaterial, true);
+  attach("bus-stop-roofs", roofs, roadStructureConcreteMaterial, true);
+  attach("bus-stop-glass", glass, shelterGlassMaterial, false);
+  attach("bus-stop-flags", signs, signMaterials.stop, false);
 }
 
 function buildDestinations() {
@@ -1158,6 +1262,7 @@ export function addRoadNetworkMeshes() {
   buildLamps();
   buildTrafficSignals();
   buildSigns();
+  buildBusStops();
   addLaneOverlay();
 }
 

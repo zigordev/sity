@@ -6,7 +6,9 @@ import {
   MAINLAND_NORTH_SOUTH_MARGIN_M,
   MAINLAND_WEST_MARGIN_M,
   MAIN_BOUNDARY_AREA_M2,
+  MAIN_BOUNDARY_DEPTH_M,
   MAIN_BOUNDARY_SIDE_M,
+  MAIN_BOUNDARY_WIDTH_M,
   MOUNTAIN_HEIGHT_M,
   RESERVOIR_RADIUS_X_M,
   RESERVOIR_RADIUS_Z_M,
@@ -20,6 +22,7 @@ import {
 } from "./config/constants";
 import { assetLoadComplete, assetLoadFailures, importedModelInstanceCount, loadedTextureAssetKeys } from "./assets/pipeline";
 import { auditCity, cityStats } from "./city";
+import { parkedVehicleStats } from "./vehicles/parked";
 import { DISTRICTS, SPECIAL_BLOCKS } from "./city/districts";
 import { lots } from "./city/lots";
 import { fullTerrainSurfaceYAt, groundSurfaceBaseYAt, groundSurfaceYAt, mountainHeightAt, snowMountainHeightAt } from "./natural/terrain";
@@ -28,6 +31,7 @@ import { sharedSeaWaterSurfaceCount } from "./natural/water";
 import { camera, composer, controls, renderer, scene } from "./render/context";
 import { estimateVisibleSceneRenderStats } from "./render/stats";
 import { roadGraph, roadNetwork } from "./roads/build";
+import { roadSideSlots } from "./roads/render";
 import type { NetworkInvariants, NetworkStats, RoadGraph, RouteResult } from "./roads/graph";
 import { compassBearingDegrees, scaleAxisAnglesDegrees } from "./ui/overlays";
 import { flyToViewId, getLayerVisibility, lastRoute, setLaneOverlayVisible, showRandomRoute } from "./ui/panel";
@@ -43,6 +47,8 @@ declare global {
         seaSide: "east";
         mainBoundaryAreaM2: number;
         mainBoundarySideM: number;
+        mainBoundaryWidthM: number;
+        mainBoundaryDepthM: number;
         mainlandWestMarginM: number;
         mainlandEastMarginM: number;
         mainlandNorthSouthMarginM: number;
@@ -74,6 +80,8 @@ declare global {
         districtCount: number;
         specialBlockCount: number;
         lotsByDistrict: Record<string, number>;
+        parkedVehicleCount: number;
+        busStopCount: number;
       };
       auditCity: () => ReturnType<typeof auditCity>;
       listDeadEnds: () => Array<{ nodeId: string; roadId: string; destination?: string; edge: boolean }>;
@@ -117,6 +125,8 @@ window.__SITY_DEBUG__ = {
     seaSide: "east",
     mainBoundaryAreaM2: MAIN_BOUNDARY_AREA_M2,
     mainBoundarySideM: MAIN_BOUNDARY_SIDE_M,
+    mainBoundaryWidthM: MAIN_BOUNDARY_WIDTH_M,
+    mainBoundaryDepthM: MAIN_BOUNDARY_DEPTH_M,
     mainlandWestMarginM: MAINLAND_WEST_MARGIN_M,
     mainlandEastMarginM: MAINLAND_EAST_MARGIN_M,
     mainlandNorthSouthMarginM: MAINLAND_NORTH_SOUTH_MARGIN_M,
@@ -165,6 +175,8 @@ window.__SITY_DEBUG__ = {
       districtCount: DISTRICTS.length,
       specialBlockCount: SPECIAL_BLOCKS.length,
       lotsByDistrict,
+      parkedVehicleCount: parkedVehicleStats.count,
+      busStopCount: roadSideSlots.busStops.length,
     };
   },
   auditCity: () => auditCity(),

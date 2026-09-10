@@ -83,7 +83,18 @@ for (const junction of roadNetwork.junctions.values()) {
     const { origin, axis, spec } = destination;
     const reach = spec.kind === "culdesac" ? 12 : spec.depth;
     const half = spec.kind === "culdesac" ? 12 : spec.width * 0.5;
-    registerCorridor([origin, { x: origin.x + axis.x * reach, z: origin.z + axis.z * reach }], half + 2.5, `pavement:destination:${junction.nodeId}`);
+    const stripHalf = 3.2;
+    for (let across = -half + stripHalf; across <= half - stripHalf + 0.01; across += stripHalf * 1.6) {
+      const clamped = Math.min(across, half - stripHalf);
+      registerCorridor(
+        [
+          { x: origin.x + axis.x * -1 + destination.right.x * clamped, z: origin.z + axis.z * -1 + destination.right.z * clamped },
+          { x: origin.x + axis.x * (reach + 1) + destination.right.x * clamped, z: origin.z + axis.z * (reach + 1) + destination.right.z * clamped },
+        ],
+        stripHalf + 0.6,
+        `pavement:destination:${junction.nodeId}`,
+      );
+    }
     const roadY = origin.y - ROAD_SURFACE_LIFT_M - 0.35;
     for (let along = 0; along <= reach; along += 6) {
       for (let across = -half; across <= half; across += 6) {

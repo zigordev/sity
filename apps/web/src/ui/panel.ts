@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { cityStats } from "../city";
-import { camera, cityElements, controls, roadElements, vegetationElements } from "../render/context";
+import { camera, cityElements, controls, roadElements, vegetationElements, vehicleElements } from "../render/context";
 import { estimateVisibleSceneRenderStats } from "../render/stats";
 import { roadGraph } from "../roads/build";
 import { addRouteHighlight, clearRouteHighlight, laneOverlayGroup, roadFurnitureGroup } from "../roads/render";
@@ -12,6 +12,7 @@ const roadsToggle = document.querySelector<HTMLInputElement>("#toggle-roads");
 const furnitureToggle = document.querySelector<HTMLInputElement>("#toggle-furniture");
 const buildingsToggle = document.querySelector<HTMLInputElement>("#toggle-buildings");
 const vegetationToggle = document.querySelector<HTMLInputElement>("#toggle-vegetation");
+const vehiclesToggle = document.querySelector<HTMLInputElement>("#toggle-vehicles");
 const lanesToggle = document.querySelector<HTMLInputElement>("#toggle-lanes");
 const helpToggle = document.querySelector<HTMLInputElement>("#toggle-help");
 const compass = document.querySelector<HTMLElement>(".compass");
@@ -42,6 +43,7 @@ export function applyLayerVisibility() {
   const furniture = furnitureToggle?.checked ?? true;
   const buildings = buildingsToggle?.checked ?? true;
   const vegetation = vegetationToggle?.checked ?? true;
+  const vehicles = vehiclesToggle?.checked ?? true;
   const lanes = lanesToggle?.checked ?? false;
   const help = helpToggle?.checked ?? true;
 
@@ -49,6 +51,7 @@ export function applyLayerVisibility() {
   roadFurnitureGroup.visible = furniture;
   cityElements.visible = buildings;
   vegetationElements.visible = vegetation;
+  vehicleElements.visible = vehicles;
   laneOverlayGroup.visible = lanes;
   document.dispatchEvent(new CustomEvent("sity:layers", { detail: { natural, artificial } }));
   if (compass) {
@@ -67,6 +70,7 @@ export function getLayerVisibility() {
     furniture: roadFurnitureGroup.visible,
     buildings: cityElements.visible,
     vegetation: vegetationElements.visible,
+    vehicles: vehicleElements.visible,
     lanes: laneOverlayGroup.visible,
     help: compass ? !compass.hidden : true,
   };
@@ -195,7 +199,7 @@ export function initPanel() {
       }),
     );
   }
-  for (const toggle of [naturalToggle, artificialToggle, roadsToggle, furnitureToggle, buildingsToggle, vegetationToggle, lanesToggle, helpToggle]) {
+  for (const toggle of [naturalToggle, artificialToggle, roadsToggle, furnitureToggle, buildingsToggle, vegetationToggle, vehiclesToggle, lanesToggle, helpToggle]) {
     toggle?.addEventListener("change", () => {
       applyLayerVisibility();
       refreshSceneStats();

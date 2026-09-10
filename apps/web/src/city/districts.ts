@@ -17,7 +17,7 @@ export interface DistrictStyle {
   frontGap: number;
 }
 
-export type SpecialKind = "park" | "plaza" | "stadium" | "parking" | "school" | "church";
+export type SpecialKind = "park" | "plaza" | "stadium" | "parking" | "school" | "church" | "station" | "hospital" | "green";
 
 export interface SpecialBlock {
   id: string;
@@ -35,6 +35,8 @@ export const DISTRICTS: District[] = [
   { kind: "residential", minX: -180, maxX: 660, minZ: 425, maxZ: 705 },
   { kind: "westend", minX: -180, maxX: 46, minZ: -200, maxZ: 320 },
   { kind: "midrise", minX: 20, maxX: 660, minZ: -440, maxZ: 340 },
+  { kind: "residential", minX: 340, maxX: 505, minZ: -1400, maxZ: -1100 },
+  { kind: "midrise", minX: 560, maxX: 745, minZ: -1060, maxZ: -930 },
 ];
 
 export const DISTRICT_STYLES: Record<DistrictKind, DistrictStyle> = {
@@ -53,6 +55,10 @@ export const SPECIAL_BLOCKS: SpecialBlock[] = [
   { id: "king-street-parking", kind: "parking", minX: 249, maxX: 311, minZ: -262, maxZ: -178 },
   { id: "south-bank-school", kind: "school", minX: 228, maxX: 312, minZ: 532, maxZ: 630 },
   { id: "west-end-church", kind: "church", minX: -50, maxX: 30, minZ: -6, maxZ: 72 },
+  { id: "north-station", kind: "station", minX: 500, maxX: 578, minZ: -968, maxZ: -862 },
+  { id: "northfield-hospital", kind: "hospital", minX: 596, maxX: 664, minZ: -1300, maxZ: -1090 },
+  { id: "village-green", kind: "green", minX: 436, maxX: 470, minZ: -1256, maxZ: -1190 },
+  { id: "northfield-chapel", kind: "church", minX: 437, maxX: 469, minZ: -1302, maxZ: -1258 },
 ];
 
 export function districtAt(x: number, z: number): District | undefined {

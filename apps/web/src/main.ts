@@ -9,6 +9,9 @@ import { animationClock, camera, composer, controls } from "./render/context";
 import { sharedSeaWaterMaterial } from "./render/materials";
 import { addRoadNetworkMeshes } from "./roads/render";
 import { addCity, registerCityZones } from "./city";
+import { addCountryside } from "./city/countryside";
+import { addRailway, registerRailwayCorridors } from "./rail/railway";
+import { addParkedVehicles } from "./vehicles/parked";
 import "./roads/build";
 import { updateAxisScale, updateCategoryVisibility, updateCompass } from "./ui/overlays";
 import { flyToViewId, initPanel, updateCameraFlight } from "./ui/panel";
@@ -22,6 +25,8 @@ addMainlandOutsideBoundary();
 addMainBoundarySurface();
 
 registerCityZones();
+
+registerRailwayCorridors();
 
 addMicroDisplacedGrassTerrain();
 
@@ -67,7 +72,13 @@ addCoastalEstuary();
 
 addRoadNetworkMeshes();
 
+addRailway();
+
+addCountryside();
+
 addCity();
+
+addParkedVehicles();
 
 updateCategoryVisibility();
 initPanel();

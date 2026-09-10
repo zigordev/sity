@@ -1,16 +1,17 @@
-import { MAIN_BOUNDARY_SIDE_M, RIVER_WIDTH_M } from "../config/constants";
+import { RIVER_WIDTH_M } from "../config/constants";
 import { distanceToPath2D } from "../geometry/helpers";
 import { fullTerrainSurfaceYAt, groundSurfaceYAt, isInsideReservoirFootprint } from "../natural/terrain";
 import { roadNetwork } from "../roads/build";
 import { perpRight, sampleAtStation, type BuiltRoad } from "../roads/network";
 import { corridorClearance } from "../world/occupancy";
-import { mainBoundaryMaxX, mainBoundaryMinX, mainBoundaryMinZ, riverPath, riverSeaTransitionPath } from "../world/frame";
+import { mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, riverPath, riverSeaTransitionPath } from "../world/frame";
 import { DISTRICT_STYLES, SPECIAL_BLOCKS, districtAt, type DistrictKind } from "./districts";
 import { createRandom } from "./random";
 
 export const RASTER_CELL_M = 4;
-const rasterSize = Math.ceil(MAIN_BOUNDARY_SIDE_M / RASTER_CELL_M) + 2;
-const raster = new Uint8Array(rasterSize * rasterSize);
+const rasterColumns = Math.ceil((mainBoundaryMaxX - mainBoundaryMinX) / RASTER_CELL_M) + 2;
+const rasterRows = Math.ceil((mainBoundaryMaxZ - mainBoundaryMinZ) / RASTER_CELL_M) + 2;
+const raster = new Uint8Array(rasterColumns * rasterRows);
 
 export const RASTER_LOT = 1;
 export const RASTER_SPECIAL = 2;
@@ -19,10 +20,10 @@ export const RASTER_KEEP_OUT = 3;
 function cellIndex(x: number, z: number) {
   const column = Math.floor((x - mainBoundaryMinX) / RASTER_CELL_M);
   const row = Math.floor((z - mainBoundaryMinZ) / RASTER_CELL_M);
-  if (column < 0 || row < 0 || column >= rasterSize || row >= rasterSize) {
+  if (column < 0 || row < 0 || column >= rasterColumns || row >= rasterRows) {
     return -1;
   }
-  return row * rasterSize + column;
+  return row * rasterColumns + column;
 }
 
 export function rasterValueAt(x: number, z: number) {

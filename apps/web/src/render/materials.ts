@@ -764,6 +764,77 @@ export const barrierArmMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.1,
 });
 
+export const ballastMaterial = new THREE.MeshStandardMaterial({
+  color: 0x6d6a63,
+  map: concreteTexture,
+  bumpMap: concreteTexture,
+  bumpScale: 0.06,
+  roughness: 0.96,
+  metalness: 0,
+});
+
+export const sleeperMaterial = new THREE.MeshStandardMaterial({
+  color: 0x5a5148,
+  roughness: 0.9,
+  metalness: 0.02,
+});
+
+export const railSteelMaterial = new THREE.MeshStandardMaterial({
+  color: 0x7c8388,
+  roughness: 0.3,
+  metalness: 0.85,
+});
+
+export const trainBodyMaterial = new THREE.MeshStandardMaterial({
+  color: 0x2f5fa8,
+  roughness: 0.35,
+  metalness: 0.3,
+});
+
+export const trainTrimMaterial = new THREE.MeshStandardMaterial({
+  color: 0xf0eee6,
+  roughness: 0.4,
+  metalness: 0.2,
+});
+
+export const crossbuckMaterial = new THREE.MeshStandardMaterial({
+  color: 0xf2f2ee,
+  roughness: 0.5,
+  metalness: 0.05,
+});
+
+export const fieldMaterials = [0x8a7a4e, 0xa9b46a, 0x7f9a4c, 0xc2b064].map(
+  (color) =>
+    new THREE.MeshStandardMaterial({
+      color,
+      map: grassTexture,
+      roughness: 0.95,
+      metalness: 0,
+    }),
+);
+
+export const carPaintMaterials = [0xe4e3df, 0x2b2f33, 0x8d9296, 0xa8342a, 0x2c4f8a, 0x4d6a3b, 0xd6b24a].map(
+  (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.32, metalness: 0.45 }),
+);
+
+export const carGlassMaterial = new THREE.MeshStandardMaterial({
+  color: 0x2a3138,
+  roughness: 0.15,
+  metalness: 0.5,
+});
+
+export const tyreMaterial = new THREE.MeshStandardMaterial({
+  color: 0x1f2224,
+  roughness: 0.9,
+  metalness: 0.05,
+});
+
+export const rooftopPropMaterial = new THREE.MeshStandardMaterial({
+  color: 0x9ba0a5,
+  roughness: 0.6,
+  metalness: 0.35,
+});
+
 export const gravelVergeMaterial = new THREE.MeshStandardMaterial({
   color: 0x8f9276,
   roughness: 0.96,

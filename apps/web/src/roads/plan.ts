@@ -40,6 +40,7 @@ function chain(
 
 const signal: JunctionControl = "signal";
 const stop: JunctionControl = "stop";
+const crossing: JunctionControl = "crossing";
 
 export const RING_ROAD_ID = "ring-highway";
 export const RING_TUNNEL_CONTROLS = { from: 0, to: 3 };
@@ -91,7 +92,11 @@ road(RING_ROAD_ID, "highway", undefined, undefined, 2, 2, {
   ],
 });
 
-node("blvd-n-edge", 760, -866, { edge: true });
+node("blvd-port-north", 760, -866);
+node("blvd-rail", 760, -1000, { control: signal });
+node("blvd-hospital", 760, -1190, { control: signal });
+node("blvd-village", 760, -1340, { control: stop });
+node("blvd-n-edge", 760, -1566, { edge: true });
 node("blvd-harbour", 760, -560, { control: signal });
 node("blvd-station", 760, -400, { control: signal });
 node("blvd-central", 760, -280, { control: signal });
@@ -101,7 +106,41 @@ node("blvd-bridge-s", 760, 290);
 node("blvd-southbank", 760, 520, { control: signal });
 node("blvd-beach-end", 760, 740, { destination: { kind: "parking", width: 30, depth: 60, name: "Beach car park" } });
 
-chain("coast-blvd-n", "arterial", ["blvd-n-edge", "blvd-harbour", "blvd-station", "blvd-central", "blvd-market", "blvd-bridge-n"], 2, 2, { name: "Coast Boulevard" });
+chain("coast-blvd-nx", "arterial", ["blvd-n-edge", "blvd-village", "blvd-hospital", "blvd-rail", "blvd-port-north"], 2, 2, { name: "Coast Boulevard" });
+chain("coast-blvd-n", "arterial", ["blvd-port-north", "blvd-harbour", "blvd-station", "blvd-central", "blvd-market", "blvd-bridge-n"], 2, 2, { name: "Coast Boulevard" });
+
+node("station-access", 630, -1000, { control: stop });
+node("rail-crossing", 520, -1000, { control: crossing });
+node("northgate-rb", 400, -1000, { roundabout: { radius: 20 } });
+chain("rail-road", "collector", ["blvd-rail", "station-access", "rail-crossing", "northgate-rb"], 1, 1, { name: "Rail Road" });
+node("station-forecourt", 600, -905, { destination: { kind: "forecourt", width: 56, depth: 60, name: "Sity North station" } });
+road("station-approach", "local", "station-access", "station-forecourt", 1, 1, { name: "Station Approach", via: [{ x: 606, z: -968 }, { x: 600, z: -940 }] });
+
+node("hospital-end", 716, -1190, { destination: { kind: "forecourt", width: 60, depth: 44, name: "Northfield hospital" } });
+road("hospital-drive", "collector", "blvd-hospital", "hospital-end", 1, 1, { name: "Hospital Drive" });
+
+node("village-s", 420, -1150, { control: stop });
+node("village-n", 430, -1330, { control: stop });
+node("north-edge-w", 430, -1566, { edge: true });
+chain("northfield-road", "collector", ["northgate-rb", "village-s", "village-n", "north-edge-w"], 1, 1, { name: "Northfield Road" });
+node("chapel-e1", 484, -1172, { control: stop });
+node("chapel-e2", 484, -1308, { control: stop });
+road("chapel-lane-1", "local", "village-s", "chapel-e1", 1, 1, { name: "Chapel Lane" });
+road("chapel-lane-2", "local", "chapel-e1", "chapel-e2", 1, 1, { name: "Chapel Lane" });
+road("chapel-lane-3", "local", "chapel-e2", "village-n", 1, 1, { name: "Chapel Lane" });
+node("farm-end", 330, -1470, { destination: { kind: "yard", width: 36, depth: 30, name: "Northfield farm" } });
+road("farm-track", "local", "village-n", "farm-end", 1, 1, { name: "Farm Track", via: [{ x: 380, z: -1400 }] });
+
+road("northgate-road", "collector", "depot-park", "northgate-rb", 1, 1, {
+  name: "Northgate Road",
+  via: [
+    { x: 395, z: -652 },
+    { x: 350, z: -680 },
+    { x: 342, z: -740 },
+    { x: 350, z: -850 },
+    { x: 380, z: -950 },
+  ],
+});
 road("coast-blvd-bridge", "arterial", "blvd-bridge-n", "blvd-bridge-s", 2, 2, {
   name: "Coast Boulevard",
   elevation: "control",

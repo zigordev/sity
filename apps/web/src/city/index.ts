@@ -76,7 +76,7 @@ export function auditCity() {
       }
     }
     const corners = footprintCorners(a);
-    let hit = false;
+    let hit: string | undefined;
     for (let edge = 0; edge < 4 && !hit; edge += 1) {
       const from = corners[edge];
       const to = corners[(edge + 1) % 4];
@@ -86,13 +86,13 @@ export function auditCity() {
         const x = from.x + (to.x - from.x) * t;
         const z = from.z + (to.z - from.z) * t;
         if (corridorClearance(x, z, 40, "pavement:") < -0.2) {
-          hit = true;
+          hit = `${a.group}@${x.toFixed(0)},${z.toFixed(0)}`;
           break;
         }
       }
     }
     if (hit) {
-      onPavement.push(a.group);
+      onPavement.push(hit);
     }
   }
   return {

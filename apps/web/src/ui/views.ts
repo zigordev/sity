@@ -6,7 +6,7 @@ export interface CameraView {
 }
 
 export const CAMERA_VIEWS: CameraView[] = [
-  { id: "overview", label: "Overview", position: [-300, 2600, 3400], target: [120, 0, 0] },
+  { id: "overview", label: "Overview", position: [-40, 2350, 2150], target: [170, 0, -330] },
   { id: "downtown", label: "Downtown", position: [420, 520, 260], target: [260, 0, -180] },
   { id: "street", label: "Street level", position: [250, 14, -120], target: [246, 6, -200] },
   { id: "interchange", label: "Interchange", position: [760, 380, 60], target: [640, 0, -280] },
@@ -19,6 +19,10 @@ export const CAMERA_VIEWS: CameraView[] = [
   { id: "beach", label: "Beach", position: [1000, 420, 100], target: [780, 0, -150] },
   { id: "suburb", label: "Suburb", position: [60, 120, 720], target: [-20, 2, 580] },
   { id: "dam", label: "Dam", position: [-100, 320, 700], target: [-480, 30, 440] },
+  { id: "station", label: "North station", position: [720, 170, -780], target: [560, 4, -920] },
+  { id: "crossing", label: "Level crossing", position: [580, 55, -1090], target: [520, 3, -1000] },
+  { id: "village", label: "Village", position: [580, 230, -1080], target: [450, 4, -1250] },
+  { id: "hospital", label: "Hospital", position: [820, 170, -1060], target: [650, 4, -1190] },
 ];
 
 export function findView(id: string) {

@@ -1,6 +1,6 @@
 import { corridorClearance, cutLimitAt, terrainReliefFactor, zoneFlattenFactor } from "../world/occupancy";
 import * as THREE from "three";
-import { BEACH_INLAND_WIDTH_M, GRASS_SURFACE_Y, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAINLAND_Y, MAIN_BOUNDARY_SIDE_M, MAIN_BOUNDARY_TERRAIN_THICKNESS_M, MICRO_TERRAIN_GRID_SEGMENTS, MICRO_TERRAIN_HEIGHT_M, MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, MOUNTAIN_GRID_SEGMENTS, MOUNTAIN_HEIGHT_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, MOUNTAIN_STRATA_RIDGE_COUNT, MOUNTAIN_SURFACE_LIFT_M, MOUNTAIN_TALUS_BOULDER_COUNT, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, RIVER_WIDTH_M, SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, SNOW_MOUNTAIN_GRID_SEGMENTS, SNOW_MOUNTAIN_HEIGHT_M, SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_SNOWLINE_M, SNOW_MOUNTAIN_STRATA_RIDGE_COUNT, SNOW_MOUNTAIN_SURFACE_LIFT_M, SNOW_MOUNTAIN_TALUS_BOULDER_COUNT } from "../config/constants";
+import { BEACH_INLAND_WIDTH_M, GRASS_SURFACE_Y, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAINLAND_Y, MAIN_BOUNDARY_TERRAIN_THICKNESS_M, MICRO_TERRAIN_CELL_M, MICRO_TERRAIN_HEIGHT_M, MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, MOUNTAIN_GRID_SEGMENTS, MOUNTAIN_HEIGHT_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, MOUNTAIN_STRATA_RIDGE_COUNT, MOUNTAIN_SURFACE_LIFT_M, MOUNTAIN_TALUS_BOULDER_COUNT, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, RIVER_WIDTH_M, SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, SNOW_MOUNTAIN_GRID_SEGMENTS, SNOW_MOUNTAIN_HEIGHT_M, SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_SNOWLINE_M, SNOW_MOUNTAIN_STRATA_RIDGE_COUNT, SNOW_MOUNTAIN_SURFACE_LIFT_M, SNOW_MOUNTAIN_TALUS_BOULDER_COUNT } from "../config/constants";
 import { addFlatPlane, addLayeredPolygonVolume, addPlanarXZUVs, addScaledSphereInstances, distanceToPath2D, isInsideBounds } from "../geometry/helpers";
 import { GroundPathPoint, ScaledXYZPlacement } from "../geometry/types";
 import { naturalElements } from "../render/context";
@@ -15,7 +15,7 @@ export let snowCapOverlayInstalled = false;
 
 export function addMainBoundarySurface() {
   addLayeredPolygonVolume(
-    "main-3-square-kilometer-grass-terrain-slab",
+    "main-boundary-grass-terrain-slab",
     mainBoundaryCoastlinePoints,
     grassMaterial,
     terrainCutMaterial,
@@ -73,12 +73,14 @@ export function addMicroDisplacedGrassTerrain() {
   const uvs: number[] = [];
   const indices: number[] = [];
   const heights: number[] = [];
+  const columns = Math.ceil((eastX - westX) / MICRO_TERRAIN_CELL_M);
+  const rows = Math.ceil((northZ - southZ) / MICRO_TERRAIN_CELL_M);
 
-  for (let row = 0; row <= MICRO_TERRAIN_GRID_SEGMENTS; row += 1) {
-    const z = THREE.MathUtils.lerp(southZ, northZ, row / MICRO_TERRAIN_GRID_SEGMENTS);
+  for (let row = 0; row <= rows; row += 1) {
+    const z = THREE.MathUtils.lerp(southZ, northZ, row / rows);
 
-    for (let column = 0; column <= MICRO_TERRAIN_GRID_SEGMENTS; column += 1) {
-      const x = THREE.MathUtils.lerp(westX, eastX, column / MICRO_TERRAIN_GRID_SEGMENTS);
+    for (let column = 0; column <= columns; column += 1) {
+      const x = THREE.MathUtils.lerp(westX, eastX, column / columns);
       const height = Math.max(mountainHeightAt(x, z), snowMountainHeightAt(x, z));
       heights.push(height);
       const displacedY = Math.min(groundSurfaceYAt(x, z) + terrainMicroNoise(x, z), cutLimitAt(x, z));
@@ -87,9 +89,9 @@ export function addMicroDisplacedGrassTerrain() {
     }
   }
 
-  const rowStride = MICRO_TERRAIN_GRID_SEGMENTS + 1;
-  for (let row = 0; row < MICRO_TERRAIN_GRID_SEGMENTS; row += 1) {
-    for (let column = 0; column < MICRO_TERRAIN_GRID_SEGMENTS; column += 1) {
+  const rowStride = columns + 1;
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
       const a = row * rowStride + column;
       const b = a + 1;
       const c = a + rowStride;
@@ -412,7 +414,7 @@ export function addMainlandOutsideBoundary() {
   );
   addFlatPlane(
     "mainland-outside-boundary-south",
-    MAIN_BOUNDARY_SIDE_M,
+    mainBoundaryMaxX - mainBoundaryMinX,
     MAINLAND_NORTH_SOUTH_MARGIN_M,
     mainlandMaterial,
     mainBoundaryCenterX,
@@ -422,7 +424,7 @@ export function addMainlandOutsideBoundary() {
   );
   addFlatPlane(
     "mainland-outside-boundary-north",
-    MAIN_BOUNDARY_SIDE_M,
+    mainBoundaryMaxX - mainBoundaryMinX,
     MAINLAND_NORTH_SOUTH_MARGIN_M,
     mainlandMaterial,
     mainBoundaryCenterX,
