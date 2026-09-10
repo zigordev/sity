@@ -1,0 +1,407 @@
+export const MAIN_BOUNDARY_AREA_M2 = 3_000_000;
+
+export const MAIN_BOUNDARY_SIDE_M = Math.sqrt(MAIN_BOUNDARY_AREA_M2);
+
+export const NORTH_SAMPLE_DISTANCE_M = 1_000;
+
+export const SCALE_AXIS_SAMPLE_M = 650;
+
+export const SEA_Y = 0;
+
+export const MAINLAND_Y = 1;
+
+export const GRASS_SURFACE_Y = 2;
+
+export const SEA_MARGIN_M = 30_000;
+
+export const POSTPROCESS_AO_SCALE = 0.62;
+
+export const MAINLAND_WEST_MARGIN_M = 10_000;
+
+export const MAINLAND_EAST_MARGIN_M = 0;
+
+export const MAINLAND_NORTH_SOUTH_MARGIN_M = 10_000;
+
+export const MAIN_BOUNDARY_TERRAIN_THICKNESS_M = 2;
+
+export const GRASS_COLOR = 0x93c97b;
+
+export const MOUNTAIN_LOW_COLOR = 0x6f8d57;
+
+export const MOUNTAIN_MID_COLOR = 0x887c68;
+
+export const MOUNTAIN_HIGH_COLOR = 0xb0aaa0;
+
+export const BEACH_SAND_COLOR = 0xd8c58d;
+
+export const WET_SAND_COLOR = 0xb9a978;
+
+export const WOOD_PIER_COLOR = 0x8b7355;
+
+export const CONCRETE_PORT_COLOR = 0x9a9486;
+
+export const DOCK_COLOR = 0x6f6254;
+
+export const SHIP_HULL_COLOR = 0x4f6376;
+
+export const PRIVATE_BOAT_COLOR = 0xd7f0f6;
+
+export const SHIP_CABIN_COLOR = 0xe9e4d4;
+
+export const ATTRACTION_RED_COLOR = 0xc44f4f;
+
+export const ATTRACTION_BLUE_COLOR = 0x3f7fb0;
+
+export const ATTRACTION_YELLOW_COLOR = 0xe5b64f;
+
+export const HIGHWAY_ASPHALT_COLOR = 0x64696c;
+
+export const HIGHWAY_SHOULDER_COLOR = 0x4d5254;
+
+export const HIGHWAY_MEDIAN_COLOR = 0x7d7a70;
+
+export const ROAD_MARKING_WHITE_COLOR = 0xe8ece6;
+
+export const ROAD_MARKING_YELLOW_COLOR = 0xe5c94f;
+
+export const MOUNTAIN_HEIGHT_M = 420;
+
+export const MOUNTAIN_RADIUS_X_M = 950;
+
+export const MOUNTAIN_RADIUS_Z_M = 880;
+
+export const MOUNTAIN_VISIBLE_SPAN_M = 760;
+
+export const MOUNTAIN_GRID_SEGMENTS = 48;
+
+export const MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M = 42;
+
+export const MOUNTAIN_SURFACE_LIFT_M = 0.35;
+
+export const MOUNTAIN_MIN_RENDER_HEIGHT_M = 0.18;
+
+export const SNOW_COLOR = 0xf4f7f6;
+
+export const SNOW_SHADOW_COLOR = 0xcbd8d5;
+
+export const SNOW_MOUNTAIN_HEIGHT_M = 864;
+
+export const SNOW_MOUNTAIN_RADIUS_X_M = 1_292;
+
+export const SNOW_MOUNTAIN_RADIUS_Z_M = 1_190;
+
+export const SNOW_MOUNTAIN_VISIBLE_SPAN_M = 1_300;
+
+export const SNOW_MOUNTAIN_GRID_SEGMENTS = 72;
+
+export const SNOW_MOUNTAIN_SURFACE_LIFT_M = 0.9;
+
+export const SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M = 0.18;
+
+export const SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M = 128;
+
+export const SNOW_MOUNTAIN_SNOWLINE_M = SNOW_MOUNTAIN_HEIGHT_M * 0.68;
+
+export const RIVER_SOURCE_WIDTH_M = 42;
+
+export const RIVER_SOURCE_TAPER_PROGRESS = 0.16;
+
+export const RIVER_WIDTH_M = 90;
+
+export const RIVER_MOUTH_WIDTH_M = 126;
+
+export const RIVER_LOWLAND_WATER_CLEARANCE_M = 0.82;
+
+export const RIVER_CHANNEL_BANK_WIDTH_M = 48;
+
+export const RIVER_CHANNEL_CREST_OFFSET_M = 20;
+
+export const RIVER_CHANNEL_WATER_EDGE_OVERLAP_M = 1.5;
+
+export const RIVER_CHANNEL_CREST_RISE_M = 1.6;
+
+export const RIVER_CHANNEL_INNER_DROP_M = 0.35;
+
+export const ESTUARY_BANK_WIDTH_M = 38;
+
+export const ESTUARY_BANK_CREST_OFFSET_M = 16;
+
+export const ESTUARY_BANK_CREST_RISE_M = 1.2;
+
+export const ESTUARY_BANK_INNER_DROP_M = 0.24;
+
+export const RESERVOIR_RADIUS_X_M = 170;
+
+export const RESERVOIR_RADIUS_Z_M = 105;
+
+export const RESERVOIR_SEGMENTS = 56;
+
+export const RESERVOIR_WATER_DEPTH_M = 28;
+
+export const RESERVOIR_WATER_DAM_FACE_SETBACK_M = 1.4;
+
+export const RESERVOIR_DAM_OPENING_HALF_ANGLE_RAD = 0.72;
+
+export const RESERVOIR_DAM_FACE_SAMPLES = 18;
+
+export const RESERVOIR_BANK_SEGMENTS = 72;
+
+export const RESERVOIR_BANK_INNER_SCALE = 0.92;
+
+export const RESERVOIR_BANK_CREST_SCALE = 1.07;
+
+export const RESERVOIR_BANK_OUTER_SCALE = 1.26;
+
+export const DAM_LENGTH_M = 180;
+
+export const DAM_HEIGHT_M = 46;
+
+export const DAM_THICKNESS_M = 36;
+
+export const DAM_CURVE_SEGMENTS = 18;
+
+export const DAM_CURVE_BOW_M = 10;
+
+export const DAM_UPSTREAM_FACE_OFFSET_M = 2;
+
+export const DAM_BANK_OPENING_MARGIN_M = 8;
+
+export const DAM_BANK_OPENING_HALF_LENGTH_M = DAM_LENGTH_M * 0.5 + DAM_BANK_OPENING_MARGIN_M;
+
+export const DAM_WATER_FACE_END_INSET_M = 5;
+
+export const DAM_WATER_FACE_HALF_LENGTH_M = DAM_LENGTH_M * 0.5 - DAM_WATER_FACE_END_INSET_M;
+
+export const DAM_NATURAL_BANK_OPENING_HALF_LENGTH_M = DAM_LENGTH_M * 0.5 + 2;
+
+export const DAM_ABUTMENT_OUTER_LENGTH_M = 32;
+
+export const DAM_ABUTMENT_FLARE_M = 28;
+
+export const DAM_ABUTMENT_CREST_RISE_M = 18;
+
+export const SEA_SHADER_WATER_COLOR = 0x1f7da9;
+
+export const COASTAL_INLET_OVERLAP_M = 92;
+
+export const ESTUARY_SEA_BLEND_START_OFFSET_M = -42;
+
+export const ESTUARY_SEA_BLEND_END_OFFSET_M = COASTAL_INLET_OVERLAP_M + 150;
+
+export const COAST_SURFACE_Y = GRASS_SURFACE_Y + 0.08;
+
+export const PLATFORM_SURFACE_Y = GRASS_SURFACE_Y + 0.32;
+
+export const BEACH_INLAND_WIDTH_M = 160;
+
+export const WET_SAND_WIDTH_M = 30;
+
+export const BEACH_THICKNESS_M = 1.3;
+
+export const WET_SAND_THICKNESS_M = 0.7;
+
+export const BEACH_FOAM_STRIP_COUNT = 7;
+
+export const BEACH_DRY_DETAIL_SEA_MARGIN_M = WET_SAND_WIDTH_M + 22;
+
+export const BEACH_DRY_DETAIL_INLAND_MARGIN_M = 18;
+
+export const BEACH_DETAIL_NORTH_MARGIN_M = 54;
+
+export const BEACH_DETAIL_RIVER_MARGIN_M = 230;
+
+export const BEACH_DUNE_COUNT = 16;
+
+export const BEACH_GRASS_CLUSTER_COUNT = 40;
+
+export const BEACH_UMBRELLA_COUNT = 12;
+
+export const BEACH_SUNBED_COUNT = 24;
+
+export const BEACH_TOWEL_COUNT = 10;
+
+export const BEACH_TRASH_BIN_COUNT = 4;
+
+export const NATURAL_ROCK_CLUSTER_COUNT = 36;
+
+export const BEACH_SHELL_COUNT = 72;
+
+export const RIVER_REED_CLUSTER_COUNT = 96;
+
+export const RIVER_PEBBLE_COUNT = 96;
+
+export const SHALLOW_WATER_SHELF_WIDTH_M = 360;
+
+export const MICRO_TERRAIN_GRID_SEGMENTS = 116;
+
+export const MICRO_TERRAIN_HEIGHT_M = 8.5;
+
+export const MICRO_TERRAIN_OPACITY = 1;
+
+export const MOUNTAIN_STRATA_RIDGE_COUNT = 8;
+
+export const SNOW_MOUNTAIN_STRATA_RIDGE_COUNT = 10;
+
+export const MOUNTAIN_TALUS_BOULDER_COUNT = 78;
+
+export const SNOW_MOUNTAIN_TALUS_BOULDER_COUNT = 126;
+
+export const LOWLAND_GRASS_TUFT_COUNT = 280;
+
+export const LOWLAND_SCRUB_COUNT = 150;
+
+export const ATTRACTION_PIER_LENGTH_M = 420;
+
+export const ATTRACTION_PIER_DEPTH_M = 180;
+
+export const ATTRACTION_PIER_LAND_OVERLAP_M = 55;
+
+export const ATTRACTION_PIER_RIVER_OFFSET_M = 272;
+
+export const PIER_DECK_THICKNESS_M = 5;
+
+export const ATTRACTION_PIER_SUPPORT_COLUMNS = 5;
+
+export const ATTRACTION_PIER_SUPPORT_ROWS = 3;
+
+export const ATTRACTION_PIER_RAIL_POST_COUNT = 42;
+
+export const ATTRACTION_PIER_BEAM_COUNT = 22;
+
+export const CARGO_PORT_LENGTH_M = 330;
+
+export const CARGO_PORT_DEPTH_M = 230;
+
+export const CARGO_PORT_LAND_OVERLAP_M = 45;
+
+export const CARGO_PORT_RIVER_OFFSET_M = 732;
+
+export const CARGO_PORT_HEIGHT_M = 8;
+
+export const CARGO_SHIP_BERTH_COUNT = 2;
+
+export const CARGO_SHIP_HULL_LENGTH_M = 150;
+
+export const CARGO_SHIP_WATER_GAP_M = 24;
+
+export const CARGO_CONTAINER_COUNT = 12;
+
+export const CARGO_CRANE_COUNT = 2;
+
+export const CARGO_BOLLARD_COUNT = 8;
+
+export const CARGO_PORT_SEAM_COUNT = 12;
+
+export const QUAY_FENDER_COUNT = 10;
+
+export const PRIVATE_MARINA_RIVER_OFFSET_M = 477;
+
+export const PRIVATE_MARINA_BERTH_COUNT = 4;
+
+export const ASSET_STYLE_VESSEL_COUNT = CARGO_SHIP_BERTH_COUNT + PRIVATE_MARINA_BERTH_COUNT;
+
+export const MARINA_DOCK_THICKNESS_M = 2.2;
+
+export const MARINA_CLEAT_COUNT = PRIVATE_MARINA_BERTH_COUNT * 4 + 4;
+
+export const CARGO_BERTH_DOCK_LENGTH_M = 80;
+
+export const CARGO_BERTH_DOCK_THICKNESS_M = 3;
+
+export const CARGO_SHIP_CENTER_OFFSET_FROM_PORT_EDGE_M =
+  CARGO_BERTH_DOCK_LENGTH_M + CARGO_SHIP_HULL_LENGTH_M * 0.5 + CARGO_SHIP_WATER_GAP_M;
+
+export const PRIVATE_MARINA_SUPPORT_PILE_COUNT = PRIVATE_MARINA_BERTH_COUNT * 2 + 4;
+
+export const HIGHWAY_LANES_PER_DIRECTION = 2;
+
+export const HIGHWAY_LANE_WIDTH_M = 3.8;
+
+export const HIGHWAY_MEDIAN_WIDTH_M = 5;
+
+export const HIGHWAY_SHOULDER_WIDTH_M = 3;
+
+export const HIGHWAY_TOTAL_LANE_COUNT = HIGHWAY_LANES_PER_DIRECTION * 2;
+
+export const HIGHWAY_TOTAL_WIDTH_M =
+  HIGHWAY_TOTAL_LANE_COUNT * HIGHWAY_LANE_WIDTH_M +
+  HIGHWAY_MEDIAN_WIDTH_M +
+  HIGHWAY_SHOULDER_WIDTH_M * 2;
+
+export const HIGHWAY_SAMPLE_COUNT = 224;
+
+export const HIGHWAY_DECK_THICKNESS_M = 1.2;
+
+export const HIGHWAY_TUNNEL_PORTAL_WIDTH_M = HIGHWAY_TOTAL_WIDTH_M + 18;
+
+export const HIGHWAY_TUNNEL_PORTAL_HEIGHT_M = 32;
+
+export const HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M = HIGHWAY_TUNNEL_PORTAL_WIDTH_M + 28;
+
+export const HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M = HIGHWAY_TUNNEL_PORTAL_HEIGHT_M + 18;
+
+export const HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M = 58;
+
+export const HIGHWAY_TUNNEL_DARK_MASK_DEPTH_M = 30;
+
+export const HIGHWAY_TUNNEL_MOUTH_SHADOW_WIDTH_M = HIGHWAY_TOTAL_WIDTH_M + 7;
+
+export const HIGHWAY_TUNNEL_MOUTH_SHADOW_HEIGHT_M = HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 7;
+
+export const HIGHWAY_TUNNEL_NORTH_EXIT_PORTAL_OUTSET_M = 32;
+
+export const HIGHWAY_TUNNEL_ENTRY_CONTROL_INDEX = 7;
+
+export const HIGHWAY_TUNNEL_EXIT_CONTROL_INDEX = 11;
+
+export const HIGHWAY_RIVER_BRIDGE_START_CONTROL_INDEX = 15;
+
+export const HIGHWAY_RIVER_BRIDGE_END_CONTROL_INDEX = 18;
+
+export const HIGHWAY_SUPPORT_SPACING_M = 240;
+
+export const HIGHWAY_BRIDGE_TOWER_HEIGHT_M = 78;
+
+export const HIGHWAY_BRIDGE_TOWER_WIDTH_M = 7.5;
+
+export const HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M = HIGHWAY_TOTAL_WIDTH_M * 0.5 + 9;
+
+export const HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_OFFSET_M = HIGHWAY_TOTAL_WIDTH_M * 0.5 - 2.2;
+
+export const HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_LIFT_M = 0.18;
+
+export const HIGHWAY_BRIDGE_STAY_FAN_REACH_PROGRESS = 0.2;
+
+export const HIGHWAY_BRIDGE_STAY_CABLE_COUNT_PER_FAN = 5;
+
+export const HIGHWAY_BRIDGE_STAY_CABLE_RADIUS_M = 0.82;
+
+export const HIGHWAY_DASH_SEGMENTS = 1;
+
+export const HIGHWAY_DASH_GAP_SEGMENTS = 1;
+
+export const HIGHWAY_EXPANSION_JOINT_COUNT = 18;
+
+export const HIGHWAY_CRACK_DECAL_COUNT = 56;
+
+export const HIGHWAY_REFLECTOR_POST_COUNT = 48;
+
+export const HIGHWAY_TUNNEL_LINING_RIB_COUNT_PER_PORTAL = 5;
+
+export const DAM_SPILLWAY_GATE_COUNT = 5;
+
+export const DAM_CREST_RAIL_POST_COUNT = 18;
+
+export const ASSET_PIPELINE_SUPPORTED_FORMATS = ["glb", "gltf", "ktx2", "drc", "meshopt"] as const;
+
+export const UNIFIED_SEA_WATER_SURFACE_COUNT = 5;
+
+export const ASSET_MANIFEST_URL = "/assets/sity/asset-manifest.json";
+
+export const HIGH_END_QUALITY_PROFILE = "cinematic-pbr-terrain-water";
+
+export const SCALE_X_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
+
+export const SCALE_Y_MEASURE_M = SNOW_MOUNTAIN_HEIGHT_M;
+
+export const SCALE_Z_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
