@@ -5,6 +5,7 @@ import { roadElements } from "../render/context";
 import {
   barrierArmMaterial,
   busLaneMaterial,
+  cycleTrackMaterial,
   embankmentMaterial,
   fenceMeshMaterial,
   grassMaterial,
@@ -45,7 +46,8 @@ import {
   type Station,
 } from "./geometry";
 import type { RoadClass } from "./classes";
-import { RING_BRIDGE_CONTROLS, RING_ROAD_ID, RING_TUNNEL_CONTROLS } from "./plan";
+import { POCKET_TAPER_M } from "./classes";
+import { RING_BRIDGE_CONTROLS, RING_ROAD_ID } from "./plan";
 import { perpRight, sampleAtStation, type BuiltDestination, type BuiltJunction, type BuiltRoad, type Lane, type RoadEnd, type StructureKind, type Vec3 } from "./network";
 
 const LANE_OVERLAY_COLORS: Record<Lane["kind"], number> = {
@@ -119,6 +121,8 @@ const fenceGeometries: THREE.BufferGeometry[] = [];
 const glassGeometries: THREE.BufferGeometry[] = [];
 const barrierArmGeometries: THREE.BufferGeometry[] = [];
 const busLaneGeometries: THREE.BufferGeometry[] = [];
+const cycleTrackGeometries: THREE.BufferGeometry[] = [];
+const CYCLE_TRACK_WIDTH_M = 1.6;
 const destinationLampPlacements: Placement[] = [];
 
 function addMergedMesh(name: string, geometries: THREE.BufferGeometry[], material: THREE.Material, options: { castShadow?: boolean; renderOrder?: number; polygonOffset?: boolean } = {}) {
@@ -354,6 +358,26 @@ function buildRoadMarkings() {
       }
     }
 
+    buildPocketMarkings(road);
+
+    if (road.spec.cycleTrack && cls.sidewalkWidth > 0) {
+      const stations = stationsBetween(road.samples, s0 + 1.5, s1 - 1.5);
+      for (const sign of [-1, 1]) {
+        const inner = sign * (road.halfWidth + 0.25);
+        const outer = sign * (road.halfWidth + 0.25 + CYCLE_TRACK_WIDTH_M);
+        cycleTrackGeometries.push(stripFromStations(stations, Math.min(inner, outer), Math.max(inner, outer), 0.165));
+        whiteMarkings.push(stripFromStations(stations, outer - 0.05, outer + 0.05, 0.17));
+        for (let s = s0 + 24; s < s1 - 12; s += 70) {
+          const centre = sign * (road.halfWidth + 0.25 + CYCLE_TRACK_WIDTH_M * 0.5);
+          const glyph = stationsBetween(road.samples, s, s + 1.6);
+          whiteMarkings.push(stripFromStations(glyph, centre - 0.45, centre + 0.45, 0.172));
+          const wheels = stationsBetween(road.samples, s - 0.6, s + 2.2);
+          whiteMarkings.push(stripFromStations(wheels, centre - 0.55, centre - 0.35, 0.172));
+          whiteMarkings.push(stripFromStations(wheels, centre + 0.35, centre + 0.55, 0.172));
+        }
+      }
+    }
+
     if (road.spec.parkingLane) {
       const inner = road.halfWidth - 2.2;
       for (const sign of [-1, 1]) {
@@ -392,7 +416,8 @@ function buildRoadMarkings() {
         continue;
       }
       const sign = end.atStart ? -1 : 1;
-      const lanesInner = sign * (incomingOffsets[0] - road.cls.laneWidth * 0.5);
+      const pocket = pocketAtEnd(road, end.atStart);
+      const lanesInner = sign * ((pocket ? pocket.offset : incomingOffsets[0]) - road.cls.laneWidth * 0.5);
       const lanesOuter = sign * (incomingOffsets[incomingOffsets.length - 1] + road.cls.laneWidth * 0.5);
       const lineStation = end.atStart ? road.startTrim + 2.1 : road.length - road.endTrim - 2.1;
       const control = junction.control;
@@ -411,6 +436,9 @@ function buildRoadMarkings() {
       }
     }
   }
+
+  buildLaneDrops();
+  buildSchoolZones();
 
   for (const roundabout of roadNetwork.roundabouts.values()) {
     for (const end of roundabout.ends) {
@@ -440,6 +468,172 @@ function buildRoadMarkings() {
     ringLine.translate(roundabout.center.x, roundabout.center.y + 0.026, roundabout.center.z);
     whiteMarkings.push(ringLine);
   }
+}
+
+function plantedMedianIntervals(road: BuiltRoad, s0: number, s1: number) {
+  let intervals: Array<[number, number]> = [[s0, s1]];
+  for (const range of road.pocketRanges) {
+    const gap0 = range.direction === "forward" ? range.s0 - POCKET_TAPER_M : range.s0;
+    const gap1 = range.direction === "forward" ? range.s1 : range.s1 + POCKET_TAPER_M;
+    const next: Array<[number, number]> = [];
+    for (const [a, b] of intervals) {
+      if (gap1 <= a || gap0 >= b) {
+        next.push([a, b]);
+        continue;
+      }
+      if (gap0 > a) {
+        next.push([a, gap0]);
+      }
+      if (gap1 < b) {
+        next.push([gap1, b]);
+      }
+    }
+    intervals = next;
+  }
+  return intervals.filter(([a, b]) => b - a > 10);
+}
+
+function buildPocketMarkings(road: BuiltRoad) {
+  const laneWidth = road.cls.laneWidth;
+  for (const range of road.pocketRanges) {
+    const sign = range.direction === "forward" ? 1 : -1;
+    const boundary = sign * (range.offset + laneWidth * 0.5);
+    const innerEdge = sign * (range.offset - laneWidth * 0.5);
+    const stopEnd = range.direction === "forward" ? range.s1 - 2.6 : range.s1;
+    const stopStart = range.direction === "forward" ? range.s0 : range.s0 + 2.6;
+    solidLine(road, stopStart, stopEnd, boundary, 0.15, whiteMarkings);
+    solidLine(road, stopStart, stopEnd, innerEdge - sign * 0.18, 0.12, yellowMarkings);
+    solidLine(road, stopStart, stopEnd, innerEdge - sign * 0.46, 0.12, yellowMarkings);
+    solidLine(road, stopStart, stopEnd, -sign * (road.median * 0.5 - 0.15), 0.12, yellowMarkings);
+    const taper0 = range.direction === "forward" ? range.s0 - POCKET_TAPER_M : range.s1;
+    const taper1 = taper0 + POCKET_TAPER_M;
+    const half = road.median * 0.5 - 0.15;
+    solidLine(road, taper0, taper1, half, 0.12, yellowMarkings);
+    solidLine(road, taper0, taper1, -half, 0.12, yellowMarkings);
+    for (let s = taper0 + 1.5; s < taper1 - 1; s += 2.4) {
+      whiteMarkings.push(stripFromStations(stationsBetween(road.samples, s - 0.14, s + 0.14), -half + 0.4, half - 0.4, 0.02));
+    }
+    const centre = sign * range.offset;
+    const backs = range.s1 - range.s0 >= 40 ? [9, 26] : [9];
+    for (const back of backs) {
+      const tipStation = range.direction === "forward" ? range.s1 - back : range.s0 + back;
+      const tailStation = range.direction === "forward" ? tipStation - 4 : tipStation + 4;
+      leftTurnArrow(road, tailStation, tipStation, centre, -sign);
+    }
+  }
+}
+
+function leftTurnArrow(road: BuiltRoad, tailStation: number, tipStation: number, centre: number, leftSign: number) {
+  const stem = stationsBetween(road.samples, Math.min(tailStation, tipStation), Math.max(tailStation, tipStation));
+  whiteMarkings.push(stripFromStations(stem, centre - 0.22, centre + 0.22, 0.026));
+  const bar = stationsBetween(road.samples, tipStation - 0.22, tipStation + 0.22);
+  const barEnd = centre + leftSign * 1.2;
+  whiteMarkings.push(stripFromStations(bar, Math.min(centre - 0.22, barEnd), Math.max(centre + 0.22, barEnd), 0.026));
+  for (const [half, from, to] of [
+    [0.9, 1.2, 1.5],
+    [0.6, 1.5, 1.8],
+    [0.3, 1.8, 2.1],
+  ]) {
+    const head = stationsBetween(road.samples, tipStation - half, tipStation + half);
+    const a = centre + leftSign * from;
+    const b = centre + leftSign * to;
+    whiteMarkings.push(stripFromStations(head, Math.min(a, b), Math.max(a, b), 0.026));
+  }
+}
+
+function hatchLane(road: BuiltRoad, s0: number, s1: number, across0: number, across1: number) {
+  const low = Math.min(across0, across1) + 0.15;
+  const high = Math.max(across0, across1) - 0.15;
+  const span = high - low;
+  for (let s = s0; s < s1 - 2.4; s += 4) {
+    for (let step = 0; step < 4; step += 1) {
+      const a = low + (span * step) / 4;
+      const b = low + (span * (step + 1)) / 4;
+      whiteMarkings.push(stripFromStations(stationsBetween(road.samples, s + step * 0.45, s + step * 0.45 + 0.6), a, b, 0.024));
+    }
+  }
+}
+
+function buildLaneDrops() {
+  for (const junction of roadNetwork.junctions.values()) {
+    if (junction.ends.length !== 2) {
+      continue;
+    }
+    for (const incomingEnd of junction.ends) {
+      const outgoingEnd = junction.ends.find((end) => end !== incomingEnd);
+      const road = roadNetwork.roads.get(incomingEnd.roadId);
+      const next = outgoingEnd ? roadNetwork.roads.get(outgoingEnd.roadId) : undefined;
+      if (!road || !next || !outgoingEnd) {
+        continue;
+      }
+      const inDirection = incomingEnd.atStart ? "backward" : "forward";
+      const outDirection = outgoingEnd.atStart ? "forward" : "backward";
+      const inOffsets = road.laneOffsets[inDirection];
+      const outCount = next.laneOffsets[outDirection].length;
+      if (inOffsets.length <= outCount || outCount === 0) {
+        continue;
+      }
+      const sign = inDirection === "forward" ? 1 : -1;
+      const endStation = incomingEnd.atStart ? road.startTrim : road.length - road.endTrim;
+      const usable = road.length - road.startTrim - road.endTrim;
+      const taper = Math.min(60, usable * 0.6);
+      const s0 = incomingEnd.atStart ? endStation + 3 : endStation - taper;
+      const s1 = incomingEnd.atStart ? endStation + taper : endStation - 3;
+      const laneWidth = road.cls.laneWidth;
+      for (let index = outCount; index < inOffsets.length; index += 1) {
+        hatchLane(road, s0, s1, sign * (inOffsets[index] - laneWidth * 0.5), sign * (inOffsets[index] + laneWidth * 0.5));
+      }
+      const boundary = sign * (inOffsets[outCount - 1] + inOffsets[outCount]) * 0.5;
+      solidLine(road, s0, s1, boundary, 0.15, whiteMarkings, 0.025);
+    }
+  }
+}
+
+function zigzagLine(road: BuiltRoad, s0: number, s1: number, edge: number, amplitude: number) {
+  const inward = edge > 0 ? -1 : 1;
+  for (let s = s0; s < s1 - 1; s += 1) {
+    const phase = ((s - s0) % 4) / 4;
+    const wave = phase < 0.5 ? phase * 2 : 2 - phase * 2;
+    const across = edge + inward * amplitude * wave;
+    whiteMarkings.push(stripFromStations(stationsBetween(road.samples, s, s + 1.05), across - 0.07, across + 0.07, 0.022));
+  }
+}
+
+function buildSchoolZones() {
+  for (const road of roadNetwork.roads.values()) {
+    if (road.spec.speedKph === undefined || road.spec.speedKph >= road.cls.speedKph) {
+      continue;
+    }
+    const s0 = road.startTrim + 4;
+    const s1 = road.length - road.endTrim - 4;
+    if (s1 - s0 < 20) {
+      continue;
+    }
+    const edge = road.halfWidth - 0.35;
+    zigzagLine(road, s0, s1, edge, 0.5);
+    zigzagLine(road, s0, s1, -edge, 0.5);
+    for (const direction of ["forward", "backward"] as const) {
+      const offsets = road.laneOffsets[direction];
+      if (offsets.length === 0) {
+        continue;
+      }
+      const sign = direction === "forward" ? 1 : -1;
+      const centre = sign * offsets[offsets.length - 1];
+      for (const along of [0.22, 0.5]) {
+        const s = direction === "forward" ? s0 + (s1 - s0) * along : s1 - (s1 - s0) * along;
+        for (let step = 0; step < 6; step += 1) {
+          const half = 1.1 * (1 - step / 6);
+          const from = direction === "forward" ? s + step * 0.5 : s - step * 0.5 - 0.5;
+          whiteMarkings.push(stripFromStations(stationsBetween(road.samples, from, from + 0.5), centre - half, centre + half, 0.025));
+        }
+      }
+    }
+  }
+}
+
+function pocketAtEnd(road: BuiltRoad, atStart: boolean) {
+  const direction = atStart ? "backward" : "forward";
+  return road.pocketRanges.find((range) => range.direction === direction && (atStart ? range.s0 <= road.startTrim + 0.5 : range.s1 >= road.length - road.endTrim - 0.5));
 }
 
 function buildSidewalksAndMedians() {
@@ -494,14 +688,15 @@ function buildSidewalksAndMedians() {
       }
     }
     if (road.median > 0 && cls.medianKind === "planted" && s1 - s0 > 40) {
-      const medianStations = stationsBetween(road.samples, s0 + 14, s1 - 14);
       const half = road.median * 0.5 - 0.3;
-      const volume = volumeFromStations(medianStations, -half, half, 0.18, 0.6);
-      medianTops.push(volume.top);
-      kerbSides.push(volume.side);
-      for (let s = s0 + 22; s < s1 - 22; s += 12) {
-        const station = sampleAtStation(road.samples, s);
-        roadSideSlots.medianTrees.push({ x: station.x, y: station.y + 0.18, z: station.z });
+      for (const [a, b] of plantedMedianIntervals(road, s0 + 14, s1 - 14)) {
+        const volume = volumeFromStations(stationsBetween(road.samples, a, b), -half, half, 0.18, 0.6);
+        medianTops.push(volume.top);
+        kerbSides.push(volume.side);
+        for (let s = a + 8; s < b - 8; s += 12) {
+          const station = sampleAtStation(road.samples, s);
+          roadSideSlots.medianTrees.push({ x: station.x, y: station.y + 0.18, z: station.z });
+        }
       }
     }
     if (road.median > 0 && cls.medianKind === "barrier") {
@@ -921,10 +1116,24 @@ function buildStructures() {
       "ring-river-cable-stayed-bridge",
       bridgeStations.map((station) => ({ x: station.x, y: station.y, z: station.z })),
     );
-    const entry = sampleAtStation(ring.samples, controlStations[RING_TUNNEL_CONTROLS.from] + 2);
-    const exit = sampleAtStation(ring.samples, controlStations[RING_TUNNEL_CONTROLS.to] - 2);
-    addTunnelPortal("ring-tunnel-west-portal", { x: entry.x, y: entry.y, z: entry.z }, { x: -entry.tx, z: -entry.tz }, 0);
-    addTunnelPortal("ring-tunnel-north-portal", { x: exit.x, y: exit.y, z: exit.z }, { x: exit.tx, z: exit.tz }, 0);
+  }
+
+  for (const road of roadNetwork.roads.values()) {
+    for (const run of structureRuns(road)) {
+      if (run.kind !== "tunnel") {
+        continue;
+      }
+      const closed = Boolean(road.spec.closed);
+      const totalLength = closed ? road.samples[road.samples.length - 1].s : road.length;
+      if (run.s0 > 0.5 || closed) {
+        const entry = sampleAtStation(road.samples, run.s0 + 2);
+        addTunnelPortal(`${road.spec.id}-tunnel-portal-in`, { x: entry.x, y: entry.y, z: entry.z }, { x: -entry.tx, z: -entry.tz }, 0);
+      }
+      if (run.s1 < totalLength - 0.5 || closed) {
+        const exit = sampleAtStation(road.samples, run.s1 - 2);
+        addTunnelPortal(`${road.spec.id}-tunnel-portal-out`, { x: exit.x, y: exit.y, z: exit.z }, { x: exit.tx, z: exit.tz }, 0);
+      }
+    }
   }
 
   for (const road of roadNetwork.roads.values()) {
@@ -1206,6 +1415,7 @@ function buildSigns() {
   const speed30: Placement[] = [];
   const speed50: Placement[] = [];
   const noEntry: Placement[] = [];
+  const school: Placement[] = [];
   const poles: Placement[] = [];
 
   const push = (list: Placement[], end: RoadEnd, back: number, roadY: number) => {
@@ -1279,9 +1489,32 @@ function buildSigns() {
       const x = station.x + right.x * offset;
       const z = station.z + right.z * offset;
       const facing = Math.atan2(-travel.x, -travel.z);
-      const list = road.cls.speedKph <= 30 ? speed30 : speed50;
+      const list = (road.spec.speedKph ?? road.cls.speedKph) <= 30 ? speed30 : speed50;
       list.push({ x, y: station.y, z, rotationY: facing });
       poles.push({ x, y: station.y, z, rotationY: facing });
+    }
+  }
+
+  for (const road of roadNetwork.roads.values()) {
+    if (road.spec.speedKph === undefined || road.spec.speedKph >= road.cls.speedKph) {
+      continue;
+    }
+    for (const direction of ["forward", "backward"] as const) {
+      if (road.laneOffsets[direction].length === 0) {
+        continue;
+      }
+      for (const [back, list] of [
+        [8, school],
+        [14, speed30],
+      ] as const) {
+        const station = sampleAtStation(road.samples, direction === "forward" ? road.startTrim + back : road.length - road.endTrim - back);
+        const travel = direction === "forward" ? { x: station.tx, z: station.tz } : { x: -station.tx, z: -station.tz };
+        const right = perpRight(travel);
+        const offset = road.halfWidth + Math.max(road.cls.sidewalkWidth * 0.55, 0.9);
+        const placement = { x: station.x + right.x * offset, y: station.y, z: station.z + right.z * offset, rotationY: Math.atan2(-travel.x, -travel.z) };
+        list.push(placement);
+        poles.push(placement);
+      }
     }
   }
 
@@ -1295,6 +1528,7 @@ function buildSigns() {
   addInstances("signs-speed-30", face, signMaterials.speed30, speed30, false);
   addInstances("signs-speed-50", face, signMaterials.speed50, speed50, false);
   addInstances("signs-no-entry", face, signMaterials.noentry, noEntry, false);
+  addInstances("signs-school", face, signMaterials.school, school, false);
 }
 
 export function addRoadNetworkMeshes() {
@@ -1314,6 +1548,7 @@ export function addRoadNetworkMeshes() {
   addMergedMesh("planted-medians", medianTops, medianGrassMaterial, { renderOrder: 10 });
   addMergedMesh("roundabout-islands", grassTops, grassMaterial, { renderOrder: 10, castShadow: true });
   addMergedMesh("bus-lanes", busLaneGeometries, busLaneMaterial, { renderOrder: 10.5 });
+  addMergedMesh("cycle-tracks", cycleTrackGeometries, cycleTrackMaterial, { renderOrder: 10.6 });
   addMergedMesh("road-markings-white", whiteMarkings, roadMarkingWhiteMaterial, { renderOrder: 11 });
   addMergedMesh("road-markings-yellow", yellowMarkings, roadMarkingYellowMaterial, { renderOrder: 11 });
   addMergedMesh("road-barriers", barrierGeometries, roadStructureConcreteMaterial, { renderOrder: 10, castShadow: true });

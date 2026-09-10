@@ -175,4 +175,24 @@ describe('buildRoadNetwork', () => {
     expect(graph.stats().sourceLaneCount).toBe(2);
     expect(graph.stats().sinkLaneCount).toBe(2);
   });
+
+  it('adds a left-turn pocket that diverges from the inner lane and only turns left', () => {
+    const spec = crossroads();
+    spec.roads[0] = { ...spec.roads[0], pockets: [{ end: 'to', turn: 'left', length: 60 }] };
+    const network = buildRoadNetwork(spec, flat);
+    const graph = new RoadGraph(network);
+    const pocket = network.lanes.get('ew-1:forward:pocket-left');
+    expect(pocket).toBeDefined();
+    expect(pocket?.pocket).toBe('left');
+    expect(pocket?.prev.length).toBeGreaterThan(0);
+    const turns = pocket!.next.map((id) => network.lanes.get(id)?.turn);
+    expect(turns).toEqual(['left']);
+    const inner = [...network.lanes.values()].find((lane) => lane.roadId === 'ew-1' && lane.direction === 'forward' && lane.laneIndex === 0 && lane.toNode === 'c');
+    const innerTurns = inner!.next.map((id) => network.lanes.get(id)?.turn).filter((turn) => turn !== 'diverge');
+    expect(innerTurns).not.toContain('left');
+    expect(network.roads.get('ew-1')?.pocketRanges).toHaveLength(1);
+    expect(innerTurns).toContain('straight');
+    expect(graph.invariants().strandedLaneIds).toEqual([]);
+    expect(graph.invariants().everyLinkIsBidirectional).toBe(true);
+  });
 });

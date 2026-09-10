@@ -24,8 +24,9 @@ describe('the city plan', () => {
     const stats = graph.stats();
     expect(stats.roadCount).toBeGreaterThanOrEqual(90);
     expect(stats.laneCount).toBeGreaterThanOrEqual(600);
-    expect(stats.roundaboutCount).toBe(5);
-    expect(stats.laneCountByKind.ramp).toBe(16);
+    expect(stats.roundaboutCount).toBe(7);
+    expect(stats.laneCountByKind.ramp).toBe(28);
+    expect(graph.laneIds().filter((id) => id.endsWith(':pocket-left')).length).toBeGreaterThanOrEqual(20);
     const invariants = graph.invariants();
     expect(invariants.strandedLaneIds).toEqual([]);
     expect(invariants.everyLinkIsBidirectional).toBe(true);
@@ -35,7 +36,7 @@ describe('the city plan', () => {
 
   it('routes from the ring highway to Main Street and back', () => {
     const ringLane = graph.laneIds().find((id) => id.startsWith(`${RING_ROAD_ID}:forward:0`));
-    const mainLane = 'main-street-1:forward:0';
+    const mainLane = graph.laneIds().find((id) => id.startsWith('main-street-1:forward:0'))!;
     expect(ringLane).toBeDefined();
     const out = graph.findRoute(ringLane!, mainLane);
     const back = graph.findRoute(mainLane, ringLane!);
@@ -44,7 +45,7 @@ describe('the city plan', () => {
   });
 
   it('enumerates bounded paths and finds long random routes', () => {
-    const paths = graph.enumeratePaths('main-street-1:forward:0', 400, 50);
+    const paths = graph.enumeratePaths(graph.laneIds().find((id) => id.startsWith('main-street-1:forward:0'))!, 400, 50);
     expect(paths.length).toBeGreaterThan(1);
     expect(paths.length).toBeLessThanOrEqual(50);
     const route = graph.randomRoute(3, 900);

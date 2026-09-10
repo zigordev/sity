@@ -59,7 +59,7 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     laneWidth: 3.4,
     outerShoulder: 0,
     innerShoulder: 0,
-    medianWidth: 3.2,
+    medianWidth: 7.0,
     medianKind: "planted",
     sidewalkWidth: 4.2,
     speedKph: 50,
@@ -154,6 +154,8 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     streetTrees: false,
   },
 };
+
+export const POCKET_TAPER_M = 16;
 
 export function roadTotalWidth(spec: RoadClassSpec, forward: number, backward: number) {
   const laneTotal = (forward + backward) * spec.laneWidth;

@@ -11,6 +11,7 @@ import { addRoadNetworkMeshes } from "./roads/render";
 import { addCity, registerCityZones } from "./city";
 import { addCountryside } from "./city/countryside";
 import { addRailway, registerRailwayCorridors } from "./rail/railway";
+import { addStreams, registerStreamCuts } from "./natural/streams";
 import { addParkedVehicles } from "./vehicles/parked";
 import "./roads/build";
 import { updateAxisScale, updateCategoryVisibility, updateCompass } from "./ui/overlays";
@@ -27,6 +28,8 @@ addMainBoundarySurface();
 registerCityZones();
 
 registerRailwayCorridors();
+
+registerStreamCuts();
 
 addMicroDisplacedGrassTerrain();
 
@@ -71,6 +74,8 @@ addRiver();
 addCoastalEstuary();
 
 addRoadNetworkMeshes();
+
+addStreams();
 
 addRailway();
 

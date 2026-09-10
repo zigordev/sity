@@ -846,6 +846,15 @@ export const busLaneMaterial = new THREE.MeshStandardMaterial({
   polygonOffsetUnits: -2,
 });
 
+export const cycleTrackMaterial = new THREE.MeshStandardMaterial({
+  color: 0x5b8a52,
+  roughness: 0.92,
+  metalness: 0.0,
+  polygonOffset: true,
+  polygonOffsetFactor: -1,
+  polygonOffsetUnits: -2,
+});
+
 export const tollGantryMaterial = new THREE.MeshStandardMaterial({
   color: 0x8a9096,
   roughness: 0.5,
@@ -866,7 +875,7 @@ export const gravelVergeMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.0,
 });
 
-export function createSignTexture(kind: "stop" | "yield" | "speed30" | "speed50" | "noentry") {
+export function createSignTexture(kind: "stop" | "yield" | "speed30" | "speed50" | "noentry" | "school") {
   const size = 128;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -922,6 +931,33 @@ export function createSignTexture(kind: "stop" | "yield" | "speed30" | "speed50"
     context.fill();
     context.fillStyle = "#ffffff";
     context.fillRect(24, center - 12, size - 48, 24);
+  } else if (kind === "school") {
+    context.fillStyle = "#c8232c";
+    context.beginPath();
+    context.moveTo(center, 6);
+    context.lineTo(size - 4, size - 10);
+    context.lineTo(4, size - 10);
+    context.closePath();
+    context.fill();
+    context.fillStyle = "#ffffff";
+    context.beginPath();
+    context.moveTo(center, 24);
+    context.lineTo(size - 22, size - 20);
+    context.lineTo(22, size - 20);
+    context.closePath();
+    context.fill();
+    context.fillStyle = "#111111";
+    for (const [cx, scale] of [
+      [center - 12, 1],
+      [center + 10, 0.8],
+    ]) {
+      context.beginPath();
+      context.arc(cx, 62, 6 * scale, 0, Math.PI * 2);
+      context.fill();
+      context.fillRect(cx - 5 * scale, 70, 10 * scale, 18 * scale);
+      context.fillRect(cx - 5 * scale, 88 * scale + 70 - 70 * scale, 3, 14 * scale);
+      context.fillRect(cx + 2 * scale, 88 * scale + 70 - 70 * scale, 3, 14 * scale);
+    }
   } else {
     context.fillStyle = "#ffffff";
     context.beginPath();
@@ -950,6 +986,7 @@ export const signMaterials = {
   speed30: new THREE.MeshStandardMaterial({ map: createSignTexture("speed30"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
   speed50: new THREE.MeshStandardMaterial({ map: createSignTexture("speed50"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
   noentry: new THREE.MeshStandardMaterial({ map: createSignTexture("noentry"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
+  school: new THREE.MeshStandardMaterial({ map: createSignTexture("school"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
 };
 
 export const talusRockMaterial = new THREE.MeshStandardMaterial({

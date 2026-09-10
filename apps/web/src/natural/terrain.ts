@@ -1,6 +1,6 @@
 import { corridorClearance, cutLimitAt, terrainReliefFactor, zoneFlattenFactor } from "../world/occupancy";
 import * as THREE from "three";
-import { BEACH_INLAND_WIDTH_M, GRASS_SURFACE_Y, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAINLAND_Y, MAIN_BOUNDARY_TERRAIN_THICKNESS_M, MICRO_TERRAIN_CELL_M, MICRO_TERRAIN_HEIGHT_M, MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, MOUNTAIN_GRID_SEGMENTS, MOUNTAIN_HEIGHT_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, MOUNTAIN_STRATA_RIDGE_COUNT, MOUNTAIN_SURFACE_LIFT_M, MOUNTAIN_TALUS_BOULDER_COUNT, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, RIVER_WIDTH_M, SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, SNOW_MOUNTAIN_GRID_SEGMENTS, SNOW_MOUNTAIN_HEIGHT_M, SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_SNOWLINE_M, SNOW_MOUNTAIN_STRATA_RIDGE_COUNT, SNOW_MOUNTAIN_SURFACE_LIFT_M, SNOW_MOUNTAIN_TALUS_BOULDER_COUNT } from "../config/constants";
+import { BEACH_INLAND_WIDTH_M, GRASS_SURFACE_Y, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAINLAND_Y, MAIN_BOUNDARY_TERRAIN_THICKNESS_M, MICRO_TERRAIN_CELL_M, MICRO_TERRAIN_HEIGHT_M, MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, MOUNTAIN_GRID_SEGMENTS, MOUNTAIN_HEIGHT_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, MOUNTAIN_STRATA_RIDGE_COUNT, MOUNTAIN_SURFACE_LIFT_M, MOUNTAIN_TALUS_BOULDER_COUNT, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, RIVER_WIDTH_M, SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, SNOW_MOUNTAIN_GRID_SEGMENTS, SNOW_MOUNTAIN_HEIGHT_M, SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_SNOWLINE_M, SNOW_MOUNTAIN_STRATA_RIDGE_COUNT, SNOW_MOUNTAIN_SURFACE_LIFT_M, SNOW_MOUNTAIN_TALUS_BOULDER_COUNT, WESTERN_COUNTRY_SPLIT_Z_M, WESTERN_FARM_HILL_HEIGHT_M, WESTERN_FOREST_HILL_HEIGHT_M, WESTERN_HILLS_START_X_M } from "../config/constants";
 import { addFlatPlane, addLayeredPolygonVolume, addPlanarXZUVs, addScaledSphereInstances, distanceToPath2D, isInsideBounds } from "../geometry/helpers";
 import { GroundPathPoint, ScaledXYZPlacement } from "../geometry/types";
 import { naturalElements } from "../render/context";
@@ -872,8 +872,40 @@ export function addSnowMountainCutWall(name: string, edge: "west" | "south") {
   naturalElements.add(cut);
 }
 
+function valueNoise2(x: number, z: number) {
+  const ix = Math.floor(x);
+  const iz = Math.floor(z);
+  const fx = x - ix;
+  const fz = z - iz;
+  const sx = fx * fx * (3 - 2 * fx);
+  const sz = fz * fz * (3 - 2 * fz);
+  const corner = (cx: number, cz: number) => {
+    const value = Math.sin(cx * 127.1 + cz * 311.7) * 43758.5453;
+    return value - Math.floor(value);
+  };
+  const a = corner(ix, iz);
+  const b = corner(ix + 1, iz);
+  const c = corner(ix, iz + 1);
+  const d = corner(ix + 1, iz + 1);
+  return a + (b - a) * sx + (c - a) * sz + (a - b - c + d) * sx * sz;
+}
+
+export function westernHillsHeightAt(x: number, z: number) {
+  const mask = 1 - THREE.MathUtils.smoothstep(x, WESTERN_HILLS_START_X_M - 380, WESTERN_HILLS_START_X_M);
+  if (mask <= 0) {
+    return 0;
+  }
+  const broad = valueNoise2(x * 0.0026 + 3.7, z * 0.0026 + 1.3);
+  const medium = valueNoise2(x * 0.0071 + 9.1, z * 0.0071 + 4.4);
+  const fine = valueNoise2(x * 0.019, z * 0.019 + 7.7);
+  const shape = broad * 0.6 + medium * 0.3 + fine * 0.1;
+  const farm = THREE.MathUtils.smoothstep(z, WESTERN_COUNTRY_SPLIT_Z_M - 120, WESTERN_COUNTRY_SPLIT_Z_M + 120);
+  const amplitude = WESTERN_FOREST_HILL_HEIGHT_M * (1 - farm) + WESTERN_FARM_HILL_HEIGHT_M * farm;
+  return mask * amplitude * shape;
+}
+
 export function terrainSurfaceYAt(point: GroundPathPoint) {
-  return GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z);
+  return GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z) + westernHillsHeightAt(point.x, point.z);
 }
 
 export function fullTerrainSurfaceYAt(point: GroundPathPoint) {

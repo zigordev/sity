@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { RIVER_WIDTH_M } from "../config/constants";
+import { RIVER_WIDTH_M, WESTERN_COUNTRY_SPLIT_Z_M } from "../config/constants";
 import { distanceToPath2D } from "../geometry/helpers";
 import { mergeAll } from "../roads/geometry";
-import { fullTerrainSurfaceYAt, groundSurfaceYAt, isInsideReservoirFootprint, mountainHeightAt, snowMountainHeightAt } from "../natural/terrain";
+import { fullTerrainSurfaceYAt, groundSurfaceYAt, isInsideReservoirFootprint, mountainHeightAt, snowMountainHeightAt, terrainMicroNoise } from "../natural/terrain";
 import { vegetationElements } from "../render/context";
 import { roadSideSlots } from "../roads/render";
 import { corridorClearance } from "../world/occupancy";
@@ -11,7 +11,7 @@ import { DISTRICTS, SPECIAL_BLOCKS } from "./districts";
 import { RASTER_SPECIAL, isNaturalKeepOut, rasterValueAt, type Lot } from "./lots";
 import { createRandom, hash2 } from "./random";
 
-export type TreeKind = "broadleaf" | "conifer" | "palm";
+export type TreeKind = "broadleaf" | "conifer" | "palm" | "pine";
 
 interface TreePlacement {
   x: number;
@@ -22,7 +22,7 @@ interface TreePlacement {
   tint: number;
 }
 
-const placements: Record<TreeKind, TreePlacement[]> = { broadleaf: [], conifer: [], palm: [] };
+const placements: Record<TreeKind, TreePlacement[]> = { broadleaf: [], conifer: [], palm: [], pine: [] };
 
 const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 0.95, metalness: 0 });
 const broadleafMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
@@ -32,9 +32,10 @@ const palmMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness
 const BROADLEAF_TINTS = [0x4f8a3c, 0x5c9a44, 0x477f38, 0x6aa04c, 0x3f7a35, 0x7aa551];
 const CONIFER_TINTS = [0x2f5e34, 0x35683a, 0x2a5530, 0x3b7040, 0x2c5f38];
 const PALM_TINTS = [0x5f9b3f, 0x6ba846, 0x559439];
+const PINE_TINTS = [0x2b5432, 0x33613a, 0x264c2d, 0x3a6b3f, 0x2f5a35, 0x1f4527];
 
 export function addTree(kind: TreeKind, x: number, z: number, y: number, scale = 1, seed = 0) {
-  const tints = kind === "broadleaf" ? BROADLEAF_TINTS : kind === "conifer" ? CONIFER_TINTS : PALM_TINTS;
+  const tints = kind === "broadleaf" ? BROADLEAF_TINTS : kind === "conifer" ? CONIFER_TINTS : kind === "pine" ? PINE_TINTS : PALM_TINTS;
   const h = hash2(x, z, seed);
   placements[kind].push({ x, y, z, scale, rotation: h * Math.PI * 2, tint: tints[Math.floor(h * tints.length) % tints.length] });
 }
@@ -51,6 +52,17 @@ function createBroadleafCanopy() {
   const side = new THREE.IcosahedronGeometry(1.7, 1);
   side.translate(-1.5, 6.1, 1.0);
   parts.push(side);
+  return mergeAll(parts) ?? lower;
+}
+
+function createPineCanopy() {
+  const parts: THREE.BufferGeometry[] = [];
+  const lower = new THREE.ConeGeometry(2.4, 5.6, 6);
+  lower.translate(0, 4.4, 0);
+  parts.push(lower);
+  const upper = new THREE.ConeGeometry(1.5, 4.2, 6);
+  upper.translate(0, 8.0, 0);
+  parts.push(upper);
   return mergeAll(parts) ?? lower;
 }
 
@@ -132,7 +144,10 @@ export function commitTrees() {
   commitKind("broadleaf", createBroadleafCanopy(), broadleafMaterial, broadleafTrunk);
   commitKind("conifer", createConiferCanopy(), coniferMaterial, coniferTrunk);
   commitKind("palm", createPalmFronds(), palmMaterial, palmTrunk);
-  return placements.broadleaf.length + placements.conifer.length + placements.palm.length;
+  const pineTrunk = new THREE.CylinderGeometry(0.16, 0.26, 3.0, 5);
+  pineTrunk.translate(0, 1.5, 0);
+  commitKind("pine", createPineCanopy(), coniferMaterial, pineTrunk);
+  return placements.broadleaf.length + placements.conifer.length + placements.palm.length + placements.pine.length;
 }
 
 function insideAnyDistrict(x: number, z: number) {
@@ -241,8 +256,39 @@ export function placeForest() {
       if (random() > density) {
         continue;
       }
-      const kind: TreeKind = height > 45 || random() > 0.7 ? "conifer" : "broadleaf";
+      const kind: TreeKind = height > 45 || random() > 0.7 ? "pine" : "broadleaf";
       addTree(kind, jx, jz, groundSurfaceYAt(jx, jz) - 0.3, 0.9 + random() * 0.7, 5);
+      count += 1;
+    }
+  }
+  return count;
+}
+
+export function placeWesternForest() {
+  const random = createRandom(7331);
+  const spacing = 12;
+  let count = 0;
+  const minX = mainBoundaryMinX + 20;
+  const maxX = -1880;
+  const maxZ = WESTERN_COUNTRY_SPLIT_Z_M + 60;
+  for (let z = mainBoundaryMinZ + 20; z < maxZ; z += spacing) {
+    for (let x = minX; x < maxX; x += spacing) {
+      const jx = x + (random() - 0.5) * spacing;
+      const jz = z + (random() - 0.5) * spacing;
+      const edge = 1 - THREE.MathUtils.smoothstep(jz, WESTERN_COUNTRY_SPLIT_Z_M - 200, maxZ);
+      const eastEdge = 1 - THREE.MathUtils.smoothstep(jx, -2050, -1880);
+      const density = 0.88 * edge * eastEdge;
+      if (random() > density) {
+        continue;
+      }
+      if (insideAnyDistrict(jx, jz) || rasterValueAt(jx, jz) !== 0) {
+        continue;
+      }
+      if (corridorClearance(jx, jz, 60) < 7) {
+        continue;
+      }
+      const kind: TreeKind = random() > 0.12 ? "pine" : "broadleaf";
+      addTree(kind, jx, jz, groundSurfaceYAt(jx, jz) + terrainMicroNoise(jx, jz) - 0.25, 0.85 + random() * 0.6, 7);
       count += 1;
     }
   }

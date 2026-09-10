@@ -29,6 +29,14 @@ export const CAMERA_VIEWS: CameraView[] = [
   { id: "col-road", label: "Col Road", position: [-560, 520, 280], target: [-1000, 80, 520] },
   { id: "valley", label: "Valley", position: [-420, 420, -120], target: [-800, 20, 330] },
   { id: "pier", label: "Pier", position: [900, 90, -40], target: [1010, 6, -190] },
+  { id: "cloverleaf", label: "Cloverleaf", position: [760, 320, 1620], target: [485, 5, 1360] },
+  { id: "west-portal", label: "West portal", position: [-120, 110, 1520], target: [-420, 10, 1382] },
+  { id: "farmland", label: "Farmland", position: [-2080, 520, 1320], target: [-2600, 5, 900] },
+  { id: "millbrook", label: "Millbrook", position: [-2620, 300, 1010], target: [-2800, 8, 780] },
+  { id: "pinewood", label: "Pinewood", position: [-2480, 330, -280], target: [-2700, 15, -500] },
+  { id: "forest-lake", label: "Forest lake", position: [-2280, 130, -290], target: [-2350, 5, -470] },
+  { id: "turn-pockets", label: "Turn pockets", position: [200, 70, -200], target: [120, 3, -280] },
+  { id: "school-zone", label: "School zone", position: [330, 60, 600], target: [270, 3, 520] },
 ];
 
 export function findView(id: string) {

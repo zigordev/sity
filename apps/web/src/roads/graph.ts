@@ -305,6 +305,7 @@ export class RoadGraph {
         nodeId: lane.nodeId ?? null,
         direction: lane.direction ?? null,
         laneIndex: lane.laneIndex ?? null,
+        pocket: lane.pocket ?? null,
         turn: lane.turn ?? null,
         fromNode: lane.fromNode,
         toNode: lane.toNode,

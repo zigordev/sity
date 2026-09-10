@@ -82,9 +82,9 @@ test.describe('scene', () => {
     const errors = await openScene(page);
     const layout = await page.evaluate(() => window.__SITY_DEBUG__.getSiteLayout());
     expect(layout.unit).toBe('meter');
-    expect(layout.mainBoundaryWidthM).toBeCloseTo(2_232, 0);
+    expect(layout.mainBoundaryWidthM).toBeCloseTo(4_266, 0);
     expect(layout.mainBoundaryDepthM).toBeCloseTo(3_132, 0);
-    expect(layout.mainBoundaryAreaM2).toBeGreaterThan(6_900_000);
+    expect(layout.mainBoundaryAreaM2).toBeGreaterThan(13_000_000);
     expect(layout.northDirection).toEqual({ x: 0, z: -1 });
     expect(layout.seaSide).toBe('east');
 
@@ -101,13 +101,13 @@ test.describe('scene', () => {
   test('exposes a closed lane graph that routes across the city', async ({ page }) => {
     await openScene(page);
     const graph = await page.evaluate(() => window.__SITY_DEBUG__.getRoadGraph());
-    expect(graph.stats.roadCount).toBeGreaterThanOrEqual(140);
-    expect(graph.stats.laneCount).toBeGreaterThanOrEqual(950);
-    expect(graph.stats.junctionCount).toBeGreaterThanOrEqual(80);
-    expect(graph.stats.roundaboutCount).toBeGreaterThanOrEqual(5);
-    expect(graph.stats.laneCountByKind.ramp).toBeGreaterThanOrEqual(16);
-    expect(graph.stats.sourceLaneCount).toBeGreaterThanOrEqual(10);
-    expect(graph.stats.sinkLaneCount).toBeGreaterThanOrEqual(10);
+    expect(graph.stats.roadCount).toBeGreaterThanOrEqual(180);
+    expect(graph.stats.laneCount).toBeGreaterThanOrEqual(1400);
+    expect(graph.stats.junctionCount).toBeGreaterThanOrEqual(110);
+    expect(graph.stats.roundaboutCount).toBeGreaterThanOrEqual(7);
+    expect(graph.stats.laneCountByKind.ramp).toBeGreaterThanOrEqual(28);
+    expect(graph.stats.sourceLaneCount).toBeGreaterThanOrEqual(14);
+    expect(graph.stats.sinkLaneCount).toBeGreaterThanOrEqual(14);
     expect(graph.invariants.everyLaneHasPoints).toBe(true);
     expect(graph.invariants.noNaNCoordinates).toBe(true);
     expect(graph.invariants.connectorsTouchNeighbours).toBe(true);
@@ -122,6 +122,7 @@ test.describe('scene', () => {
     const mainLane = exported.lanes.find((lane) => lane.roadId === 'main-street-1' && lane.direction === 'forward' && lane.laneIndex === 0);
     expect(ringLane).toBeDefined();
     expect(mainLane).toBeDefined();
+    expect(exported.lanes.filter((lane) => lane.pocket === 'left').length).toBeGreaterThanOrEqual(20);
 
     const route = await page.evaluate(([from, to]) => window.__SITY_DEBUG__.findRoute(from, to), [ringLane!.id, mainLane!.id]);
     expect(route).toBeDefined();
@@ -139,7 +140,7 @@ test.describe('scene', () => {
     const city = await page.evaluate(() => window.__SITY_DEBUG__.getCity());
     expect(city.lotCount).toBeGreaterThanOrEqual(180);
     expect(city.buildingCount).toBeGreaterThanOrEqual(250);
-    expect(city.treeCount).toBeGreaterThanOrEqual(2000);
+    expect(city.treeCount).toBeGreaterThanOrEqual(12000);
 
     const audit = await page.evaluate(() => window.__SITY_DEBUG__.auditCity());
     expect(audit.footprintCount).toBeGreaterThanOrEqual(200);
@@ -151,9 +152,9 @@ test.describe('scene', () => {
 
     const performance = await page.evaluate(() => window.__SITY_DEBUG__.getPerformance());
     expect(performance.drawCalls).toBeGreaterThan(0);
-    expect(performance.drawCalls).toBeLessThanOrEqual(480);
+    expect(performance.drawCalls).toBeLessThanOrEqual(600);
     expect(performance.triangles).toBeGreaterThan(0);
-    expect(performance.triangles).toBeLessThanOrEqual(2_500_000);
+    expect(performance.triangles).toBeLessThanOrEqual(4_600_000);
     expect(performance.postprocessingPassCount).toBe(4);
     expect(performance.usesComposer).toBe(true);
   });

@@ -18,7 +18,7 @@ export interface DistrictStyle {
   maxRise?: number;
 }
 
-export type SpecialKind = "park" | "plaza" | "stadium" | "parking" | "school" | "church" | "station" | "hospital" | "green" | "services" | "golf" | "campsite" | "chairlift";
+export type SpecialKind = "park" | "plaza" | "stadium" | "parking" | "school" | "church" | "station" | "hospital" | "green" | "services" | "golf" | "campsite" | "chairlift" | "sawmill" | "manor" | "coop" | "windfarm" | "garage";
 
 export interface SpecialBlock {
   id: string;
@@ -36,6 +36,8 @@ export const DISTRICTS: District[] = [
   { kind: "residential", minX: -180, maxX: 660, minZ: 425, maxZ: 600 },
   { kind: "residential", minX: -180, maxX: 360, minZ: 600, maxZ: 705 },
   { kind: "alpine", minX: -1300, maxX: -1120, minZ: 440, maxZ: 660 },
+  { kind: "residential", minX: -2800, maxX: -2560, minZ: -690, maxZ: -370 },
+  { kind: "residential", minX: -2880, maxX: -2740, minZ: 580, maxZ: 990 },
   { kind: "westend", minX: -180, maxX: 46, minZ: -200, maxZ: 320 },
   { kind: "midrise", minX: 20, maxX: 660, minZ: -440, maxZ: 340 },
   { kind: "residential", minX: 340, maxX: 505, minZ: -1400, maxZ: -1100 },
@@ -63,10 +65,16 @@ export const SPECIAL_BLOCKS: SpecialBlock[] = [
   { id: "northfield-hospital", kind: "hospital", minX: 596, maxX: 664, minZ: -1300, maxZ: -1090 },
   { id: "village-green", kind: "green", minX: 436, maxX: 470, minZ: -1256, maxZ: -1190 },
   { id: "northfield-chapel", kind: "church", minX: 437, maxX: 469, minZ: -1302, maxZ: -1258 },
-  { id: "southern-services", kind: "services", minX: 408, maxX: 456, minZ: 1240, maxZ: 1360 },
-  { id: "links-golf", kind: "golf", minX: 556, maxX: 734, minZ: 1250, maxZ: 1480 },
-  { id: "south-campsite", kind: "campsite", minX: 210, maxX: 390, minZ: 1226, maxZ: 1400 },
+  { id: "western-services", kind: "services", minX: -2560, maxX: -2440, minZ: 1210, maxZ: 1300 },
+  { id: "links-golf", kind: "golf", minX: 628, maxX: 738, minZ: 1250, maxZ: 1500 },
+  { id: "south-campsite", kind: "campsite", minX: 150, maxX: 330, minZ: 1226, maxZ: 1400 },
   { id: "col-chairlift", kind: "chairlift", minX: -1290, maxX: -1250, minZ: 600, maxZ: 640 },
+  { id: "pinewood-sawmill", kind: "sawmill", minX: -2900, maxX: -2810, minZ: -420, maxZ: -300 },
+  { id: "brook-manor", kind: "manor", minX: -2530, maxX: -2400, minZ: 1030, maxZ: 1150 },
+  { id: "millbrook-church", kind: "church", minX: -2866, maxX: -2834, minZ: 540, maxZ: 584 },
+  { id: "millbrook-coop", kind: "coop", minX: -2760, maxX: -2690, minZ: 800, maxZ: 870 },
+  { id: "hilltop-windfarm", kind: "windfarm", minX: -2330, maxX: -2230, minZ: 860, maxZ: 1260 },
+  { id: "queen-street-garage", kind: "garage", minX: 335, maxX: 385, minZ: -250, maxZ: -190 },
 ];
 
 export function districtAt(x: number, z: number): District | undefined {

@@ -1,4 +1,4 @@
-import type { NetworkSpec, NodeSpec, RoadSpec, JunctionControl } from "./network";
+import type { NetworkSpec, NodeSpec, PocketSpec, RoadSpec, JunctionControl } from "./network";
 import type { RoadClass } from "./classes";
 
 type NodeExtra = Partial<Omit<NodeSpec, "id" | "x" | "z">>;
@@ -31,13 +31,17 @@ function chain(
   nodeIds: string[],
   forward: number,
   backward: number,
-  extra: RoadExtra = {},
+  extra: RoadExtra | ((index: number) => RoadExtra) = {},
 ) {
   for (let index = 0; index < nodeIds.length - 1; index += 1) {
-    road(`${idPrefix}-${index + 1}`, cls, nodeIds[index], nodeIds[index + 1], forward, backward, extra);
+    road(`${idPrefix}-${index + 1}`, cls, nodeIds[index], nodeIds[index + 1], forward, backward, typeof extra === "function" ? extra(index) : extra);
   }
 }
 
+const leftPockets: PocketSpec[] = [
+  { end: "from", turn: "left", length: 52 },
+  { end: "to", turn: "left", length: 52 },
+];
 const signal: JunctionControl = "signal";
 const stop: JunctionControl = "stop";
 const crossing: JunctionControl = "crossing";
@@ -112,11 +116,10 @@ node("blvd-southbank", 760, 520, { control: signal });
 node("blvd-beach", 760, 740, { control: signal });
 node("beach-park-end", 716, 740, { destination: { kind: "parking", width: 44, depth: 50, name: "Beach car park" } });
 node("blvd-golf", 760, 1100, { control: signal });
-node("blvd-resort", 760, 1320, { control: stop });
 node("blvd-s-edge", 760, 1566, { edge: true });
 
-chain("coast-blvd-nx", "arterial", ["blvd-n-edge", "blvd-village", "blvd-hospital", "blvd-rail", "blvd-port-north"], 2, 2, { name: "Coast Boulevard" });
-chain("coast-blvd-n", "arterial", ["blvd-port-north", "blvd-harbour", "blvd-station", "blvd-central", "blvd-market", "blvd-bridge-n"], 2, 2, { name: "Coast Boulevard" });
+chain("coast-blvd-nx", "arterial", ["blvd-n-edge", "blvd-village", "blvd-hospital", "blvd-rail", "blvd-port-north"], 2, 2, { name: "Coast Boulevard", pockets: leftPockets, cycleTrack: true });
+chain("coast-blvd-n", "arterial", ["blvd-port-north", "blvd-harbour", "blvd-station", "blvd-central", "blvd-market", "blvd-bridge-n"], 2, 2, { name: "Coast Boulevard", pockets: leftPockets, cycleTrack: true });
 
 node("station-access", 630, -1000, { control: stop });
 node("rail-crossing", 520, -1000, { control: crossing });
@@ -159,12 +162,12 @@ road("coast-blvd-bridge", "arterial", "blvd-bridge-n", "blvd-bridge-s", 2, 2, {
   ],
   structures: [{ kind: "bridge", fromControl: 1, toControl: 2 }],
 });
-chain("coast-blvd-s", "arterial", ["blvd-bridge-s", "blvd-southbank", "blvd-beach"], 2, 2, { name: "Coast Boulevard" });
-chain("coast-blvd-ss", "arterial", ["blvd-beach", "blvd-golf", "blvd-resort", "blvd-s-edge"], 2, 2, { name: "Coast Boulevard" });
+chain("coast-blvd-s", "arterial", ["blvd-bridge-s", "blvd-southbank", "blvd-beach"], 2, 2, { name: "Coast Boulevard", pockets: leftPockets, cycleTrack: true });
+chain("coast-blvd-ss", "arterial", ["blvd-beach", "blvd-golf", "wmw-e-rb", "blvd-s-edge"], 2, 2, { name: "Coast Boulevard", pockets: leftPockets, cycleTrack: true });
 road("beach-park-access", "local", "blvd-beach", "beach-park-end", 1, 1, { name: "Beach Park Access" });
 
-node("golf-access", 640, 1100, { control: stop });
-node("camp-access", 300, 1100, { control: stop });
+node("golf-access", 700, 1100, { control: stop });
+node("camp-access", 240, 1100, { control: stop });
 node("main-golf", 120, 1100, { control: signal });
 node("main-s-edge", 120, 1566, { edge: true });
 road("golf-road-1", "rural", "blvd-golf", "golf-access", 1, 1, { name: "Golf Road" });
@@ -178,32 +181,62 @@ road("golf-road-2", "rural", "golf-access", "camp-access", 1, 1, {
   structures: [{ kind: "bridge", fromControl: 1, toControl: 2 }],
 });
 road("golf-road-3", "rural", "camp-access", "main-golf", 1, 1, { name: "Golf Road" });
-node("golf-club", 640, 1178, { destination: { kind: "parking", width: 54, depth: 60, name: "Golf club" } });
+node("golf-club", 700, 1178, { destination: { kind: "parking", width: 50, depth: 60, name: "Golf club" } });
 road("golf-drive", "local", "golf-access", "golf-club", 1, 1, { name: "Golf Drive" });
-node("camp-end", 300, 1182, { destination: { kind: "yard", width: 40, depth: 32, name: "Campsite" } });
+node("camp-end", 240, 1182, { destination: { kind: "yard", width: 40, depth: 32, name: "Campsite" } });
 road("camp-lane", "local", "camp-access", "camp-end", 1, 1, { name: "Camp Lane" });
 
 node("smw-sb-n", 470, 940);
+node("smw-sb-drop", 470, 1060);
 node("smw-sb-edge", 470, 1566, { edge: true });
 node("smw-nb-n", 500, 940);
 node("smw-nb-edge", 500, 1566, { edge: true });
-node("svc-sb-off", 470, 1190);
-node("svc-sb-on", 470, 1400);
-node("toll-sb", 470, 1500, { control: toll });
-node("toll-nb", 500, 1500, { control: toll });
-export const SOUTH_MOTORWAY_SB_ID = "motorway-south-sb";
+node("toll-sb", 470, 1552, { control: toll });
+node("toll-nb", 500, 1552, { control: toll });
+node("cl-sb-d1", 470, 1180);
+node("cl-sb-l1", 470, 1340);
+node("cl-sb-l2", 470, 1400);
+node("cl-sb-d2", 470, 1518);
+node("cl-nb-d3", 500, 1520);
+node("cl-nb-l3", 500, 1369);
+node("cl-nb-l4", 500, 1310);
+node("cl-nb-d4", 500, 1190);
+node("cl-ew-640", 640, 1360);
+node("cl-ew-530", 530, 1360);
+node("cl-ew-505", 505, 1360);
+node("cl-ew-476", 476, 1360);
+node("cl-ew-455", 455, 1360);
+node("cl-ew-330", 330, 1360);
+export const SOUTH_MOTORWAY_SB_ID = "motorway-south-sb-2";
 export const SOUTH_MOTORWAY_NB_ID = "motorway-south-nb";
-road(SOUTH_MOTORWAY_SB_ID, "highway", "smw-sb-n", "smw-sb-edge", 2, 0, {
+export const WEST_MOTORWAY_E_ID = "motorway-west-e";
+export const WEST_MOTORWAY_W_ID = "motorway-west-w";
+road("motorway-south-sb-1", "highway", "smw-sb-n", "smw-sb-drop", 3, 0, { name: "Southern Motorway", spacing: 6 });
+road(SOUTH_MOTORWAY_SB_ID, "highway", "smw-sb-drop", "smw-sb-edge", 2, 0, {
   name: "Southern Motorway",
   spacing: 6,
-  via: [{ x: 470, z: 1250 }],
-  cuts: ["svc-sb-off", "svc-sb-on", "toll-sb"],
+  elevation: "control",
+  via: [
+    { x: 470, z: 1200, y: 2.4 },
+    { x: 470, z: 1330, y: 9.2 },
+    { x: 470, z: 1390, y: 9.2 },
+    { x: 470, z: 1500, y: 2.4 },
+  ],
+  structures: [{ kind: "bridge", fromControl: 2, toControl: 3 }],
+  cuts: ["cl-sb-d1", "cl-sb-l1", "cl-sb-l2", "cl-sb-d2", "toll-sb"],
 });
 road(SOUTH_MOTORWAY_NB_ID, "highway", "smw-nb-edge", "smw-nb-n", 2, 0, {
   name: "Southern Motorway",
   spacing: 6,
-  via: [{ x: 500, z: 1250 }],
-  cuts: ["toll-nb"],
+  elevation: "control",
+  via: [
+    { x: 500, z: 1500, y: 2.4 },
+    { x: 500, z: 1390, y: 9.2 },
+    { x: 500, z: 1330, y: 9.2 },
+    { x: 500, z: 1200, y: 2.4 },
+  ],
+  structures: [{ kind: "bridge", fromControl: 2, toControl: 3 }],
+  cuts: ["toll-nb", "cl-nb-d3", "cl-nb-l3", "cl-nb-l4", "cl-nb-d4"],
 });
 road("ramp-t1", "ramp", "ring-t-a", "smw-sb-n", 1, 0, {
   name: "Southern Motorway link",
@@ -236,18 +269,139 @@ road("ramp-t4", "ramp", "smw-nb-n", "ring-t-a", 1, 0, {
   attachTo: { roadId: RING_ROAD_ID, direction: "forward" },
   via: [{ x: 485, z: 860 }, { x: 456, z: 790 }, { x: 440, z: 726 }, { x: 426, z: 741 }],
 });
-node("svc-sb-in", 400, 1250, { control: stop });
-node("svc-sb-out", 400, 1340, { control: stop });
-road("ramp-svc-sb-off", "ramp", "svc-sb-off", "svc-sb-in", 1, 0, {
-  name: "Services exit",
-  attachFrom: { roadId: SOUTH_MOTORWAY_SB_ID, direction: "forward" },
-  via: [{ x: 430, z: 1226 }],
+
+node("wmw-e-rb", 760, 1360, { roundabout: { radius: 26 } });
+node("wmw-tunnel-e", -250, 1378);
+node("wmw-tunnel-w", -1850, 1380);
+node("wmw-d-e", -2030, 1380);
+node("wmw-d-w", -2250, 1380);
+node("wmw-svc-off", -2350, 1380);
+node("wmw-svc-on", -2630, 1380);
+node("wmw-toll", -3300, 1380, { control: toll });
+node("wmw-w-edge", -3400, 1380, { edge: true });
+road(WEST_MOTORWAY_E_ID, "highway", "wmw-e-rb", "wmw-tunnel-e", 2, 2, {
+  name: "Western Motorway",
+  spacing: 6,
+  via: [{ x: 700, z: 1360 }, { x: 0, z: 1372 }],
+  cuts: ["cl-ew-640", "cl-ew-530", "cl-ew-505", "cl-ew-476", "cl-ew-455", "cl-ew-330"],
 });
-road("services-sb-road", "service", "svc-sb-in", "svc-sb-out", 1, 0, { name: "Services road", via: [{ x: 386, z: 1295 }] });
-road("ramp-svc-sb-on", "ramp", "svc-sb-out", "svc-sb-on", 1, 0, {
-  name: "Services entry",
+road("motorway-west-tunnel", "highway", "wmw-tunnel-e", "wmw-tunnel-w", 2, 2, {
+  name: "Western Motorway",
+  spacing: 6,
+  elevation: "control",
+  via: [
+    { x: -420, z: 1382, y: 9 },
+    { x: -1680, z: 1382, y: 9 },
+  ],
+  structures: [{ kind: "tunnel", fromControl: 1, toControl: 2 }],
+});
+road(WEST_MOTORWAY_W_ID, "highway", "wmw-tunnel-w", "wmw-w-edge", 2, 2, {
+  name: "Western Motorway",
+  spacing: 6,
+  via: [{ x: -2100, z: 1380 }, { x: -2700, z: 1380 }, { x: -3200, z: 1380 }],
+  cuts: ["wmw-d-e", "wmw-d-w", "wmw-svc-off", "wmw-svc-on", "wmw-toll"],
+});
+
+function loopPoints(cx: number, cz: number, radius: number, fromDeg: number, toDeg: number, step: number) {
+  const points: Array<{ x: number; z: number }> = [];
+  for (let angle = fromDeg; step > 0 ? angle <= toDeg : angle >= toDeg; angle += step) {
+    const rad = (angle * Math.PI) / 180;
+    points.push({ x: Math.round((cx + Math.cos(rad) * radius) * 10) / 10, z: Math.round((cz + Math.sin(rad) * radius) * 10) / 10 });
+  }
+  return points;
+}
+const CLOVER_TAPER = 26;
+road("cl-loop-w-s", "ramp", "cl-ew-455", "cl-sb-l1", 1, 0, {
+  name: "Cloverleaf west to south",
+  attachFrom: { roadId: WEST_MOTORWAY_E_ID, direction: "forward" },
   attachTo: { roadId: SOUTH_MOTORWAY_SB_ID, direction: "forward" },
-  via: [{ x: 430, z: 1368 }],
+  attachLength: CLOVER_TAPER,
+  via: loopPoints(429, 1310.65, 34, 135, 315, 45),
+});
+road("cl-loop-s-e", "ramp", "cl-sb-l2", "cl-ew-476", 1, 0, {
+  name: "Cloverleaf south to east",
+  attachFrom: { roadId: SOUTH_MOTORWAY_SB_ID, direction: "forward" },
+  attachTo: { roadId: WEST_MOTORWAY_E_ID, direction: "backward" },
+  attachLength: CLOVER_TAPER,
+  via: loopPoints(426.15, 1426, 34, 45, 225, 45),
+});
+road("cl-loop-e-n", "ramp", "cl-ew-530", "cl-nb-l3", 1, 0, {
+  name: "Cloverleaf east to north",
+  attachFrom: { roadId: WEST_MOTORWAY_E_ID, direction: "backward" },
+  attachTo: { roadId: SOUTH_MOTORWAY_NB_ID, direction: "forward" },
+  attachLength: CLOVER_TAPER,
+  via: [...loopPoints(556, 1409.35, 34, 315, 359, 45), ...loopPoints(556, 1409.35, 34, 0, 135, 45)],
+});
+road("cl-loop-n-w", "ramp", "cl-nb-l4", "cl-ew-505", 1, 0, {
+  name: "Cloverleaf north to west",
+  attachFrom: { roadId: SOUTH_MOTORWAY_NB_ID, direction: "forward" },
+  attachTo: { roadId: WEST_MOTORWAY_E_ID, direction: "forward" },
+  attachLength: CLOVER_TAPER,
+  via: [...loopPoints(543.85, 1284, 34, 225, 315, 45), ...loopPoints(543.85, 1284, 34, 0, 45, 45)],
+});
+road("cl-direct-s-w", "ramp", "cl-sb-d1", "cl-ew-330", 1, 0, {
+  name: "Cloverleaf south to west",
+  attachFrom: { roadId: SOUTH_MOTORWAY_SB_ID, direction: "forward" },
+  attachTo: { roadId: WEST_MOTORWAY_E_ID, direction: "forward" },
+  attachLength: CLOVER_TAPER,
+  via: [{ x: 438, z: 1238 }, { x: 400, z: 1258 }, { x: 372, z: 1290 }, { x: 362, z: 1322 }],
+});
+road("cl-direct-e-s", "ramp", "cl-ew-330", "cl-sb-d2", 1, 0, {
+  name: "Cloverleaf east to south",
+  attachFrom: { roadId: WEST_MOTORWAY_E_ID, direction: "backward" },
+  attachTo: { roadId: SOUTH_MOTORWAY_SB_ID, direction: "forward" },
+  attachLength: CLOVER_TAPER,
+  via: [{ x: 372, z: 1400 }, { x: 382, z: 1440 }, { x: 400, z: 1478 }, { x: 438, z: 1500 }],
+});
+road("cl-direct-n-e", "ramp", "cl-nb-d3", "cl-ew-640", 1, 0, {
+  name: "Cloverleaf north to east",
+  attachFrom: { roadId: SOUTH_MOTORWAY_NB_ID, direction: "forward" },
+  attachTo: { roadId: WEST_MOTORWAY_E_ID, direction: "backward" },
+  attachLength: CLOVER_TAPER,
+  via: [{ x: 530, z: 1480 }, { x: 566, z: 1470 }, { x: 598, z: 1448 }, { x: 612, z: 1410 }],
+});
+road("cl-direct-w-n", "ramp", "cl-ew-640", "cl-nb-d4", 1, 0, {
+  name: "Cloverleaf west to north",
+  attachFrom: { roadId: WEST_MOTORWAY_E_ID, direction: "forward" },
+  attachTo: { roadId: SOUTH_MOTORWAY_NB_ID, direction: "forward" },
+  attachLength: CLOVER_TAPER,
+  via: [{ x: 598, z: 1318 }, { x: 592, z: 1280 }, { x: 578, z: 1248 }, { x: 548, z: 1226 }],
+});
+
+node("farm-d-n", -2135, 1290, { control: signal });
+node("farm-d-s", -2145, 1470, { control: signal });
+road("ramp-w-wb-off", "ramp", "wmw-d-e", "farm-d-n", 1, 0, {
+  name: "Farm Road WB off-ramp",
+  attachFrom: { roadId: WEST_MOTORWAY_W_ID, direction: "forward" },
+  via: [{ x: -2090, z: 1330 }],
+});
+road("ramp-w-wb-on", "ramp", "farm-d-n", "wmw-d-w", 1, 0, {
+  name: "Farm Road WB on-ramp",
+  attachTo: { roadId: WEST_MOTORWAY_W_ID, direction: "forward" },
+  via: [{ x: -2190, z: 1330 }],
+});
+road("ramp-w-eb-off", "ramp", "wmw-d-w", "farm-d-s", 1, 0, {
+  name: "Farm Road EB off-ramp",
+  attachFrom: { roadId: WEST_MOTORWAY_W_ID, direction: "backward" },
+  via: [{ x: -2200, z: 1430 }],
+});
+road("ramp-w-eb-on", "ramp", "farm-d-s", "wmw-d-e", 1, 0, {
+  name: "Farm Road EB on-ramp",
+  attachTo: { roadId: WEST_MOTORWAY_W_ID, direction: "backward" },
+  via: [{ x: -2090, z: 1430 }],
+});
+node("wsvc-in", -2430, 1318, { control: stop });
+node("wsvc-out", -2560, 1318, { control: stop });
+road("ramp-svc-w-off", "ramp", "wmw-svc-off", "wsvc-in", 1, 0, {
+  name: "Services exit",
+  attachFrom: { roadId: WEST_MOTORWAY_W_ID, direction: "forward" },
+  via: [{ x: -2395, z: 1340 }],
+});
+road("services-w-road", "service", "wsvc-in", "wsvc-out", 1, 0, { name: "Services road", via: [{ x: -2495, z: 1308 }] });
+road("ramp-svc-w-on", "ramp", "wsvc-out", "wmw-svc-on", 1, 0, {
+  name: "Services entry",
+  attachTo: { roadId: WEST_MOTORWAY_W_ID, direction: "forward" },
+  via: [{ x: -2596, z: 1340 }],
 });
 
 node("harbour-w-end", 290, -560, { destination: { kind: "parking", width: 64, depth: 84, name: "Arena car park" } });
@@ -288,7 +442,7 @@ node("central-park", 450, -280, { control: signal });
 node("central-x520", 520, -280, { control: signal });
 node("central-ramp-w", 590, -280, { control: signal });
 node("central-ramp-e", 695, -280, { control: signal });
-chain("central-avenue", "arterial", ["central-west", "central-main", "central-oneway-s", "central-oneway-n", "central-park", "central-x520", "central-ramp-w", "central-ramp-e", "blvd-central"], 2, 2, { name: "Central Avenue", busLane: true });
+chain("central-avenue", "arterial", ["central-west", "central-main", "central-oneway-s", "central-oneway-n", "central-park", "central-x520", "central-ramp-w", "central-ramp-e", "blvd-central"], 2, 2, { name: "Central Avenue", busLane: true, pockets: leftPockets });
 
 road("ramp-e-sb-off", "ramp", "ring-e-n", "central-ramp-w", 1, 0, {
   name: "Central SB off-ramp",
@@ -332,14 +486,14 @@ node("riverside-oneway-s", 240, 200, { control: stop });
 node("riverside-oneway-n", 320, 225, { control: stop });
 node("riverside-park", 450, 330, { control: signal });
 node("riverside-x520", 520, 220, { control: stop });
-road("riverside-1", "collector", "riverside-w-end", "riverside-x-60", 1, 1, { name: "Riverside Drive", via: [{ x: -100, z: 215 }] });
-road("riverside-2", "collector", "riverside-x-60", "riverside-west", 1, 1, { name: "Riverside Drive", via: [{ x: -10, z: 262 }] });
-road("riverside-3", "collector", "riverside-west", "riverside-main", 1, 1, { name: "Riverside Drive", via: [{ x: 80, z: 232 }] });
-road("riverside-4", "collector", "riverside-main", "riverside-oneway-s", 1, 1, { name: "Riverside Drive", via: [{ x: 180, z: 200 }] });
+road("riverside-1", "collector", "riverside-w-end", "riverside-x-60", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: -100, z: 215 }] });
+road("riverside-2", "collector", "riverside-x-60", "riverside-west", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: -10, z: 262 }] });
+road("riverside-3", "collector", "riverside-west", "riverside-main", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 80, z: 232 }] });
+road("riverside-4", "collector", "riverside-main", "riverside-oneway-s", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 180, z: 200 }] });
 road("riverside-5", "collector", "riverside-oneway-s", "riverside-oneway-n", 1, 1, { name: "Riverside Drive" });
-road("riverside-6", "collector", "riverside-oneway-n", "riverside-park", 1, 1, { name: "Riverside Drive", via: [{ x: 390, z: 300 }] });
-road("riverside-7", "collector", "riverside-park", "riverside-x520", 1, 1, { name: "Riverside Drive", via: [{ x: 500, z: 270 }] });
-road("riverside-8", "collector", "riverside-x520", "blvd-market", 1, 1, { name: "Riverside Drive", via: [{ x: 620, z: 120 }, { x: 700, z: -40 }] });
+road("riverside-6", "collector", "riverside-oneway-n", "riverside-park", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 390, z: 300 }] });
+road("riverside-7", "collector", "riverside-park", "riverside-x520", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 500, z: 270 }] });
+road("riverside-8", "collector", "riverside-x520", "blvd-market", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 620, z: 120 }, { x: 700, z: -40 }] });
 
 node("bridge-west", 40, 30, { control: stop });
 node("bridge-main", 120, 30, { control: signal });
@@ -362,9 +516,9 @@ road("weir-bridge-road", "collector", "riverside-w-end", "southbank-w-end", 1, 1
   structures: [{ kind: "bridge", fromControl: 1, toControl: 2 }],
 });
 
-road("main-street-1", "arterial", "central-main", "market-main", 2, 2, { name: "Main Street", busLane: true });
-road("main-street-2", "arterial", "market-main", "bridge-main", 2, 2, { name: "Main Street", busLane: true });
-road("main-street-2b", "arterial", "bridge-main", "riverside-main", 2, 2, { name: "Main Street", busLane: true });
+road("main-street-1", "arterial", "central-main", "market-main", 2, 2, { name: "Main Street", busLane: true, pockets: leftPockets });
+road("main-street-2", "arterial", "market-main", "bridge-main", 2, 2, { name: "Main Street", busLane: true, pockets: leftPockets });
+road("main-street-2b", "arterial", "bridge-main", "riverside-main", 2, 2, { name: "Main Street", busLane: true, pockets: leftPockets });
 node("main-southbank", 120, 520, { control: signal });
 node("rb-s-n", 120, 800, { roundabout: { radius: 18 } });
 node("rb-s-s", 120, 980, { roundabout: { radius: 18 } });
@@ -377,10 +531,10 @@ road("main-street-bridge", "arterial", "riverside-main", "main-southbank", 2, 2,
   ],
   structures: [{ kind: "bridge", fromControl: 1, toControl: 2 }],
 });
-road("main-street-3", "arterial", "main-southbank", "rb-s-n", 2, 2, { name: "Main Street" });
-road("main-street-4", "arterial", "rb-s-n", "rb-s-s", 2, 2, { name: "Main Street" });
-road("main-street-5", "arterial", "rb-s-s", "main-golf", 2, 2, { name: "Main Street" });
-road("main-street-6", "arterial", "main-golf", "main-s-edge", 2, 2, { name: "Main Street" });
+road("main-street-3", "arterial", "main-southbank", "rb-s-n", 2, 2, { name: "Main Street", pockets: leftPockets });
+road("main-street-4", "arterial", "rb-s-n", "rb-s-s", 2, 2, { name: "Main Street", pockets: leftPockets });
+road("main-street-5", "arterial", "rb-s-s", "main-golf", 2, 2, { name: "Main Street", pockets: leftPockets });
+road("main-street-6", "arterial", "main-golf", "main-s-edge", 2, 2, { name: "Main Street", pockets: leftPockets });
 
 road("ramp-s-wb-off", "ramp", "ring-s-e", "rb-s-n", 1, 0, {
   name: "Main WB off-ramp",
@@ -428,7 +582,9 @@ node("southbank-x-60", -60, 520, { control: stop });
 node("southbank-x30", 30, 520, { control: stop });
 node("southbank-x220", 220, 520, { control: stop });
 node("southbank-x320", 320, 520, { control: stop });
-chain("southbank-road", "collector", ["southbank-w-end", "southbank-x-60", "southbank-x30", "main-southbank", "southbank-x220", "southbank-x320", "blvd-southbank"], 1, 1, { name: "South Bank Road" });
+chain("southbank-road", "collector", ["southbank-w-end", "southbank-x-60", "southbank-x30", "main-southbank", "southbank-x220", "southbank-x320", "blvd-southbank"], 1, 1, (index) =>
+  index === 4 ? { name: "South Bank Road", speedKph: 30 } : { name: "South Bank Road" },
+);
 
 node("orchard-x-60", -60, 640, { control: stop });
 node("orchard-x30", 30, 640);
@@ -455,7 +611,7 @@ road("mountain-road-1", "mountain", "central-west", "mountain-fork", 1, 1, {
 road("mountain-road-2", "mountain", "mountain-fork", "mountain-viewpoint", 1, 1, { name: "Mountain Road", via: [{ x: -262, z: -98 }] });
 
 node("valley-x", -680, 340, { roundabout: { radius: 16 } });
-node("valley-w-edge", -1366, 255, { edge: true });
+node("pass-w", -2000, 240, { roundabout: { radius: 18 } });
 node("lake-view", -600, 352, { destination: { kind: "viewpoint", width: 36, depth: 40, name: "Reservoir viewpoint" } });
 node("col-village", -1200, 590, { destination: { kind: "parking", width: 40, depth: 44, name: "Col village" } });
 road("forest-road", "mountain", "mountain-fork", "valley-x", 1, 1, {
@@ -469,14 +625,70 @@ road("forest-road", "mountain", "mountain-fork", "valley-x", 1, 1, {
     { x: -640, z: 300 },
   ],
 });
-road("valley-road", "rural", "valley-x", "valley-w-edge", 1, 1, {
+road("valley-road", "rural", "valley-x", "pass-w", 1, 1, {
   name: "Valley Road",
   via: [
     { x: -800, z: 300 },
     { x: -1000, z: 275 },
     { x: -1200, z: 262 },
+    { x: -1500, z: 255 },
+    { x: -1800, z: 246 },
   ],
 });
+
+node("lake-x", -2450, -150, { control: stop });
+node("pinewood-x", -2700, -480, { control: stop });
+node("forest-w-edge", -3400, -880, { edge: true });
+road("forest-road-w-1", "rural", "pass-w", "lake-x", 1, 1, { name: "Pinewood Road", via: [{ x: -2200, z: 120 }, { x: -2380, z: -60 }] });
+road("forest-road-w-2", "rural", "lake-x", "pinewood-x", 1, 1, { name: "Pinewood Road", via: [{ x: -2560, z: -290 }] });
+road("forest-road-w-3", "rural", "pinewood-x", "forest-w-edge", 1, 1, { name: "Pinewood Road", via: [{ x: -2900, z: -660 }, { x: -3150, z: -800 }] });
+node("forest-lake-view", -2380, -420, { destination: { kind: "viewpoint", width: 30, depth: 34, name: "Forest lake" } });
+road("lake-track", "local", "lake-x", "forest-lake-view", 1, 1, { name: "Lake Track", via: [{ x: -2400, z: -300 }] });
+node("pinewood-n-end", -2690, -640, { destination: { kind: "culdesac", width: 0, depth: 0 } });
+node("pinewood-s-end", -2600, -400, { destination: { kind: "culdesac", width: 0, depth: 0 } });
+node("sawmill-end", -2800, -360, { destination: { kind: "yard", width: 44, depth: 36, name: "Pinewood sawmill" } });
+road("pinewood-lane-n", "local", "pinewood-x", "pinewood-n-end", 1, 1, { name: "Pinewood Lane", via: [{ x: -2720, z: -560 }] });
+road("pinewood-lane-s", "local", "pinewood-x", "pinewood-s-end", 1, 1, { name: "Spruce Lane", via: [{ x: -2660, z: -430 }] });
+road("sawmill-lane", "industrial", "pinewood-x", "sawmill-end", 1, 1, { name: "Sawmill Lane", via: [{ x: -2760, z: -420 }] });
+
+node("hilltop-x", -2040, 480, { control: stop });
+node("farm-x1", -2100, 760, { control: stop });
+node("southfield-x", -2120, 1000, { control: stop });
+node("farm-s-edge", -2150, 1566, { edge: true });
+road("farm-road-1", "rural", "pass-w", "hilltop-x", 1, 1, { name: "Farm Road" });
+road("farm-road-2", "rural", "hilltop-x", "farm-x1", 1, 1, { name: "Farm Road" });
+road("farm-road-3", "rural", "farm-x1", "southfield-x", 1, 1, { name: "Farm Road" });
+road("farm-road-4", "rural", "southfield-x", "farm-d-n", 1, 1, { name: "Farm Road" });
+road("farm-road-5", "rural", "farm-d-n", "farm-d-s", 1, 1, {
+  name: "Farm Road",
+  elevation: "control",
+  via: [
+    { x: -2138, z: 1345, y: 9.6 },
+    { x: -2142, z: 1415, y: 9.6 },
+  ],
+  structures: [{ kind: "bridge", fromControl: 1, toControl: 2 }],
+});
+road("farm-road-6", "rural", "farm-d-s", "farm-s-edge", 1, 1, { name: "Farm Road" });
+node("estate-x", -2400, 770, { control: stop });
+node("millbrook-x", -2800, 780, { control: stop });
+node("longacre-x", -3100, 790, { control: stop });
+node("mill-w-edge", -3400, 800, { edge: true });
+road("mill-road-1", "rural", "farm-x1", "estate-x", 1, 1, { name: "Mill Road" });
+road("mill-road-2", "rural", "estate-x", "millbrook-x", 1, 1, { name: "Mill Road", via: [{ x: -2600, z: 776 }] });
+road("mill-road-3", "rural", "millbrook-x", "longacre-x", 1, 1, { name: "Mill Road" });
+road("mill-road-4", "rural", "longacre-x", "mill-w-edge", 1, 1, { name: "Mill Road" });
+node("church-end", -2830, 600, { destination: { kind: "culdesac", width: 0, depth: 0 } });
+node("millbrook-farm", -2780, 960, { destination: { kind: "yard", width: 40, depth: 36, name: "Millbrook farm" } });
+road("church-lane", "local", "millbrook-x", "church-end", 1, 1, { name: "Church Lane", via: [{ x: -2810, z: 690 }] });
+road("barn-lane", "local", "millbrook-x", "millbrook-farm", 1, 1, { name: "Barn Lane", via: [{ x: -2790, z: 870 }] });
+node("manor-end", -2450, 1010, { destination: { kind: "parking", width: 36, depth: 40, name: "Brook Manor" } });
+road("estate-drive", "local", "estate-x", "manor-end", 1, 1, { name: "Estate Drive", via: [{ x: -2430, z: 900 }] });
+node("hilltop-farm", -2220, 470, { destination: { kind: "yard", width: 40, depth: 36, name: "Hilltop Farm" } });
+road("hilltop-track", "local", "hilltop-x", "hilltop-farm", 1, 1, { name: "Hilltop Track" });
+node("longacre-farm", -3090, 640, { destination: { kind: "yard", width: 40, depth: 36, name: "Long Acre Farm" } });
+road("longacre-track", "local", "longacre-x", "longacre-farm", 1, 1, { name: "Long Acre Track" });
+node("southfield-farm", -1980, 1010, { destination: { kind: "yard", width: 40, depth: 36, name: "Southfield Farm" } });
+road("southfield-track", "local", "southfield-x", "southfield-farm", 1, 1, { name: "Southfield Track" });
 road("lake-view-road", "rural", "valley-x", "lake-view", 1, 1, { name: "Reservoir Road" });
 node("col-x", -1150, 570, { control: stop });
 node("col-lane-end", -1230, 480, { destination: { kind: "culdesac", width: 0, depth: 0 } });

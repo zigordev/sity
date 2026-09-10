@@ -44,6 +44,21 @@ export interface StructureSpec {
   toControl: number;
 }
 
+export interface PocketSpec {
+  end: "from" | "to";
+  turn: "left";
+  length: number;
+}
+
+export interface PocketRange {
+  direction: LaneDirection;
+  turn: "left" | "right";
+  s0: number;
+  s1: number;
+  offset: number;
+  nodeId: string;
+}
+
 export interface RoadSpec {
   id: string;
   name?: string;
@@ -61,8 +76,12 @@ export interface RoadSpec {
   spacing?: number;
   attachFrom?: { roadId: string; direction: LaneDirection };
   attachTo?: { roadId: string; direction: LaneDirection };
+  attachLength?: number;
   parkingLane?: boolean;
   busLane?: boolean;
+  pockets?: PocketSpec[];
+  cycleTrack?: boolean;
+  speedKph?: number;
 }
 
 export interface NetworkSpec {
@@ -84,6 +103,7 @@ export interface Lane {
   id: string;
   kind: LaneKind;
   access: LaneAccess;
+  pocket?: "left" | "right";
   roadId?: string;
   nodeId?: string;
   direction?: LaneDirection;
@@ -161,6 +181,7 @@ export interface BuiltRoad {
   cutStations: Array<{ nodeId: string; s: number }>;
   laneOffsets: { forward: number[]; backward: number[] };
   markingGaps: Array<{ s0: number; s1: number; side: "left" | "right" }>;
+  pocketRanges: PocketRange[];
 }
 
 export interface BuiltNode {
@@ -365,6 +386,9 @@ export class NetworkBuilder {
       this.buildRoadCenterline(road);
     }
     this.computeTrims();
+    for (const road of plain) {
+      this.registerPocketSplits(road);
+    }
     for (const road of [...plain, ...attached]) {
       this.buildRoadLanes(road);
     }
@@ -430,17 +454,19 @@ export class NetworkBuilder {
     const controls: Array<Vec2 & { y?: number }> = [];
     let elevationMode = spec.elevation ?? "terrain";
 
+    const attachLength = spec.attachLength ?? 80;
+    const attachMid = attachLength * 0.425;
     if (spec.attachFrom) {
       const frame = this.outerLaneFrame(spec.attachFrom.roadId, spec.attachFrom.direction, spec.from ?? "");
       controls.push({ x: frame.point.x, z: frame.point.z, y: frame.point.y });
       controls.push({
-        x: frame.point.x + frame.travel.x * 34 + frame.right.x * (frame.laneWidth * 0.55),
-        z: frame.point.z + frame.travel.z * 34 + frame.right.z * (frame.laneWidth * 0.55),
+        x: frame.point.x + frame.travel.x * attachMid + frame.right.x * (frame.laneWidth * 0.55),
+        z: frame.point.z + frame.travel.z * attachMid + frame.right.z * (frame.laneWidth * 0.55),
         y: frame.point.y - 0.15,
       });
       controls.push({
-        x: frame.point.x + frame.travel.x * 80 + frame.right.x * (frame.laneWidth * 1.9),
-        z: frame.point.z + frame.travel.z * 80 + frame.right.z * (frame.laneWidth * 1.9),
+        x: frame.point.x + frame.travel.x * attachLength + frame.right.x * (frame.laneWidth * 1.9),
+        z: frame.point.z + frame.travel.z * attachLength + frame.right.z * (frame.laneWidth * 1.9),
       });
       elevationMode = "control";
     } else if (spec.from) {
@@ -455,12 +481,12 @@ export class NetworkBuilder {
     if (spec.attachTo) {
       const frame = this.outerLaneFrame(spec.attachTo.roadId, spec.attachTo.direction, spec.to ?? "");
       controls.push({
-        x: frame.point.x - frame.travel.x * 80 + frame.right.x * (frame.laneWidth * 1.9),
-        z: frame.point.z - frame.travel.z * 80 + frame.right.z * (frame.laneWidth * 1.9),
+        x: frame.point.x - frame.travel.x * attachLength + frame.right.x * (frame.laneWidth * 1.9),
+        z: frame.point.z - frame.travel.z * attachLength + frame.right.z * (frame.laneWidth * 1.9),
       });
       controls.push({
-        x: frame.point.x - frame.travel.x * 34 + frame.right.x * (frame.laneWidth * 0.55),
-        z: frame.point.z - frame.travel.z * 34 + frame.right.z * (frame.laneWidth * 0.55),
+        x: frame.point.x - frame.travel.x * attachMid + frame.right.x * (frame.laneWidth * 0.55),
+        z: frame.point.z - frame.travel.z * attachMid + frame.right.z * (frame.laneWidth * 0.55),
         y: frame.point.y - 0.15,
       });
       controls.push({ x: frame.point.x, z: frame.point.z, y: frame.point.y });
@@ -611,6 +637,7 @@ export class NetworkBuilder {
       cutStations: [],
       laneOffsets,
       markingGaps: [],
+      pocketRanges: [],
     };
     this.roads.set(spec.id, built);
 
@@ -676,6 +703,63 @@ export class NetworkBuilder {
       road.markingGaps.push({ s0: sample.s - 70, s1: sample.s + 70, side: "right" });
     }
     road.cutStations.sort((a, b) => a.s - b.s);
+  }
+
+  private registerPocketSplits(spec: RoadSpec) {
+    const road = this.roads.get(spec.id);
+    if (!road || !spec.pockets || spec.closed) {
+      return;
+    }
+    for (const pocket of spec.pockets) {
+      const nodeId = pocket.end === "to" ? spec.to : spec.from;
+      if (!nodeId) {
+        continue;
+      }
+      const node = this.nodes.get(nodeId);
+      if (!node || node.isCut || node.spec.roundabout || node.spec.edge || node.spec.destination || this.roadEndsAt(nodeId).length < 3) {
+        continue;
+      }
+      const direction: LaneDirection = pocket.end === "to" ? "forward" : "backward";
+      const offsets = road.laneOffsets[direction];
+      if (offsets.length === 0 || !this.hasLeftTurn(road, nodeId, pocket.end === "from")) {
+        continue;
+      }
+      if (road.median < road.cls.laneWidth) {
+        throw new Error(`Road "${spec.id}" needs a median of at least one lane width for a left pocket.`);
+      }
+      const offset = road.median * 0.5 - road.cls.laneWidth * 0.5;
+      const usable = road.length - road.startTrim - road.endTrim;
+      const length = Math.min(pocket.length, usable * 0.45);
+      if (length < 12) {
+        continue;
+      }
+      const splitS = pocket.end === "to" ? road.length - road.endTrim - length : road.startTrim + length;
+      const splitId = `${spec.id}:pocket:${pocket.end}:${pocket.turn}`;
+      const sample = sampleAtStation(road.samples, splitS);
+      this.nodes.set(splitId, {
+        spec: { id: splitId, x: sample.x, z: sample.z },
+        position: { x: sample.x, y: sample.y, z: sample.z },
+        roadIds: [spec.id],
+        isCut: true,
+      });
+      road.cutStations.push({ nodeId: splitId, s: splitS });
+      road.cutStations.sort((a, b) => a.s - b.s);
+      const s0 = pocket.end === "to" ? splitS : road.startTrim;
+      const s1 = pocket.end === "to" ? road.length - road.endTrim : splitS;
+      road.pocketRanges.push({ direction, turn: pocket.turn, s0, s1, offset, nodeId: splitId });
+    }
+  }
+
+  private hasLeftTurn(road: BuiltRoad, nodeId: string, atStart: boolean) {
+    const arriving = this.endDirection(road, atStart);
+    const heading = { x: -arriving.x, z: -arriving.z };
+    return this.roadEndsAt(nodeId).some((end) => {
+      if (end.road === road) {
+        return false;
+      }
+      const departs = end.atStart ? end.road.spec.forward > 0 : end.road.spec.backward > 0;
+      return departs && this.classifyTurn(heading, this.endDirection(end.road, end.atStart)) === "left";
+    });
   }
 
   private roadEndsAt(nodeId: string): Array<{ road: BuiltRoad; atStart: boolean }> {
@@ -809,7 +893,7 @@ export class NetworkBuilder {
             points,
             length: polylineLength(points),
             width: road.cls.laneWidth,
-            speedKph: road.cls.speedKph,
+            speedKph: spec.speedKph ?? road.cls.speedKph,
             next: [],
             prev: [],
             adjacent: [],
@@ -828,6 +912,40 @@ export class NetworkBuilder {
         });
       }
       pieces[direction] = perLane;
+    }
+    for (const range of road.pocketRanges) {
+      const signedOffset = range.direction === "forward" ? range.offset : -range.offset;
+      let points = offsetSamples(road.samples, range.s0, range.s1, signedOffset);
+      if (range.direction === "backward") {
+        points = points.slice().reverse();
+      }
+      const endNodeId = range.direction === "forward" ? spec.to ?? `${spec.id}:end` : spec.from ?? `${spec.id}:start`;
+      const lane: Lane = {
+        id: `${spec.id}:${range.direction}:pocket-${range.turn}`,
+        kind: laneKind,
+        access: "all",
+        pocket: range.turn,
+        roadId: spec.id,
+        direction: range.direction,
+        laneIndex: range.turn === "left" ? -1 : road.laneOffsets[range.direction].length,
+        fromNode: range.nodeId,
+        toNode: endNodeId,
+        points,
+        length: polylineLength(points),
+        width: road.cls.laneWidth,
+        speedKph: spec.speedKph ?? road.cls.speedKph,
+        next: [],
+        prev: [],
+        adjacent: [],
+      };
+      this.lanes.set(lane.id, lane);
+      const neighbourIndex = range.turn === "left" ? 0 : road.laneOffsets[range.direction].length - 1;
+      const neighbour = pieces[range.direction][neighbourIndex]?.find((piece) => piece.fromNode === range.nodeId);
+      if (neighbour) {
+        lane.adjacent.push(neighbour.id);
+        neighbour.adjacent.push(lane.id);
+      }
+      pieces[range.direction].push([lane]);
     }
     this.roadLanePieces.set(spec.id, pieces);
 
@@ -958,15 +1076,23 @@ export class NetworkBuilder {
       const inCount = inRoad ? inRoad.laneOffsets[lane.direction ?? "forward"].length : 1;
       const laneIndex = lane.laneIndex ?? 0;
       const candidates = outgoing
-        .filter((target) => target.roadId !== lane.roadId)
+        .filter((target) => target.roadId !== lane.roadId && !target.pocket)
         .map((target) => ({ target, turn: this.classifyTurn(arrivalHeading, this.laneStartHeading(target)) }));
       const hasStraight = candidates.some((candidate) => candidate.turn === "straight");
       const hasLeft = candidates.some((candidate) => candidate.turn === "left");
       const hasRight = candidates.some((candidate) => candidate.turn === "right");
+      const pocketTurns = new Set(
+        incoming.filter((other) => other.roadId === lane.roadId && other.direction === lane.direction && other.pocket).map((other) => other.pocket),
+      );
 
       let allowed: TurnKind[];
-      if (inCount === 1) {
-        allowed = ["straight", "left", "right"];
+      if (lane.pocket) {
+        allowed = [lane.pocket];
+      } else if (inCount === 1) {
+        allowed = ["straight", "left", "right"].filter((turn) => !pocketTurns.has(turn as "left" | "right")) as TurnKind[];
+        if (allowed.length === 0) {
+          allowed = ["straight"];
+        }
       } else if (laneIndex === 0) {
         allowed = hasStraight ? ["straight"] : [];
         if (hasLeft) {
@@ -986,6 +1112,12 @@ export class NetworkBuilder {
       } else {
         allowed = hasStraight ? ["straight"] : hasRight ? ["right"] : ["left"];
       }
+      if (!lane.pocket) {
+        const filtered = allowed.filter((turn) => !(turn === "left" && pocketTurns.has("left")) && !(turn === "right" && pocketTurns.has("right")));
+        if (filtered.length > 0) {
+          allowed = filtered;
+        }
+      }
 
       for (const candidate of candidates) {
         if (!allowed.includes(candidate.turn)) {
@@ -996,7 +1128,7 @@ export class NetworkBuilder {
         const outIndex = candidate.target.laneIndex ?? 0;
         let targetIndex: number;
         if (candidate.turn === "straight") {
-          targetIndex = Math.min(laneIndex, outCount - 1);
+          targetIndex = Math.min(Math.max(laneIndex, 0), outCount - 1);
         } else if (candidate.turn === "right") {
           targetIndex = outCount - 1;
         } else {
@@ -1028,6 +1160,18 @@ export class NetworkBuilder {
           const starting = laneList.find((lane) => lane.fromNode === nodeId);
           if (ending && starting) {
             this.link(ending, starting);
+          }
+        }
+        const host = this.roads.get(hostId);
+        for (const range of host?.pocketRanges ?? []) {
+          if (range.nodeId !== nodeId || range.direction !== direction) {
+            continue;
+          }
+          const pocketLane = this.lanes.get(`${hostId}:${direction}:pocket-${range.turn}`);
+          const neighbourIndex = range.turn === "left" ? 0 : (host?.laneOffsets[direction].length ?? 1) - 1;
+          const neighbourEnding = pieces[direction][neighbourIndex]?.find((lane) => lane.toNode === nodeId);
+          if (pocketLane && neighbourEnding) {
+            this.addConnector(nodeId, neighbourEnding, pocketLane, "diverge", 0.3);
           }
         }
       }

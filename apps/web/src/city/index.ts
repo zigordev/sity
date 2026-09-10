@@ -1,6 +1,8 @@
 import { buildLotBuildings, buildingFootprints, footprintCorners, type BuildingFootprint } from "./buildings";
 import { corridorClearance, registerZone } from "../world/occupancy";
 import { DISTRICTS } from "./districts";
+import { WESTERN_COUNTRY_SPLIT_Z_M } from "../config/constants";
+import { mainBoundaryMaxZ, mainBoundaryMinX } from "../world/frame";
 import { buildSpecialBlocks } from "./landmarks";
 import { generateLots, markSpecialBlocks } from "./lots";
 import {
@@ -13,6 +15,7 @@ import {
   placeRiversideTrees,
   placeSpecialBlockTrees,
   placeStreetTrees,
+  placeWesternForest,
 } from "./vegetation";
 import { SPECIAL_BLOCKS } from "./districts";
 
@@ -31,6 +34,7 @@ export function registerCityZones() {
   for (const block of SPECIAL_BLOCKS) {
     registerZone({ minX: block.minX, maxX: block.maxX, minZ: block.minZ, maxZ: block.maxZ, tag: `block:${block.id}` });
   }
+  registerZone({ minX: mainBoundaryMinX, maxX: -1900, minZ: WESTERN_COUNTRY_SPLIT_Z_M, maxZ: mainBoundaryMaxZ, tag: "farmland" });
 }
 
 function projectPolygon(points: Array<{ x: number; z: number }>, axis: { x: number; z: number }) {
@@ -114,7 +118,7 @@ export function addCity() {
   placeSpecialBlockTrees();
   placeCoastPalms();
   placeLowlandMeadowTrees();
-  cityStats.forestTreeCount = placeForest();
+  cityStats.forestTreeCount = placeForest() + placeWesternForest();
   cityStats.treeCount = commitTrees();
   void placeParkTrees;
 }
