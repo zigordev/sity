@@ -135,4 +135,44 @@ describe('buildRoadNetwork', () => {
     expect(route?.laneChanges).toBe(1);
     expect(route?.laneIds).toContain('ramp-off:forward:0');
   });
+
+  it('marks the outer lane of a bus-lane road for buses only and keeps the rest open', () => {
+    const spec: NetworkSpec = {
+      nodes: [
+        { id: 'a', x: -200, z: 0, edge: true },
+        { id: 'm', x: 0, z: 0 },
+        { id: 'b', x: 200, z: 0, edge: true },
+      ],
+      roads: [
+        { id: 'bus-1', class: 'arterial', from: 'a', to: 'm', forward: 2, backward: 2, busLane: true },
+        { id: 'bus-2', class: 'arterial', from: 'm', to: 'b', forward: 2, backward: 2, busLane: true },
+      ],
+    };
+    const network = buildRoadNetwork(spec, flat);
+    expect(network.lanes.get('bus-1:forward:1')?.access).toBe('bus');
+    expect(network.lanes.get('bus-1:forward:0')?.access).toBe('all');
+    expect(network.lanes.get('bus-1:backward:1')?.access).toBe('bus');
+    const busConnector = [...network.lanes.values()].find((lane) => lane.kind === 'connector' && lane.prev.includes('bus-1:forward:1'));
+    expect(busConnector?.access).toBe('bus');
+    const carConnector = [...network.lanes.values()].find((lane) => lane.kind === 'connector' && lane.prev.includes('bus-1:forward:0'));
+    expect(carConnector?.access).toBe('all');
+  });
+
+  it('keeps a toll cut as a pass-through station on a one-way highway', () => {
+    const spec: NetworkSpec = {
+      nodes: [
+        { id: 'h0', x: -300, z: 0, edge: true },
+        { id: 'toll', x: 0, z: 0, control: 'toll' },
+        { id: 'h1', x: 300, z: 0, edge: true },
+      ],
+      roads: [{ id: 'mw', class: 'highway', from: 'h0', to: 'h1', forward: 2, backward: 0, cuts: ['toll'] }],
+    };
+    const network = buildRoadNetwork(spec, flat);
+    const graph = new RoadGraph(network);
+    expect(network.nodes.get('toll')?.isCut).toBe(true);
+    expect(network.lanes.get('mw:forward:0:0')?.next).toContain('mw:forward:0:1');
+    expect(graph.invariants().strandedLaneIds).toEqual([]);
+    expect(graph.stats().sourceLaneCount).toBe(2);
+    expect(graph.stats().sinkLaneCount).toBe(2);
+  });
 });

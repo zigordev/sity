@@ -1,18 +1,22 @@
 import * as THREE from "three";
-import { COASTAL_INLET_OVERLAP_M, DAM_CURVE_BOW_M, DAM_LENGTH_M, DAM_THICKNESS_M, DAM_UPSTREAM_FACE_OFFSET_M, ESTUARY_SEA_BLEND_END_OFFSET_M, ESTUARY_SEA_BLEND_START_OFFSET_M, MAINLAND_EAST_MARGIN_M, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAIN_BOUNDARY_NORTH_EXTENSION_M, MAIN_BOUNDARY_SIDE_M, MOUNTAIN_VISIBLE_SPAN_M, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_VISIBLE_SPAN_M } from "../config/constants";
+import { COASTAL_INLET_OVERLAP_M, DAM_CURVE_BOW_M, DAM_LENGTH_M, DAM_THICKNESS_M, DAM_UPSTREAM_FACE_OFFSET_M, ESTUARY_SEA_BLEND_END_OFFSET_M, ESTUARY_SEA_BLEND_START_OFFSET_M, MAINLAND_EAST_MARGIN_M, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAIN_BOUNDARY_NORTH_EXTENSION_M, MAIN_BOUNDARY_SIDE_M, MAIN_BOUNDARY_SOUTH_EXTENSION_M, MAIN_BOUNDARY_WEST_EXTENSION_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M } from "../config/constants";
 import { GroundPathPoint } from "../geometry/types";
 
 export const mainBoundaryCenterX = 0;
 
 export const mainBoundaryCenterZ = 0;
 
-export const mainBoundaryMinX = mainBoundaryCenterX - MAIN_BOUNDARY_SIDE_M / 2;
+export const originalBoundaryMinX = mainBoundaryCenterX - MAIN_BOUNDARY_SIDE_M / 2;
+
+export const originalBoundaryMaxZ = mainBoundaryCenterZ + MAIN_BOUNDARY_SIDE_M / 2;
+
+export const mainBoundaryMinX = originalBoundaryMinX - MAIN_BOUNDARY_WEST_EXTENSION_M;
 
 export const mainBoundaryMaxX = mainBoundaryCenterX + MAIN_BOUNDARY_SIDE_M / 2;
 
 export const mainBoundaryMinZ = mainBoundaryCenterZ - MAIN_BOUNDARY_SIDE_M / 2 - MAIN_BOUNDARY_NORTH_EXTENSION_M;
 
-export const mainBoundaryMaxZ = mainBoundaryCenterZ + MAIN_BOUNDARY_SIDE_M / 2;
+export const mainBoundaryMaxZ = originalBoundaryMaxZ + MAIN_BOUNDARY_SOUTH_EXTENSION_M;
 
 export const estuarySeaBlendStartX = mainBoundaryMaxX + ESTUARY_SEA_BLEND_START_OFFSET_M;
 
@@ -45,32 +49,32 @@ export const seaCenter = new THREE.Vector3(
 );
 
 export const mountainCenter = {
-  x: mainBoundaryMinX - 160,
-  z: mainBoundaryMaxZ + 160,
+  x: originalBoundaryMinX - 160,
+  z: originalBoundaryMaxZ + 160,
 };
 
 export const mountainVisibleBounds = {
   minX: mainBoundaryMinX,
-  maxX: Math.min(mainBoundaryMinX + MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMaxX),
-  minZ: Math.max(mainBoundaryMaxZ - MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMinZ),
+  maxX: Math.min(mountainCenter.x + MOUNTAIN_RADIUS_X_M, mainBoundaryMaxX),
+  minZ: Math.max(mountainCenter.z - MOUNTAIN_RADIUS_Z_M, mainBoundaryMinZ),
   maxZ: mainBoundaryMaxZ,
 };
 
 export const snowMountainCenter = {
-  x: mainBoundaryMinX - 35,
+  x: originalBoundaryMinX - 35,
   z: mainBoundaryCenterZ - MAIN_BOUNDARY_SIDE_M / 2 - 35,
 };
 
 export const snowMountainVisibleBounds = {
   minX: mainBoundaryMinX,
-  maxX: Math.min(mainBoundaryMinX + SNOW_MOUNTAIN_VISIBLE_SPAN_M, mainBoundaryMaxX),
+  maxX: Math.min(snowMountainCenter.x + SNOW_MOUNTAIN_RADIUS_X_M, mainBoundaryMaxX),
   minZ: mainBoundaryMinZ,
   maxZ: Math.min(snowMountainCenter.z + SNOW_MOUNTAIN_RADIUS_Z_M, mainBoundaryMaxZ),
 };
 
 export const reservoirCenter = {
-  x: mainBoundaryMinX + 300,
-  z: mainBoundaryMaxZ - 360,
+  x: originalBoundaryMinX + 300,
+  z: originalBoundaryMaxZ - 360,
 };
 
 export const reservoirOutletDirection = (() => {
@@ -116,10 +120,10 @@ export const riverSource = {
 
 export const riverControlPath: GroundPathPoint[] = [
   riverSource,
-  { x: mainBoundaryMinX + 590, z: mainBoundaryMaxZ - 585 },
-  { x: mainBoundaryMinX + 840, z: mainBoundaryMaxZ - 475 },
-  { x: mainBoundaryMinX + 1_070, z: mainBoundaryMaxZ - 545 },
-  { x: mainBoundaryMinX + 1_315, z: mainBoundaryMaxZ - 405 },
+  { x: originalBoundaryMinX + 590, z: originalBoundaryMaxZ - 585 },
+  { x: originalBoundaryMinX + 840, z: originalBoundaryMaxZ - 475 },
+  { x: originalBoundaryMinX + 1_070, z: originalBoundaryMaxZ - 545 },
+  { x: originalBoundaryMinX + 1_315, z: originalBoundaryMaxZ - 405 },
   { x: mainBoundaryMaxX - 210, z: 185 },
   { x: mainBoundaryMaxX - 185, z: 130 },
   { x: mainBoundaryMaxX - 150, z: 96 },

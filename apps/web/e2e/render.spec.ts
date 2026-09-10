@@ -82,9 +82,9 @@ test.describe('scene', () => {
     const errors = await openScene(page);
     const layout = await page.evaluate(() => window.__SITY_DEBUG__.getSiteLayout());
     expect(layout.unit).toBe('meter');
-    expect(layout.mainBoundaryWidthM).toBeCloseTo(1_732, 0);
-    expect(layout.mainBoundaryDepthM).toBeCloseTo(2_432, 0);
-    expect(layout.mainBoundaryAreaM2).toBeGreaterThan(4_200_000);
+    expect(layout.mainBoundaryWidthM).toBeCloseTo(2_232, 0);
+    expect(layout.mainBoundaryDepthM).toBeCloseTo(3_132, 0);
+    expect(layout.mainBoundaryAreaM2).toBeGreaterThan(6_900_000);
     expect(layout.northDirection).toEqual({ x: 0, z: -1 });
     expect(layout.seaSide).toBe('east');
 
@@ -101,11 +101,13 @@ test.describe('scene', () => {
   test('exposes a closed lane graph that routes across the city', async ({ page }) => {
     await openScene(page);
     const graph = await page.evaluate(() => window.__SITY_DEBUG__.getRoadGraph());
-    expect(graph.stats.roadCount).toBeGreaterThanOrEqual(90);
-    expect(graph.stats.laneCount).toBeGreaterThanOrEqual(600);
-    expect(graph.stats.junctionCount).toBeGreaterThanOrEqual(50);
-    expect(graph.stats.roundaboutCount).toBeGreaterThanOrEqual(3);
-    expect(graph.stats.laneCountByKind.ramp).toBeGreaterThanOrEqual(8);
+    expect(graph.stats.roadCount).toBeGreaterThanOrEqual(140);
+    expect(graph.stats.laneCount).toBeGreaterThanOrEqual(950);
+    expect(graph.stats.junctionCount).toBeGreaterThanOrEqual(80);
+    expect(graph.stats.roundaboutCount).toBeGreaterThanOrEqual(5);
+    expect(graph.stats.laneCountByKind.ramp).toBeGreaterThanOrEqual(16);
+    expect(graph.stats.sourceLaneCount).toBeGreaterThanOrEqual(10);
+    expect(graph.stats.sinkLaneCount).toBeGreaterThanOrEqual(10);
     expect(graph.invariants.everyLaneHasPoints).toBe(true);
     expect(graph.invariants.noNaNCoordinates).toBe(true);
     expect(graph.invariants.connectorsTouchNeighbours).toBe(true);
@@ -149,7 +151,7 @@ test.describe('scene', () => {
 
     const performance = await page.evaluate(() => window.__SITY_DEBUG__.getPerformance());
     expect(performance.drawCalls).toBeGreaterThan(0);
-    expect(performance.drawCalls).toBeLessThanOrEqual(420);
+    expect(performance.drawCalls).toBeLessThanOrEqual(480);
     expect(performance.triangles).toBeGreaterThan(0);
     expect(performance.triangles).toBeLessThanOrEqual(2_500_000);
     expect(performance.postprocessingPassCount).toBe(4);

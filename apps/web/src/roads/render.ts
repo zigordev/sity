@@ -4,6 +4,7 @@ import { fullTerrainSurfaceYAt, groundSurfaceYAt } from "../natural/terrain";
 import { roadElements } from "../render/context";
 import {
   barrierArmMaterial,
+  busLaneMaterial,
   embankmentMaterial,
   fenceMeshMaterial,
   grassMaterial,
@@ -26,6 +27,8 @@ import {
   signalLensDarkMaterial,
   signalLensGreenMaterial,
   signalLensRedMaterial,
+  tollGantryMaterial,
+  tollSignMaterial,
 } from "../render/materials";
 import { addCableStayedBridgeStructure, addTunnelPortal } from "./structures";
 import { roadNetwork } from "./build";
@@ -58,6 +61,7 @@ const CLASS_RANK: Record<RoadClass, number> = {
   arterial: 4,
   collector: 3,
   industrial: 3,
+  rural: 3,
   mountain: 2,
   local: 1,
   service: 0,
@@ -114,6 +118,7 @@ const embankmentGeometries: THREE.BufferGeometry[] = [];
 const fenceGeometries: THREE.BufferGeometry[] = [];
 const glassGeometries: THREE.BufferGeometry[] = [];
 const barrierArmGeometries: THREE.BufferGeometry[] = [];
+const busLaneGeometries: THREE.BufferGeometry[] = [];
 const destinationLampPlacements: Placement[] = [];
 
 function addMergedMesh(name: string, geometries: THREE.BufferGeometry[], material: THREE.Material, options: { castShadow?: boolean; renderOrder?: number; polygonOffset?: boolean } = {}) {
@@ -308,6 +313,17 @@ function buildRoadMarkings() {
       const sign = direction === "forward" ? 1 : -1;
       for (let index = 1; index < offsets.length; index += 1) {
         const boundary = sign * (offsets[index - 1] + offsets[index]) * 0.5;
+        if (road.spec.busLane && index === offsets.length - 1) {
+          solidLine(road, s0 + 1, s1 - 1, boundary, 0.18, whiteMarkings);
+          const outer = offsets[index];
+          const stations = stationsBetween(road.samples, s0 + 1, s1 - 1);
+          busLaneGeometries.push(stripFromStations(stations, sign * (outer - cls.laneWidth * 0.5 + 0.15), sign * (outer + cls.laneWidth * 0.5 - 0.1), 0.012));
+          for (let s = s0 + 20; s < s1 - 12; s += 60) {
+            const letter = stationsBetween(road.samples, s, s + 4.5);
+            whiteMarkings.push(stripFromStations(letter, sign * (outer - 0.45), sign * (outer + 0.45), 0.025));
+          }
+          continue;
+        }
         dashedLine(road, s0 + 1, s1 - 1, boundary, 0.14, 3, 6, whiteMarkings);
       }
     }
@@ -757,6 +773,53 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
   }
 }
 
+function buildTollGantries() {
+  const frames: THREE.BufferGeometry[] = [];
+  const signs: THREE.BufferGeometry[] = [];
+  for (const node of roadNetwork.nodes.values()) {
+    if (node.spec.control !== "toll" || !node.isCut) {
+      continue;
+    }
+    const road = roadNetwork.roads.get(node.roadIds[0]);
+    if (!road) {
+      continue;
+    }
+    const cut = road.cutStations.find((station) => station.nodeId === node.spec.id);
+    if (!cut) {
+      continue;
+    }
+    const station = sampleAtStation(road.samples, cut.s);
+    const right = perpRight({ x: station.tx, z: station.tz });
+    const heading = Math.atan2(station.tx, station.tz);
+    const span = road.width + 3;
+    for (const sign of [-1, 1]) {
+      const post = new THREE.BoxGeometry(0.6, 7.2, 0.6);
+      post.translate(station.x + right.x * sign * span * 0.5, station.y + 3.6, station.z + right.z * sign * span * 0.5);
+      frames.push(post);
+    }
+    const beam = new THREE.BoxGeometry(span + 0.6, 0.9, 0.7);
+    beam.rotateY(heading + Math.PI / 2);
+    beam.translate(station.x, station.y + 6.9, station.z);
+    frames.push(beam);
+    for (const offset of [...road.laneOffsets.forward, ...road.laneOffsets.backward.map((value) => -value)]) {
+      const camera = new THREE.BoxGeometry(0.5, 0.5, 0.9);
+      camera.rotateY(heading);
+      camera.translate(station.x + right.x * offset, station.y + 6.1, station.z + right.z * offset);
+      frames.push(camera);
+      const panel = new THREE.BoxGeometry(1.6, 1.0, 0.08);
+      panel.rotateY(heading);
+      panel.translate(station.x + right.x * offset, station.y + 5.4, station.z + right.z * offset);
+      signs.push(panel);
+    }
+    const bar = new THREE.BoxGeometry(road.width - 1.5, 0.05, 0.6);
+    bar.rotateY(heading + Math.PI / 2);
+    bar.translate(station.x, station.y + 0.03, station.z);
+    whiteMarkings.push(bar);
+  }
+  addMergedMesh("toll-gantries", frames, tollGantryMaterial, { renderOrder: 10, castShadow: true });
+  addMergedMesh("toll-gantry-signs", signs, tollSignMaterial, { renderOrder: 10 });
+}
+
 function buildBusStops() {
   const posts: THREE.BufferGeometry[] = [];
   const roofs: THREE.BufferGeometry[] = [];
@@ -931,7 +994,7 @@ function buildStructures() {
   }
 
   for (const road of roadNetwork.roads.values()) {
-    if (road.spec.class !== "highway" && road.spec.class !== "ramp" && road.spec.class !== "mountain") {
+    if (road.spec.class !== "highway" && road.spec.class !== "ramp" && road.spec.class !== "mountain" && road.spec.class !== "rural") {
       continue;
     }
     for (const run of structureRuns(road)) {
@@ -1241,6 +1304,7 @@ export function addRoadNetworkMeshes() {
   buildSidewalksAndMedians();
   buildDestinations();
   buildStructures();
+  buildTollGantries();
 
   addMergedMesh("road-surfaces", asphaltTops, highwayAsphaltMaterial, { renderOrder: 9 });
   addMergedMesh("road-surface-sides", asphaltSides, highwaySideMaterial, { renderOrder: 9, castShadow: true });
@@ -1249,6 +1313,7 @@ export function addRoadNetworkMeshes() {
   addMergedMesh("kerbs", kerbSides, kerbMaterial, { renderOrder: 10 });
   addMergedMesh("planted-medians", medianTops, medianGrassMaterial, { renderOrder: 10 });
   addMergedMesh("roundabout-islands", grassTops, grassMaterial, { renderOrder: 10, castShadow: true });
+  addMergedMesh("bus-lanes", busLaneGeometries, busLaneMaterial, { renderOrder: 10.5 });
   addMergedMesh("road-markings-white", whiteMarkings, roadMarkingWhiteMaterial, { renderOrder: 11 });
   addMergedMesh("road-markings-yellow", yellowMarkings, roadMarkingYellowMaterial, { renderOrder: 11 });
   addMergedMesh("road-barriers", barrierGeometries, roadStructureConcreteMaterial, { renderOrder: 10, castShadow: true });

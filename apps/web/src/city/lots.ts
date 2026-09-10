@@ -84,7 +84,7 @@ export function isQuadFree(quad: Quad) {
   return true;
 }
 
-export function isNaturalKeepOut(x: number, z: number) {
+export function isNaturalKeepOut(x: number, z: number, allowHighGround = false) {
   if (x < mainBoundaryMinX + 24 || x > mainBoundaryMaxX - 96) {
     return true;
   }
@@ -96,6 +96,9 @@ export function isNaturalKeepOut(x: number, z: number) {
   }
   if (isInsideReservoirFootprint({ x, z }, 1.6)) {
     return true;
+  }
+  if (allowHighGround) {
+    return false;
   }
   const height = fullTerrainSurfaceYAt({ x, z }) - 2;
   return height > 48;
@@ -137,14 +140,14 @@ function lotQuad(front: { x: number; z: number }, tangent: { x: number; z: numbe
   return { corners: [a, b, c, d] };
 }
 
-function lotIsBuildable(quad: Quad) {
+function lotIsBuildable(quad: Quad, maxRise = 3.2, allowHighGround = false) {
   const heights: number[] = [];
   const probes = [...quad.corners, {
     x: (quad.corners[0].x + quad.corners[2].x) * 0.5,
     z: (quad.corners[0].z + quad.corners[2].z) * 0.5,
   }];
   for (const point of probes) {
-    if (isNaturalKeepOut(point.x, point.z)) {
+    if (isNaturalKeepOut(point.x, point.z, allowHighGround)) {
       return false;
     }
     heights.push(groundSurfaceYAt(point.x, point.z));
@@ -154,7 +157,7 @@ function lotIsBuildable(quad: Quad) {
       return false;
     }
   }
-  if (Math.max(...heights) - Math.min(...heights) > 3.2) {
+  if (Math.max(...heights) - Math.min(...heights) > maxRise) {
     return false;
   }
   return isQuadFree(quad);
@@ -197,7 +200,7 @@ function generateLotsAlong(road: BuiltRoad, random: () => number) {
       for (const depthScale of [1, 0.72, 0.5, 0.36]) {
         const depth = style.lotDepth * depthScale;
         const quad = lotQuad(front, tangent, inward, width - 1.2, depth);
-        if (!lotIsBuildable(quad)) {
+        if (!lotIsBuildable(quad, style.maxRise ?? 3.2, district.kind === "alpine")) {
           continue;
         }
         markQuad(quad, RASTER_LOT);

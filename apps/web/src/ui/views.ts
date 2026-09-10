@@ -6,7 +6,7 @@ export interface CameraView {
 }
 
 export const CAMERA_VIEWS: CameraView[] = [
-  { id: "overview", label: "Overview", position: [-40, 2350, 2150], target: [170, 0, -330] },
+  { id: "overview", label: "Overview", position: [160, 3050, 2500], target: [-180, 0, 0] },
   { id: "downtown", label: "Downtown", position: [420, 520, 260], target: [260, 0, -180] },
   { id: "street", label: "Street level", position: [250, 14, -120], target: [246, 6, -200] },
   { id: "interchange", label: "Interchange", position: [760, 380, 60], target: [640, 0, -280] },
@@ -23,6 +23,12 @@ export const CAMERA_VIEWS: CameraView[] = [
   { id: "crossing", label: "Level crossing", position: [580, 55, -1090], target: [520, 3, -1000] },
   { id: "village", label: "Village", position: [580, 230, -1080], target: [450, 4, -1250] },
   { id: "hospital", label: "Hospital", position: [820, 170, -1060], target: [650, 4, -1190] },
+  { id: "trumpet", label: "Trumpet", position: [720, 360, 640], target: [450, 5, 780] },
+  { id: "motorway", label: "Motorway", position: [760, 420, 1520], target: [480, 3, 1260] },
+  { id: "services", label: "Services", position: [560, 120, 1420], target: [390, 3, 1300] },
+  { id: "col-road", label: "Col Road", position: [-560, 520, 280], target: [-1000, 80, 520] },
+  { id: "valley", label: "Valley", position: [-420, 420, -120], target: [-800, 20, 330] },
+  { id: "pier", label: "Pier", position: [900, 90, -40], target: [1010, 6, -190] },
 ];
 
 export function findView(id: string) {

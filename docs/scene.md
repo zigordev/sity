@@ -8,15 +8,19 @@ One Three.js unit is one meter. North is `-Z`, east is `+X`, and the sea lies ea
 
 ## Geography
 
-- A 4.2 km² site (1,732 m east to west, 2,432 m north to south) on a green mainland, with open sea along
+- A 7 km² site (2,232 m east to west, 3,132 m north to south) on a green mainland, with open sea along
   the whole east edge.
 - A high snow-capped mountain fills the north-west quadrant and a lower rocky mountain the south-west corner.
 - A reservoir sits between them behind a curved dam; the river it releases meanders east across the plain
   and reaches the sea through a widening estuary.
 - The coast has a container terminal with two berths (north): ship-to-shore gantries over the quay, yard
   gantries over stacked containers, a transit shed, trucks on marked lanes, light masts and a fenced gate
-  onto Harbour Road. A private marina and a wooden attraction pier sit north of the river mouth and a sandy
-  beach with amenities south of it.
+  onto Harbour Road. A private marina and an amusement pier (entrance arch, stalls, arcade, carousel, a
+  spoked Ferris wheel and a roller coaster) sit north of the river mouth. South of it a 1.2 km beach runs to
+  the south edge behind a promenade with railings, lamps and benches: beach huts, kiosks, umbrella and
+  sunbed rows, volleyball courts, lifeguard towers, showers, boardwalks and a beach bar, all at human scale.
+- West of the ring the snow mountain and the rocky mountain are both fully inside the site, with a low
+  valley between them leading to the west edge and the reservoir and dam below the rocky mountain.
 - Conifer and broadleaf forest covers the mountain foothills; meadow trees dot the open plain.
 - North of the ring highway the plain opens into countryside: hedged fields with a farmstead, the village of
   Northfield around a green and a chapel, a district hospital with a helipad, and a railway running in from
@@ -40,13 +44,24 @@ Scenarios in the plan:
   two roundabouts, and a half-diamond serving the port at Harbour Road.
 - A downtown grid with a tree-lined arterial (Central Avenue and Main Street), collectors with parking
   lanes, local streets, and a one-way pair (King Street southbound, Queen Street northbound).
-- Signalised, stop-controlled and priority junctions, T-junctions, urban roundabouts, and roads that leave
-  the map at its edge (vehicle sources and sinks).
+- A trumpet interchange on the ring's south-east leg (two direct ramps, a loop and a semi-direct ramp under
+  the viaduct) feeding the Southern Motorway: two one-way carriageways with a grass median that leave the
+  map at the south edge, a rest area with fuel, shop and lorry parking reached by its own off- and on-ramp,
+  Golf Road bridging over both carriageways, and free-flow toll gantries (junction control `toll`) near the
+  edge. Bus lanes on Central Avenue and Main Street (`Lane.access = "bus"`).
+- Signalised, stop-controlled and priority junctions, T-junctions, urban roundabouts, a rural roundabout,
+  cul-de-sacs, and roads that leave the map at its edge (vehicle sources and sinks: the motorway, Coast
+  Boulevard, Main Street, Northfield Road and Valley Road).
 - A curved collector along the river (Riverside Drive), girder bridges on Main Street and Weir Bridge Road,
   and a further bridge carrying the coastal boulevard over the estuary.
-- Every dead end is a destination rather than a stub: car parks at the arena, the pier, the marina and the
-  beach, a bus-station forecourt at the west end of Station Street, gated yards at the port and the depot,
-  a farmyard, and a mountain road climbing the western slope to a viewpoint car park with a lookout deck.
+- Every dead end is a destination rather than a stub: car parks at the arena, the pier, the marina, the
+  beach, the golf club and the col village, a bus-station forecourt at the west end of Station Street,
+  gated yards at the port, the depot, the campsite and a farm, and viewpoints at Westhill and above the
+  reservoir.
+- Rural and mountain roads: Forest Road drops from the Westhill fork through the forest and under the ring
+  viaduct to a valley roundabout; Valley Road runs west between the mountains to the edge; Col Road climbs
+  the rocky mountain in three hairpin switchbacks to an alpine village with chalets, a car park and a
+  chairlift; Golf Road and Camp Lane serve a golf course and a campsite south of the ring.
 - North of the ring: Coast Boulevard continues to the north edge; Northgate Road passes under the ring
   viaduct from the depot to a rural roundabout; Rail Road crosses the railway at a gated level crossing
   (junction control `crossing`) and serves the station forecourt with its bus and taxi bays; Northfield
@@ -98,8 +113,10 @@ keep clear of it.
   ground at every corner, and district zones flatten the terrain micro-relief under the city.
 - Special blocks (`landmarks.ts`): a civic plaza with a domed hall and fountain, a central park with a pond,
   an arena with floodlights, surface parking, a school with a sports field, two churches, the station
-  building with its concourse and clock tower, the hospital campus with its wings and helipad, and the
-  village green with a memorial.
+  building with its concourse and clock tower, the hospital campus with its wings and helipad, the village
+  green with a memorial, the motorway services (fuel canopy, shop, car and lorry parking), a golf course
+  with greens, bunkers, a pond and a clubhouse, a campsite with pitches, tents and caravans, and the col
+  chairlift with pylons, cable and chairs up the mountain.
 - Countryside (`countryside.ts`): ground-hugging fields in four tones with furrows and hedgerows, and a
   farmstead with a barn, farmhouse and silo.
 - `auditCity()` records every building footprint and reports any pair that overlaps and any footprint that
@@ -122,7 +139,7 @@ and bus stops (shelter, bench, flag) stand every 240 m along arterials and colle
   vehicles, lane graph overlay (coloured by lane kind with direction arrows), and the compass/scale helpers.
 - Views: camera presets that fly to the overview, downtown, street level, interchange, roundabouts,
   riverside, river bridge, tunnel, mountain road, port, beach, suburb, dam, North station, level crossing,
-  village and hospital.
+  village, hospital, trumpet, motorway, services, Col Road, valley and pier.
 - Routing: a random route through the lane graph is drawn on the roads with its length and endpoints.
 - A compass whose N points to true north (`-Z`) and an axis widget with metre references.
 

@@ -150,13 +150,13 @@ sunLight.castShadow = true;
 
 sunLight.shadow.mapSize.set(4096, 4096);
 
-sunLight.shadow.camera.left = -1_900;
+sunLight.shadow.camera.left = -2_300;
 
-sunLight.shadow.camera.right = 1_900;
+sunLight.shadow.camera.right = 2_300;
 
-sunLight.shadow.camera.top = 1_900;
+sunLight.shadow.camera.top = 2_300;
 
-sunLight.shadow.camera.bottom = -1_900;
+sunLight.shadow.camera.bottom = -2_300;
 
 sunLight.shadow.camera.near = 200;
 

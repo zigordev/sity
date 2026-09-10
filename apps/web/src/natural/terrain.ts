@@ -5,7 +5,7 @@ import { addFlatPlane, addLayeredPolygonVolume, addPlanarXZUVs, addScaledSphereI
 import { GroundPathPoint, ScaledXYZPlacement } from "../geometry/types";
 import { naturalElements } from "../render/context";
 import { grassMaterial, mainlandMaterial, mountainCutMaterial, mountainHighColor, mountainLowColor, mountainMaterial, mountainMidColor, mountainRidgeMaterial, talusRockMaterial, snowColor, snowPatchMaterial, snowShadowColor, terrainCutMaterial, terrainGrassColor, terrainMicroDisplacementMaterial } from "../render/materials";
-import { mainBoundaryCenterX, mainBoundaryCoastlinePoints, mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, mainlandCenterZ, mainlandDepth, mainlandMaxZ, mainlandMinX, mainlandMinZ, mountainCenter, mountainVisibleBounds, reservoirCenter, riverPath, snowMountainCenter, snowMountainVisibleBounds } from "../world/frame";
+import { mainBoundaryCoastlinePoints, mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, mainlandCenterZ, mainlandDepth, mainlandMaxZ, mainlandMinX, mainlandMinZ, mountainCenter, mountainVisibleBounds, reservoirCenter, riverPath, snowMountainCenter, snowMountainVisibleBounds } from "../world/frame";
 
 export let mountainStrataRidgeMeshCount = 0;
 
@@ -417,7 +417,7 @@ export function addMainlandOutsideBoundary() {
     mainBoundaryMaxX - mainBoundaryMinX,
     MAINLAND_NORTH_SOUTH_MARGIN_M,
     mainlandMaterial,
-    mainBoundaryCenterX,
+    (mainBoundaryMinX + mainBoundaryMaxX) / 2,
     MAINLAND_Y,
     (mainlandMinZ + mainBoundaryMinZ) / 2,
     1,
@@ -427,7 +427,7 @@ export function addMainlandOutsideBoundary() {
     mainBoundaryMaxX - mainBoundaryMinX,
     MAINLAND_NORTH_SOUTH_MARGIN_M,
     mainlandMaterial,
-    mainBoundaryCenterX,
+    (mainBoundaryMinX + mainBoundaryMaxX) / 2,
     MAINLAND_Y,
     (mainBoundaryMaxZ + mainlandMaxZ) / 2,
     1,

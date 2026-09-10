@@ -10,7 +10,7 @@ export interface Vec3 extends Vec2 {
   y: number;
 }
 
-export type JunctionControl = "signal" | "stop" | "yield" | "priority" | "crossing" | "none";
+export type JunctionControl = "signal" | "stop" | "yield" | "priority" | "crossing" | "toll" | "none";
 export type LaneDirection = "forward" | "backward";
 export type LaneKind = "road" | "connector" | "ring" | "ramp";
 export type TurnKind = "straight" | "left" | "right" | "uturn" | "merge" | "diverge" | "circulate" | "enter" | "exit";
@@ -62,6 +62,7 @@ export interface RoadSpec {
   attachFrom?: { roadId: string; direction: LaneDirection };
   attachTo?: { roadId: string; direction: LaneDirection };
   parkingLane?: boolean;
+  busLane?: boolean;
 }
 
 export interface NetworkSpec {
@@ -77,9 +78,12 @@ export interface RoadSample extends Vec3 {
   structure: StructureKind;
 }
 
+export type LaneAccess = "all" | "bus";
+
 export interface Lane {
   id: string;
   kind: LaneKind;
+  access: LaneAccess;
   roadId?: string;
   nodeId?: string;
   direction?: LaneDirection;
@@ -796,6 +800,7 @@ export class NetworkBuilder {
           const lane: Lane = {
             id: `${spec.id}:${direction}:${laneIndex}${pieceCount > 1 ? `:${pieceIndex}` : ""}`,
             kind: laneKind,
+            access: spec.busLane && offsets.length > 1 && laneIndex === offsets.length - 1 ? "bus" : "all",
             roadId: spec.id,
             direction,
             laneIndex,
@@ -873,6 +878,7 @@ export class NetworkBuilder {
     const lane: Lane = {
       id: `${nodeId}|${from.id}>${to.id}`,
       kind: "connector",
+      access: from.access === "bus" && to.access === "bus" ? "bus" : "all",
       nodeId,
       turn,
       fromNode: nodeId,
@@ -1286,6 +1292,7 @@ export class NetworkBuilder {
       const lane: Lane = {
         id: `${nodeId}:ring:${index}`,
         kind: "ring",
+        access: "all",
         nodeId,
         turn: "circulate",
         fromNode: nodeId,

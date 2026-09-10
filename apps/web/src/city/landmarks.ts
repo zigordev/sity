@@ -1,12 +1,14 @@
 import * as THREE from "three";
 import { groundSurfaceYAt } from "../natural/terrain";
 import { cityElements } from "../render/context";
-import { highwayAsphaltMaterial, roadMarkingWhiteMaterial, sidewalkMaterial, sharedSeaWaterMaterial, lampPoleMaterial, gravelVergeMaterial, craneWhiteMaterial, roadMarkingYellowMaterial, shelterGlassMaterial } from "../render/materials";
-import { mergeAll } from "../roads/geometry";
+import { highwayAsphaltMaterial, roadMarkingWhiteMaterial, sidewalkMaterial, sharedSeaWaterMaterial, lampPoleMaterial, gravelVergeMaterial, craneWhiteMaterial, roadMarkingYellowMaterial, shelterGlassMaterial, beachSandMaterial, fieldMaterials, steelDarkMaterial, truckCabMaterials, warehouseWallMaterial, barrierArmMaterial, craneBlueMaterial } from "../render/materials";
+import { fullTerrainSurfaceYAt } from "../natural/terrain";
+import { boxBetween, mergeAll } from "../roads/geometry";
 import { SPECIAL_BLOCKS, type SpecialBlock } from "./districts";
 import { BuildingBatch } from "./buildings";
 import { createRandom } from "./random";
 import { addTree } from "./vegetation";
+import { roadSideSlots } from "../roads/render";
 
 const plasterMaterial = new THREE.MeshStandardMaterial({ color: 0xe6dfcf, roughness: 0.8 });
 const stoneMaterial = new THREE.MeshStandardMaterial({ color: 0xd9d3c4, roughness: 0.85 });
@@ -95,6 +97,10 @@ function parkingLines(block: SpecialBlock, y: number, lift: number) {
       const line2 = new THREE.BoxGeometry(0.12, 0.02, 5);
       line2.translate(centerX + x, y + lift + 0.03, rowZ + 9);
       parts.push(line2);
+      if (x + 2.6 <= width * 0.5 - 4) {
+        roadSideSlots.parkingBays.push({ x: centerX + x + 1.3, y: y + lift, z: rowZ + 2.5, heading: 0 });
+        roadSideSlots.parkingBays.push({ x: centerX + x + 1.3, y: y + lift, z: rowZ + 9, heading: Math.PI });
+      }
     }
   }
   const merged = mergeAll(parts);
@@ -394,6 +400,291 @@ function buildGreen(block: SpecialBlock) {
   }
 }
 
+function buildServices(block: SpecialBlock) {
+  const cx = (block.minX + block.maxX) * 0.5;
+  const y = groundSurfaceYAt(cx, (block.minZ + block.maxZ) * 0.5);
+  slab(block, highwayAsphaltMaterial, 0.1, 0.4);
+  const canopyZ = block.minZ + 24;
+  const canopy = new THREE.BoxGeometry(30, 0.5, 16);
+  canopy.translate(cx, y + 5.4, canopyZ);
+  addMesh(`${block.id}-fuel-canopy`, canopy, craneWhiteMaterial);
+  const fascia = new THREE.BoxGeometry(30.4, 1.1, 16.4);
+  fascia.translate(cx, y + 4.7, canopyZ);
+  addMesh(`${block.id}-fuel-fascia`, fascia, barrierArmMaterial);
+  const pumpParts: THREE.BufferGeometry[] = [];
+  for (const dx of [-9, -3, 3, 9]) {
+    const column = new THREE.CylinderGeometry(0.3, 0.3, 4.6, 10);
+    column.translate(cx + dx, y + 2.4, canopyZ);
+    pumpParts.push(column);
+    for (const dz of [-3.6, 3.6]) {
+      const pump = new THREE.BoxGeometry(1.1, 1.9, 0.7);
+      pump.translate(cx + dx, y + 1.05, canopyZ + dz);
+      pumpParts.push(pump);
+      const island = new THREE.BoxGeometry(2.2, 0.2, 6);
+      island.translate(cx + dx, y + 0.2, canopyZ);
+      pumpParts.push(island);
+    }
+  }
+  const pumps = mergeAll(pumpParts);
+  if (pumps) {
+    addMesh(`${block.id}-pumps`, pumps, steelDarkMaterial);
+  }
+  const batch = new BuildingBatch();
+  batch.addBox({ x: cx, y, z: block.minZ + 52, width: 26, height: 4.6, depth: 14, rotationY: 0, color: new THREE.Color(0xe7e3d8), floorHeight: 4.6, windowWidth: 3.2, windowRatio: 0.72, seed: 61 }, "services-shop");
+  batch.commit(`${block.id}-buildings`);
+  const lines: THREE.BufferGeometry[] = [];
+  for (let z = block.minZ + 70; z < block.maxZ - 6; z += 5.4) {
+    for (const x0 of [block.minX + 3, block.maxX - 13]) {
+      const line = new THREE.BoxGeometry(10, 0.02, 0.14);
+      line.translate(x0 + 5, y + 0.14, z);
+      lines.push(line);
+    }
+  }
+  const stalls = mergeAll(lines);
+  if (stalls) {
+    addMesh(`${block.id}-stalls`, stalls, roadMarkingWhiteMaterial, false);
+  }
+  const truck = new THREE.BoxGeometry(2.5, 3.6, 16);
+  truck.translate(cx, y + 1.9, block.maxZ - 14);
+  addMesh(`${block.id}-parked-truck`, truck, truckCabMaterials[2]);
+  for (const [dx, dz] of [[-16, 8], [16, 8], [-16, 100], [16, 100]]) {
+    const mast = new THREE.CylinderGeometry(0.16, 0.24, 10, 8);
+    mast.translate(cx + dx, y + 5, block.minZ + dz);
+    addMesh(`${block.id}-mast-${dx}-${dz}`, mast, lampPoleMaterial);
+  }
+  addTree("broadleaf", block.minX + 4, block.minZ + 6, y, 0.8, 63);
+  addTree("broadleaf", block.maxX - 4, block.minZ + 6, y, 0.8, 64);
+}
+
+function groundPatch(block: SpecialBlock, material: THREE.Material, name: string, lift: number, inset = 0) {
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const minX = block.minX + inset;
+  const maxX = block.maxX - inset;
+  const minZ = block.minZ + inset;
+  const maxZ = block.maxZ - inset;
+  const columns = Math.max(2, Math.ceil((maxX - minX) / 8));
+  const rows = Math.max(2, Math.ceil((maxZ - minZ) / 8));
+  for (let row = 0; row <= rows; row += 1) {
+    const z = minZ + ((maxZ - minZ) * row) / rows;
+    for (let column = 0; column <= columns; column += 1) {
+      const x = minX + ((maxX - minX) * column) / columns;
+      positions.push(x, groundSurfaceYAt(x, z) + lift, z);
+      uvs.push(x / 10, z / 10);
+    }
+  }
+  const stride = columns + 1;
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const a = row * stride + column;
+      indices.push(a, a + stride, a + 1, a + 1, a + stride, a + stride + 1);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  addMesh(name, geometry, material, false);
+}
+
+function buildGolf(block: SpecialBlock) {
+  groundPatch(block, fieldMaterials[2], `${block.id}-fairways`, 0.06);
+  const random = createRandom(2401);
+  const cx = (block.minX + block.maxX) * 0.5;
+  const y = groundSurfaceYAt(cx, block.minZ + 12);
+  const club = new BuildingBatch();
+  club.addBox({ x: cx, y, z: block.minZ + 12, width: 36, height: 7.4, depth: 16, rotationY: 0, color: new THREE.Color(0xf1ece0), floorHeight: 3.7, windowWidth: 2.6, windowRatio: 0.6, seed: 71 }, "golf-club");
+  club.addRoof({ x: cx, y: y + 7.4, z: block.minZ + 12, width: 38, height: 3.2, depth: 18, rotationY: 0, color: new THREE.Color(0x6b4a3a) });
+  club.commit(`${block.id}-clubhouse`);
+  const bunkers: THREE.BufferGeometry[] = [];
+  const greens: THREE.BufferGeometry[] = [];
+  const flags: THREE.BufferGeometry[] = [];
+  const poles: THREE.BufferGeometry[] = [];
+  for (let hole = 0; hole < 7; hole += 1) {
+    const gx = block.minX + 16 + random() * (block.maxX - block.minX - 32);
+    const gz = block.minZ + 44 + random() * (block.maxZ - block.minZ - 60);
+    const gy = groundSurfaceYAt(gx, gz);
+    const green = new THREE.CylinderGeometry(9 + random() * 4, 9 + random() * 4, 0.12, 24);
+    green.scale(1 + random() * 0.4, 1, 1);
+    green.translate(gx, gy + 0.14, gz);
+    greens.push(green);
+    const pole = new THREE.CylinderGeometry(0.04, 0.04, 2.2, 6);
+    pole.translate(gx, gy + 1.3, gz);
+    poles.push(pole);
+    const flag = new THREE.BoxGeometry(0.7, 0.4, 0.03);
+    flag.translate(gx + 0.35, gy + 2.2, gz);
+    flags.push(flag);
+    for (let bunker = 0; bunker < 2; bunker += 1) {
+      const bx = gx + (random() - 0.5) * 30;
+      const bz = gz + (random() - 0.5) * 30;
+      const sand = new THREE.CylinderGeometry(4 + random() * 3, 4 + random() * 3, 0.1, 16);
+      sand.scale(1 + random() * 0.6, 1, 1);
+      sand.rotateY(random() * Math.PI);
+      sand.translate(bx, groundSurfaceYAt(bx, bz) + 0.12, bz);
+      bunkers.push(sand);
+    }
+  }
+  const greenMerged = mergeAll(greens);
+  if (greenMerged) {
+    addMesh(`${block.id}-greens`, greenMerged, pitchMaterial, false);
+  }
+  const bunkerMerged = mergeAll(bunkers);
+  if (bunkerMerged) {
+    addMesh(`${block.id}-bunkers`, bunkerMerged, beachSandMaterial, false);
+  }
+  const poleMerged = mergeAll(poles);
+  if (poleMerged) {
+    addMesh(`${block.id}-flag-poles`, poleMerged, lampPoleMaterial, false);
+  }
+  const flagMerged = mergeAll(flags);
+  if (flagMerged) {
+    addMesh(`${block.id}-flags`, flagMerged, barrierArmMaterial, false);
+  }
+  for (let index = 0; index < 26; index += 1) {
+    const tx = block.minX + 6 + random() * (block.maxX - block.minX - 12);
+    const tz = block.minZ + 36 + random() * (block.maxZ - block.minZ - 42);
+    addTree(random() > 0.5 ? "broadleaf" : "conifer", tx, tz, groundSurfaceYAt(tx, tz), 0.8 + random() * 0.6, 72);
+  }
+  const pond = new THREE.CircleGeometry(16, 32);
+  pond.rotateX(-Math.PI / 2);
+  const px = block.maxX - 40;
+  const pz = block.maxZ - 50;
+  pond.translate(px, groundSurfaceYAt(px, pz) + 0.09, pz);
+  const pondMesh = new THREE.Mesh(pond, sharedSeaWaterMaterial);
+  pondMesh.name = `${block.id}-pond`;
+  cityElements.add(pondMesh);
+}
+
+function buildCampsite(block: SpecialBlock) {
+  const random = createRandom(4400);
+  const y = groundSurfaceYAt(block.minX + 20, block.minZ + 14);
+  const reception = new BuildingBatch();
+  reception.addBox({ x: block.minX + 20, y, z: block.minZ + 10, width: 14, height: 3.6, depth: 8, rotationY: 0, color: new THREE.Color(0xd7c9a8), floorHeight: 3.6, windowWidth: 2.2, windowRatio: 0.5, seed: 81 }, "camp-reception");
+  reception.addRoof({ x: block.minX + 20, y: y + 3.6, z: block.minZ + 10, width: 15.2, height: 2.2, depth: 9.2, rotationY: 0, color: new THREE.Color(0x5b5f66) });
+  reception.addBox({ x: block.minX + 44, y, z: block.minZ + 10, width: 10, height: 3.2, depth: 7, rotationY: 0, color: new THREE.Color(0xe3ded2), floorHeight: 3.2, windowWidth: 1.4, windowRatio: 0.2, seed: 82 }, "camp-washroom");
+  reception.commit(`${block.id}-buildings`);
+  const tracks: THREE.BufferGeometry[] = [];
+  for (let z = block.minZ + 30; z < block.maxZ - 10; z += 34) {
+    const track = new THREE.BoxGeometry(block.maxX - block.minX - 12, 0.1, 3.2);
+    track.translate((block.minX + block.maxX) * 0.5, groundSurfaceYAt((block.minX + block.maxX) * 0.5, z) + 0.1, z);
+    tracks.push(track);
+  }
+  const trackMerged = mergeAll(tracks);
+  if (trackMerged) {
+    addMesh(`${block.id}-tracks`, trackMerged, gravelVergeMaterial, false);
+  }
+  const tents: THREE.BufferGeometry[] = [];
+  const caravans: THREE.BufferGeometry[] = [];
+  for (let z = block.minZ + 40; z < block.maxZ - 12; z += 17) {
+    for (let x = block.minX + 12; x < block.maxX - 8; x += 15) {
+      const roll = random();
+      if (roll < 0.35) {
+        continue;
+      }
+      const px = x + (random() - 0.5) * 4;
+      const pz = z + (random() - 0.5) * 4;
+      const py = groundSurfaceYAt(px, pz);
+      if (roll < 0.7) {
+        const tent = new THREE.ConeGeometry(2.2, 2.0, 4);
+        tent.rotateY(Math.PI / 4 + random() * 0.4);
+        tent.translate(px, py + 1.0, pz);
+        tents.push(tent);
+      } else {
+        const caravan = new THREE.BoxGeometry(2.3, 2.5, 6.2);
+        caravan.rotateY(random() * Math.PI);
+        caravan.translate(px, py + 1.55, pz);
+        caravans.push(caravan);
+      }
+    }
+  }
+  const tentMerged = mergeAll(tents);
+  if (tentMerged) {
+    addMesh(`${block.id}-tents`, tentMerged, craneBlueMaterial);
+  }
+  const caravanMerged = mergeAll(caravans);
+  if (caravanMerged) {
+    addMesh(`${block.id}-caravans`, caravanMerged, warehouseWallMaterial);
+  }
+  for (let index = 0; index < 18; index += 1) {
+    const tx = block.minX + 4 + random() * (block.maxX - block.minX - 8);
+    const tz = block.minZ + 24 + random() * (block.maxZ - block.minZ - 30);
+    addTree("broadleaf", tx, tz, groundSurfaceYAt(tx, tz), 0.7 + random() * 0.5, 83);
+  }
+}
+
+function buildChairlift(block: SpecialBlock) {
+  const baseX = (block.minX + block.maxX) * 0.5;
+  const baseZ = (block.minZ + block.maxZ) * 0.5;
+  const baseY = groundSurfaceYAt(baseX, baseZ);
+  const direction = { x: 0.44, z: 0.9 };
+  const length = 460;
+  const pylonSpacing = 66;
+  const frames: THREE.BufferGeometry[] = [];
+  const cable: THREE.BufferGeometry[] = [];
+  const chairs: THREE.BufferGeometry[] = [];
+  const station = (x: number, z: number, y: number, name: string) => {
+    const hall = new THREE.BoxGeometry(14, 6, 10);
+    hall.rotateY(Math.atan2(direction.x, direction.z));
+    hall.translate(x, y + 3, z);
+    addMesh(name, hall, warehouseWallMaterial);
+    const roof = new THREE.BoxGeometry(15.5, 0.5, 11.5);
+    roof.rotateY(Math.atan2(direction.x, direction.z));
+    roof.translate(x, y + 6.25, z);
+    addMesh(`${name}-roof`, roof, steelDarkMaterial);
+  };
+  station(baseX, baseZ, baseY, `${block.id}-base-station`);
+  const topX = baseX + direction.x * length;
+  const topZ = baseZ + direction.z * length;
+  const topY = fullTerrainSurfaceYAt({ x: topX, z: topZ }) + 0.3;
+  station(topX, topZ, topY, `${block.id}-top-station`);
+  let previous = { x: baseX, y: baseY + 7.5, z: baseZ };
+  const pylons = Math.floor(length / pylonSpacing);
+  for (let index = 1; index <= pylons; index += 1) {
+    const px = baseX + direction.x * pylonSpacing * index;
+    const pz = baseZ + direction.z * pylonSpacing * index;
+    const py = fullTerrainSurfaceYAt({ x: px, z: pz });
+    const pole = new THREE.CylinderGeometry(0.35, 0.55, 12, 10);
+    pole.translate(px, py + 6, pz);
+    frames.push(pole);
+    const cross = new THREE.BoxGeometry(5, 0.4, 0.4);
+    cross.rotateY(Math.atan2(direction.x, direction.z) + Math.PI / 2);
+    cross.translate(px, py + 11.6, pz);
+    frames.push(cross);
+    const anchor = { x: px, y: py + 11.4, z: pz };
+    cable.push(boxBetween(previous, anchor, 0.08, 0.08));
+    const steps = 3;
+    for (let step = 1; step <= steps; step += 1) {
+      const t = step / (steps + 1);
+      const cx = previous.x + (anchor.x - previous.x) * t;
+      const cz = previous.z + (anchor.z - previous.z) * t;
+      const cy = previous.y + (anchor.y - previous.y) * t - 0.6;
+      const hanger = new THREE.BoxGeometry(0.08, 2.2, 0.08);
+      hanger.translate(cx, cy - 1.1, cz);
+      chairs.push(hanger);
+      const seat = new THREE.BoxGeometry(2.2, 0.5, 0.9);
+      seat.rotateY(Math.atan2(direction.x, direction.z) + Math.PI / 2);
+      seat.translate(cx, cy - 2.4, cz);
+      chairs.push(seat);
+    }
+    previous = anchor;
+  }
+  cable.push(boxBetween(previous, { x: topX, y: topY + 7.5, z: topZ }, 0.08, 0.08));
+  const frameMerged = mergeAll(frames);
+  if (frameMerged) {
+    addMesh(`${block.id}-pylons`, frameMerged, lampPoleMaterial);
+  }
+  const cableMerged = mergeAll(cable);
+  if (cableMerged) {
+    addMesh(`${block.id}-cable`, cableMerged, steelDarkMaterial, false);
+  }
+  const chairMerged = mergeAll(chairs);
+  if (chairMerged) {
+    addMesh(`${block.id}-chairs`, chairMerged, barrierArmMaterial);
+  }
+}
+
 export function buildSpecialBlocks() {
   for (const block of SPECIAL_BLOCKS) {
     if (block.kind === "plaza") {
@@ -414,6 +705,14 @@ export function buildSpecialBlocks() {
       buildHospital(block);
     } else if (block.kind === "green") {
       buildGreen(block);
+    } else if (block.kind === "services") {
+      buildServices(block);
+    } else if (block.kind === "golf") {
+      buildGolf(block);
+    } else if (block.kind === "campsite") {
+      buildCampsite(block);
+    } else if (block.kind === "chairlift") {
+      buildChairlift(block);
     }
   }
   commitBenches();

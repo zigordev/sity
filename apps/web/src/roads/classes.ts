@@ -6,6 +6,7 @@ export type RoadClass =
   | "local"
   | "industrial"
   | "mountain"
+  | "rural"
   | "service";
 
 export type CenterMarking = "double-yellow" | "dashed-yellow" | "dashed-white" | "none";
@@ -121,6 +122,20 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     cornerRadius: 8,
     edgeLine: true,
     centerMarking: "double-yellow",
+    lightingSpacing: 0,
+    streetTrees: false,
+  },
+  rural: {
+    laneWidth: 3.3,
+    outerShoulder: 0.9,
+    innerShoulder: 0,
+    medianWidth: 0,
+    medianKind: "none",
+    sidewalkWidth: 0,
+    speedKph: 80,
+    cornerRadius: 10,
+    edgeLine: true,
+    centerMarking: "dashed-white",
     lightingSpacing: 0,
     streetTrees: false,
   },

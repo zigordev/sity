@@ -23,6 +23,7 @@ import {
   warehouseWallMaterial,
 } from "../render/materials";
 import { boxBetween, mergeAll } from "../roads/geometry";
+import { MaterialBatch } from "../geometry/batch";
 
 export interface PortFrame {
   westEdge: number;
@@ -48,16 +49,10 @@ function hash(a: number, b: number) {
   return value - Math.floor(value);
 }
 
-function addMerged(name: string, parts: THREE.BufferGeometry[], material: THREE.Material, castShadow = true) {
-  const merged = mergeAll(parts);
-  if (!merged) {
-    return;
-  }
-  const mesh = new THREE.Mesh(merged, material);
-  mesh.name = name;
-  mesh.castShadow = castShadow;
-  mesh.receiveShadow = true;
-  artificialElements.add(mesh);
+const batch = new MaterialBatch(artificialElements, "port");
+
+function addMerged(_name: string, parts: THREE.BufferGeometry[], material: THREE.Material, castShadow = true) {
+  batch.add(material, parts, castShadow);
 }
 
 function boxAt(width: number, height: number, depth: number, x: number, bottomY: number, z: number, rotationY = 0) {
@@ -381,4 +376,5 @@ export function addCargoPortYard(frame: PortFrame, landEdge: number) {
   addPerimeterFence(frame, landEdge);
   addApronMarkings(frame, blockCentres, yardNorth, yardSouth);
   addQuayEdge(frame);
+  batch.commit();
 }

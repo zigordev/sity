@@ -2,10 +2,10 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import * as THREE from "three";
 import { queueImportedModelReplacement } from "../assets/pipeline";
 import { ATTRACTION_PIER_BEAM_COUNT, ATTRACTION_PIER_DEPTH_M, ATTRACTION_PIER_LAND_OVERLAP_M, ATTRACTION_PIER_LENGTH_M, ATTRACTION_PIER_RAIL_POST_COUNT, ATTRACTION_PIER_SUPPORT_COLUMNS, ATTRACTION_PIER_SUPPORT_ROWS, CARGO_PORT_DEPTH_M, CARGO_PORT_LENGTH_M, CARGO_SHIP_HULL_LENGTH_M, PIER_DECK_THICKNESS_M, PLATFORM_SURFACE_Y, PRIVATE_MARINA_BERTH_COUNT, QUAY_FENDER_COUNT, SEA_Y } from "../config/constants";
-import { addBox, addBoxInstances, addContactShadowPlane, addCylinderInstances, addTopAlignedBox, createLocalMesh } from "../geometry/helpers";
+import { addBoxInstances, addContactShadowPlane, addCylinderInstances, addTopAlignedBox, createLocalMesh } from "../geometry/helpers";
 import { XYZPlacement, XZPlacement } from "../geometry/types";
 import { artificialElements } from "../render/context";
-import { attractionBlueMaterial, attractionRedMaterial, attractionYellowMaterial, bridgeSteelMaterial, cargoContainerMaterials, concretePortMaterial, concreteSeamMaterial, dockMaterial, privateBoatMaterial, roadDrainMaterial, rubberFenderMaterial, safetySignMaterial, shipCabinMaterial, shipHullMaterial, woodPierMaterial } from "../render/materials";
+import { bridgeSteelMaterial, cargoContainerMaterials, concretePortMaterial, concreteSeamMaterial, dockMaterial, privateBoatMaterial, roadDrainMaterial, rubberFenderMaterial, safetySignMaterial, shipCabinMaterial, shipHullMaterial, woodPierMaterial } from "../render/materials";
 import { mainBoundaryMaxX } from "../world/frame";
 
 export function addCargoShip(name: string, x: number, z: number) {
@@ -212,69 +212,6 @@ export function addPrivateBoat(name: string, x: number, z: number) {
   lod.addLevel(lowDetail, 1_400);
   artificialElements.add(lod);
   queueImportedModelReplacement("privateBoat", name, x, z, lod);
-}
-
-export function addPierAttractionPark(pierCenterX: number, pierCenterZ: number) {
-  const ferrisWheel = new THREE.Mesh(
-    new THREE.TorusGeometry(42, 2.8, 8, 44),
-    attractionRedMaterial,
-  );
-  ferrisWheel.name = "wooden-pier-ferris-wheel";
-  ferrisWheel.castShadow = true;
-  ferrisWheel.receiveShadow = true;
-  ferrisWheel.position.set(pierCenterX - 110, PLATFORM_SURFACE_Y + 48, pierCenterZ - 58);
-  artificialElements.add(ferrisWheel);
-
-  addBox(
-    "ferris-wheel-left-support",
-    5,
-    58,
-    5,
-    dockMaterial,
-    pierCenterX - 134,
-    PLATFORM_SURFACE_Y + 29,
-    pierCenterZ - 58,
-  );
-  addBox(
-    "ferris-wheel-right-support",
-    5,
-    58,
-    5,
-    dockMaterial,
-    pierCenterX - 86,
-    PLATFORM_SURFACE_Y + 29,
-    pierCenterZ - 58,
-  );
-  addBox(
-    "pier-carousel-base",
-    52,
-    10,
-    52,
-    attractionYellowMaterial,
-    pierCenterX + 34,
-    PLATFORM_SURFACE_Y + 6,
-    pierCenterZ - 58,
-  );
-  addBox(
-    "pier-attraction-building",
-    68,
-    18,
-    42,
-    attractionBlueMaterial,
-    pierCenterX - 52,
-    PLATFORM_SURFACE_Y + 10,
-    pierCenterZ + 58,
-  );
-  addBox(
-    "pier-ticket-booth",
-    34,
-    14,
-    26,
-    attractionRedMaterial,
-    pierCenterX + 104,
-    PLATFORM_SURFACE_Y + 8,
-    pierCenterZ + 58,
-  );
 }
 
 export function addAttractionPierSupportPiles(pierCenterZ: number) {

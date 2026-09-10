@@ -835,6 +835,31 @@ export const rooftopPropMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.35,
 });
 
+export const busLaneMaterial = new THREE.MeshStandardMaterial({
+  color: 0x8f3b2f,
+  roughness: 0.86,
+  metalness: 0.02,
+  transparent: true,
+  opacity: 0.55,
+  polygonOffset: true,
+  polygonOffsetFactor: -1,
+  polygonOffsetUnits: -2,
+});
+
+export const tollGantryMaterial = new THREE.MeshStandardMaterial({
+  color: 0x8a9096,
+  roughness: 0.5,
+  metalness: 0.6,
+});
+
+export const tollSignMaterial = new THREE.MeshStandardMaterial({
+  color: 0x2a5bb5,
+  roughness: 0.5,
+  metalness: 0.1,
+  emissive: 0x112a5a,
+  emissiveIntensity: 0.4,
+});
+
 export const gravelVergeMaterial = new THREE.MeshStandardMaterial({
   color: 0x8f9276,
   roughness: 0.96,

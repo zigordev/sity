@@ -24,8 +24,8 @@ describe('the city plan', () => {
     const stats = graph.stats();
     expect(stats.roadCount).toBeGreaterThanOrEqual(90);
     expect(stats.laneCount).toBeGreaterThanOrEqual(600);
-    expect(stats.roundaboutCount).toBe(4);
-    expect(stats.laneCountByKind.ramp).toBe(10);
+    expect(stats.roundaboutCount).toBe(5);
+    expect(stats.laneCountByKind.ramp).toBe(16);
     const invariants = graph.invariants();
     expect(invariants.strandedLaneIds).toEqual([]);
     expect(invariants.everyLinkIsBidirectional).toBe(true);

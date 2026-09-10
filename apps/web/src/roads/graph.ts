@@ -300,6 +300,7 @@ export class RoadGraph {
       lanes: [...this.network.lanes.values()].map((lane) => ({
         id: lane.id,
         kind: lane.kind,
+        access: lane.access,
         roadId: lane.roadId ?? null,
         nodeId: lane.nodeId ?? null,
         direction: lane.direction ?? null,
