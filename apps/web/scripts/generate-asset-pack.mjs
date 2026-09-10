@@ -1,4 +1,5 @@
 import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { deflateSync } from "node:zlib";
 
@@ -6,7 +7,7 @@ const outRoot = join(process.cwd(), "public", "assets", "sity");
 const textureRoot = join(outRoot, "textures");
 const modelRoot = join(outRoot, "models");
 const decoderRoot = join(outRoot, "decoders");
-const threeLibRoot = join(process.cwd(), "node_modules", "three", "examples", "jsm", "libs");
+const threeLibRoot = join(dirname(createRequire(import.meta.url).resolve("three")), "..", "examples", "jsm", "libs");
 
 const textureSpecs = [
   { name: "grass_meadow_albedo", base: 0x8fc877, kind: "grass" },
@@ -39,9 +40,6 @@ function hashNoise(x, y, seed = 1) {
   return value - Math.floor(value);
 }
 
-function mixChannel(a, b, t) {
-  return a + (b - a) * t;
-}
 
 function crc32(buffer) {
   let crc = 0xffffffff;
@@ -96,7 +94,7 @@ function pngBuffer(width, height, pixels) {
   ]);
 }
 
-function materialPixel(spec, x, y, width, height) {
+function materialPixel(spec, x, y, _width, _height) {
   const base = colorToRgb(spec.base);
   const n1 = hashNoise(x, y, spec.name.length);
   const n2 = hashNoise(Math.floor(x / 7), Math.floor(y / 7), spec.name.length * 3);
@@ -167,7 +165,7 @@ function materialHeight(spec, x, y) {
   return Math.max(0, Math.min(1, height));
 }
 
-function normalPixel(spec, x, y, width, height) {
+function normalPixel(spec, x, y, _width, _height) {
   const left = materialHeight(spec, x - 1, y);
   const right = materialHeight(spec, x + 1, y);
   const down = materialHeight(spec, x, y - 1);

@@ -62,7 +62,7 @@ export const scaleOriginScreen = new THREE.Vector3();
 
 export const scaleAxisScreen = new THREE.Vector3();
 
-export let scaleAxisAnglesDegrees = { x: 0, y: 0, z: 0 };
+export const scaleAxisAnglesDegrees = { x: 0, y: 0, z: 0 };
 
 export function updateCategoryVisibility() {
   document.addEventListener("sity:layers", (event) => {

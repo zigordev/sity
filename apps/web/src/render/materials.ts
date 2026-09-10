@@ -498,11 +498,8 @@ export let terrainSplatShaderInstalled = false;
 
 export let mountainSurfaceShaderInstalled = false;
 
-export let unifiedSeaWaterMaterialInstalled = sharedSeaWaterMaterial instanceof THREE.ShaderMaterial;
 
-export let depthAwareWaterShadersInstalled = false;
 
-export let shorelineFoamShaderInstalled = false;
 
 export function installTerrainSplatShader(material: THREE.MeshStandardMaterial) {
   material.onBeforeCompile = (shader) => {
