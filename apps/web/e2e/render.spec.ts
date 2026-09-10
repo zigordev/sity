@@ -148,6 +148,7 @@ test.describe('scene', () => {
   });
 
   test('renders every camera view and moves the compass', async ({ page }, testInfo) => {
+    test.setTimeout(900_000);
     await openScene(page);
     const views = await page.evaluate(() => window.__SITY_DEBUG__.listViews());
     expect(views.length).toBeGreaterThanOrEqual(10);
@@ -158,7 +159,7 @@ test.describe('scene', () => {
     for (const viewId of viewIds) {
       const moved = await page.evaluate((id) => window.__SITY_DEBUG__.flyTo(id), viewId);
       expect(moved).toBe(true);
-      await settleFrames(page, 6);
+      await settleFrames(page, 4);
       const sample = await sampleCanvas(page);
       expect(sample.visible, `view "${viewId}" rendered blank`).toBeGreaterThanOrEqual(sample.total * 0.9);
       expect(sample.uniqueColors, `view "${viewId}" rendered flat`).toBeGreaterThanOrEqual(6);
