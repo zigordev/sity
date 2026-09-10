@@ -12,8 +12,10 @@ One Three.js unit is one meter. North is `-Z`, east is `+X`, and the sea lies ea
 - A high snow-capped mountain fills the north-west quadrant and a lower rocky mountain the south-west corner.
 - A reservoir sits between them behind a curved dam; the river it releases meanders east across the plain
   and reaches the sea through a widening estuary.
-- The coast has a cargo port with two berths (north), a private marina and a wooden attraction pier
-  (north of the river mouth), and a sandy beach with amenities (south of the river mouth).
+- The coast has a container terminal with two berths (north): ship-to-shore gantries over the quay, yard
+  gantries over stacked containers, a transit shed, trucks on marked lanes, light masts and a fenced gate
+  onto Harbour Road. A private marina and a wooden attraction pier sit north of the river mouth and a sandy
+  beach with amenities south of it.
 - Conifer and broadleaf forest covers the mountain foothills; meadow trees dot the open plain.
 
 ## Road network
@@ -34,12 +36,13 @@ Scenarios in the plan:
   two roundabouts, and a half-diamond serving the port at Harbour Road.
 - A downtown grid with a tree-lined arterial (Central Avenue and Main Street), collectors with parking
   lanes, local streets, and a one-way pair (King Street southbound, Queen Street northbound).
-- Signalised, stop-controlled and priority junctions, T-junctions, urban roundabouts, cul-de-sacs with
-  turning circles, and roads that leave the map at its edge (vehicle sources and sinks).
-- A curved collector along the river (Riverside Drive), a girder bridge on Main Street, and a second bridge
-  carrying the coastal boulevard over the estuary.
-- A hairpin mountain road climbing to a viewpoint, industrial roads to the port and depot, and access roads
-  to the pier, marina and beach parking.
+- Signalised, stop-controlled and priority junctions, T-junctions, urban roundabouts, and roads that leave
+  the map at its edge (vehicle sources and sinks).
+- A curved collector along the river (Riverside Drive), girder bridges on Main Street and Weir Bridge Road,
+  and a further bridge carrying the coastal boulevard over the estuary.
+- Every dead end is a destination rather than a stub: car parks at the arena, the pier, the marina and the
+  beach, a bus-station forecourt at the west end of Station Street, gated yards at the port and the depot,
+  and a mountain road climbing the western slope to a viewpoint car park with a lookout deck.
 
 Lane graph:
 
@@ -54,8 +57,15 @@ Lane graph:
 
 Rendering per road: asphalt surface volume, lane and centre markings, edge lines, stop lines, crosswalks,
 yield markings, parking bays, raised sidewalks with kerbs and corner fillets, planted or barrier medians,
-embankment skirts, viaduct piers, bridge parapets, tunnel portals with terrain cuttings, street lamps,
-traffic-signal masts with heads, and stop, yield, speed and no-entry signs.
+embankment skirts, viaduct piers, bridge parapets, tunnel headwalls with wing walls, street lamps,
+traffic-signal masts with heads, and stop, yield, speed and no-entry signs. Destination pads get parking
+stalls, kerbed footways, lamps, fences with barrier arms and a gatehouse, bus shelters or a railed lookout
+deck according to their kind.
+
+The terrain follows the roads rather than the other way round: cut points are registered along the
+centreline and both pavement edges of every road (so a road on a side slope gets a cutting on the uphill
+side and an embankment on the downhill side), the cutting continues a few metres into each tunnel so the
+portal face stands in it, and the terrain meshes clamp to the lowest limit of the nearest road.
 
 ## City
 
@@ -64,11 +74,15 @@ traffic-signal masts with heads, and stop, yield, speed and no-entry signs.
 - Districts (`districts.ts`) decide lot sizes and building types: downtown towers on podiums, mid-rise
   plaster, brick and concrete blocks, suburban houses with pitched roofs and gardens, industrial sheds by the
   port, and hotels along the coast boulevard.
-- Lots (`lots.ts`) are cut along every urban frontage, checked against road pavements, water, slopes and a
-  raster of already-used ground, then filled with instanced buildings (`buildings.ts`) whose facades
-  (window grid, floor bands, glass, roofs) come from a shader keyed by per-instance attributes.
+- Lots (`lots.ts`) are cut along every urban frontage, checked against road pavements (including junction
+  corners and destination pads), water, slopes and a raster of already-used ground, then filled with
+  instanced buildings (`buildings.ts`) whose facades (window grid, floor bands, glass, roofs) come from a
+  shader keyed by per-instance attributes. A building on a sloping lot stands on a plinth that meets the
+  ground at every corner, and district zones flatten the terrain micro-relief under the city.
 - Special blocks (`landmarks.ts`): a civic plaza with a domed hall and fountain, a central park with a pond,
-  an arena with floodlights, surface parking, a school with a sports field, a church, and beach parking.
+  an arena with floodlights, surface parking, a school with a sports field and a church.
+- `auditCity()` records every building footprint and reports any pair that overlaps and any footprint that
+  crosses a pavement; the Playwright suite requires both lists to be empty.
 - Vegetation (`vegetation.ts`): street trees, median trees, garden trees, riverside groves, coastal palms,
   meadow trees and mountain forests, all as three instanced tree kinds.
 
@@ -83,10 +97,12 @@ traffic-signal masts with heads, and stop, yield, speed and no-entry signs.
 
 ## Debug API
 
-`window.__SITY_DEBUG__` exposes the site layout, natural features, road graph statistics and invariants,
-the exported graph (`exportRoadGraph`), `findRoute`, `showRandomRoute`, city statistics, layer visibility,
-performance estimates, camera views (`listViews`, `flyTo`, `setView`) and the lane overlay toggle. The
-Playwright suite drives the scene through this API.
+`window.__SITY_DEBUG__` exposes the site layout, natural features (including the sampled river path),
+road graph statistics and invariants, the exported graph (`exportRoadGraph`), `findRoute`,
+`showRandomRoute`, `getRoadSamples`, `listDeadEnds`, `probeTerrain` (ground, cut limit and mountain heights
+at a point), city statistics, `auditCity`, layer visibility, performance estimates, camera views
+(`listViews`, `flyTo`, `setView`) and the lane overlay toggle. The Playwright suite drives the scene
+through this API.
 
 ## Next steps
 

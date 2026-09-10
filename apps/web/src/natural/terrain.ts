@@ -54,11 +54,14 @@ export function terrainMicroNoise(x: number, z: number) {
 
 export const TERRAIN_SKIN_MAX_MOUNTAIN_HEIGHT_M = 34;
 
-export function groundSurfaceYAt(x: number, z: number) {
+export function groundSurfaceBaseYAt(x: number, z: number) {
   const height = Math.max(mountainHeightAt(x, z), snowMountainHeightAt(x, z));
   const foothill = THREE.MathUtils.smoothstep(height, 2, 22);
-  const base = fullTerrainSurfaceYAt({ x, z }) + 0.11 + 0.25 * foothill;
-  return Math.min(base, cutLimitAt(x, z));
+  return fullTerrainSurfaceYAt({ x, z }) + 0.11 + 0.25 * foothill;
+}
+
+export function groundSurfaceYAt(x: number, z: number) {
+  return Math.min(groundSurfaceBaseYAt(x, z), cutLimitAt(x, z));
 }
 
 export function addMicroDisplacedGrassTerrain() {

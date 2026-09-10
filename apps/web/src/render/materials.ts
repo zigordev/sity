@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { ATTRACTION_BLUE_COLOR, ATTRACTION_RED_COLOR, ATTRACTION_YELLOW_COLOR, BEACH_SAND_COLOR, CONCRETE_PORT_COLOR, DOCK_COLOR, GRASS_COLOR, HIGHWAY_ASPHALT_COLOR, HIGHWAY_MEDIAN_COLOR, HIGHWAY_SHOULDER_COLOR, MICRO_TERRAIN_OPACITY, MOUNTAIN_HIGH_COLOR, MOUNTAIN_LOW_COLOR, MOUNTAIN_MID_COLOR, PRIVATE_BOAT_COLOR, ROAD_MARKING_WHITE_COLOR, ROAD_MARKING_YELLOW_COLOR, SEA_SHADER_WATER_COLOR, SHIP_CABIN_COLOR, SHIP_HULL_COLOR, SNOW_COLOR, SNOW_SHADOW_COLOR, WET_SAND_COLOR, WOOD_PIER_COLOR } from "../config/constants";
 import { sunLight } from "./context";
-import { asphaltTexture, concreteTexture, darkWearTexture, drySandTexture, grassTexture, metalTexture, terrainCutTexture, waterNormalTexture, wetSandTexture, woodTexture } from "./textures";
+import { asphaltTexture, concreteTexture, corrugatedTexture, darkWearTexture, drySandTexture, grassTexture, metalTexture, terrainCutTexture, waterNormalTexture, wetSandTexture, woodTexture } from "./textures";
 
 export function createSharedSeaWaterMaterial() {
   return new THREE.ShaderMaterial({
@@ -187,6 +187,9 @@ export const concreteSeamMaterial = new THREE.MeshStandardMaterial({
   metalness: 0,
   transparent: true,
   opacity: 0.62,
+  polygonOffset: true,
+  polygonOffsetFactor: -1,
+  polygonOffsetUnits: -2,
 });
 
 export const dockMaterial = new THREE.MeshStandardMaterial({
@@ -329,6 +332,9 @@ export const roadMarkingWhiteMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.55,
   metalness: 0,
   side: THREE.DoubleSide,
+  polygonOffset: true,
+  polygonOffsetFactor: -2,
+  polygonOffsetUnits: -4,
 });
 
 export const roadMarkingYellowMaterial = new THREE.MeshStandardMaterial({
@@ -336,6 +342,9 @@ export const roadMarkingYellowMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.55,
   metalness: 0,
   side: THREE.DoubleSide,
+  polygonOffset: true,
+  polygonOffsetFactor: -2,
+  polygonOffsetUnits: -4,
 });
 
 export const roadStructureConcreteMaterial = new THREE.MeshStandardMaterial({
@@ -389,12 +398,60 @@ export const contactShadowMaterial = new THREE.MeshBasicMaterial({
   side: THREE.DoubleSide,
 });
 
-export const cargoContainerMaterials = [
-  new THREE.MeshStandardMaterial({ color: 0xa94f3f, roughness: 0.78, metalness: 0.05 }),
-  new THREE.MeshStandardMaterial({ color: 0x3f6f93, roughness: 0.78, metalness: 0.05 }),
-  new THREE.MeshStandardMaterial({ color: 0xd1a44f, roughness: 0.78, metalness: 0.05 }),
-  new THREE.MeshStandardMaterial({ color: 0x6a7a54, roughness: 0.78, metalness: 0.05 }),
-];
+export const cargoContainerMaterials = [0xb04a38, 0x2f5f93, 0xd9a43a, 0x5f7a4a, 0x9aa0a6, 0x7a3f6a].map(
+  (color) =>
+    new THREE.MeshStandardMaterial({
+      color,
+      map: corrugatedTexture,
+      bumpMap: corrugatedTexture,
+      bumpScale: 0.04,
+      roughness: 0.7,
+      metalness: 0.25,
+    }),
+);
+
+export const craneWhiteMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe9e7df,
+  roughness: 0.55,
+  metalness: 0.2,
+});
+
+export const craneBlueMaterial = new THREE.MeshStandardMaterial({
+  color: 0x2d5c96,
+  roughness: 0.55,
+  metalness: 0.25,
+});
+
+export const steelDarkMaterial = new THREE.MeshStandardMaterial({
+  color: 0x3c4043,
+  roughness: 0.45,
+  metalness: 0.7,
+});
+
+export const truckCabMaterials = [0xc9442f, 0x2f6fb5, 0xe5e2d8, 0x2f8f5a].map(
+  (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.3 }),
+);
+
+export const truckChassisMaterial = new THREE.MeshStandardMaterial({
+  color: 0x2a2d30,
+  roughness: 0.7,
+  metalness: 0.4,
+});
+
+export const warehouseWallMaterial = new THREE.MeshStandardMaterial({
+  color: 0xb9bfc4,
+  map: corrugatedTexture,
+  bumpMap: corrugatedTexture,
+  bumpScale: 0.03,
+  roughness: 0.6,
+  metalness: 0.3,
+});
+
+export const rollerDoorMaterial = new THREE.MeshStandardMaterial({
+  color: 0x55606a,
+  roughness: 0.55,
+  metalness: 0.45,
+});
 
 export const portCraneMaterial = new THREE.MeshStandardMaterial({
   color: 0xe0b34f,
@@ -681,6 +738,30 @@ export const pierConcreteMaterial = new THREE.MeshStandardMaterial({
   bumpScale: 0.04,
   roughness: 0.88,
   metalness: 0.02,
+});
+
+export const shelterGlassMaterial = new THREE.MeshStandardMaterial({
+  color: 0x9fc4d6,
+  roughness: 0.12,
+  metalness: 0.35,
+  transparent: true,
+  opacity: 0.55,
+  side: THREE.DoubleSide,
+});
+
+export const fenceMeshMaterial = new THREE.MeshStandardMaterial({
+  color: 0x6f7a80,
+  roughness: 0.55,
+  metalness: 0.6,
+  transparent: true,
+  opacity: 0.62,
+  side: THREE.DoubleSide,
+});
+
+export const barrierArmMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe04a3a,
+  roughness: 0.5,
+  metalness: 0.1,
 });
 
 export const gravelVergeMaterial = new THREE.MeshStandardMaterial({

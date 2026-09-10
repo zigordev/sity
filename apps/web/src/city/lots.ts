@@ -112,6 +112,8 @@ export interface Lot {
   tangent: { x: number; z: number };
   inward: { x: number; z: number };
   groundY: number;
+  groundMinY: number;
+  groundMaxY: number;
   corners: Array<{ x: number; z: number }>;
 }
 
@@ -144,10 +146,12 @@ function lotIsBuildable(quad: Quad) {
     if (isNaturalKeepOut(point.x, point.z)) {
       return false;
     }
-    if (corridorClearance(point.x, point.z, 60, "pavement:") < 1.2) {
+    heights.push(groundSurfaceYAt(point.x, point.z));
+  }
+  for (const point of quadPoints(quad, 3.5)) {
+    if (corridorClearance(point.x, point.z, 60, "pavement:") < 1.0) {
       return false;
     }
-    heights.push(groundSurfaceYAt(point.x, point.z));
   }
   if (Math.max(...heights) - Math.min(...heights) > 3.2) {
     return false;
@@ -200,6 +204,7 @@ function generateLotsAlong(road: BuiltRoad, random: () => number) {
           x: front.x + inward.x * depth * 0.5,
           z: front.z + inward.z * depth * 0.5,
         };
+        const cornerHeights = quad.corners.map((corner) => groundSurfaceYAt(corner.x, corner.z));
         lots.push({
           id: `${road.spec.id}:${side > 0 ? "r" : "l"}:${index}`,
           district: district.kind,
@@ -208,10 +213,12 @@ function generateLotsAlong(road: BuiltRoad, random: () => number) {
           front,
           width: width - 1.2,
           depth,
-          rotationY: Math.atan2(tangent.x, tangent.z),
+          rotationY: Math.atan2(-tangent.z, tangent.x),
           tangent,
           inward,
           groundY: groundSurfaceYAt(center.x, center.z),
+          groundMinY: Math.min(...cornerHeights),
+          groundMaxY: Math.max(...cornerHeights),
           corners: quad.corners,
         });
         placed = true;

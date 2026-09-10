@@ -1,11 +1,11 @@
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import * as THREE from "three";
 import { queueImportedModelReplacement } from "../assets/pipeline";
-import { ATTRACTION_PIER_BEAM_COUNT, ATTRACTION_PIER_DEPTH_M, ATTRACTION_PIER_LAND_OVERLAP_M, ATTRACTION_PIER_LENGTH_M, ATTRACTION_PIER_RAIL_POST_COUNT, ATTRACTION_PIER_SUPPORT_COLUMNS, ATTRACTION_PIER_SUPPORT_ROWS, CARGO_BOLLARD_COUNT, CARGO_CONTAINER_COUNT, CARGO_PORT_DEPTH_M, CARGO_PORT_LENGTH_M, CARGO_SHIP_HULL_LENGTH_M, PIER_DECK_THICKNESS_M, PLATFORM_SURFACE_Y, PRIVATE_MARINA_BERTH_COUNT, QUAY_FENDER_COUNT, SEA_Y } from "../config/constants";
+import { ATTRACTION_PIER_BEAM_COUNT, ATTRACTION_PIER_DEPTH_M, ATTRACTION_PIER_LAND_OVERLAP_M, ATTRACTION_PIER_LENGTH_M, ATTRACTION_PIER_RAIL_POST_COUNT, ATTRACTION_PIER_SUPPORT_COLUMNS, ATTRACTION_PIER_SUPPORT_ROWS, CARGO_PORT_DEPTH_M, CARGO_PORT_LENGTH_M, CARGO_SHIP_HULL_LENGTH_M, PIER_DECK_THICKNESS_M, PLATFORM_SURFACE_Y, PRIVATE_MARINA_BERTH_COUNT, QUAY_FENDER_COUNT, SEA_Y } from "../config/constants";
 import { addBox, addBoxInstances, addContactShadowPlane, addCylinderInstances, addTopAlignedBox, createLocalMesh } from "../geometry/helpers";
 import { XYZPlacement, XZPlacement } from "../geometry/types";
 import { artificialElements } from "../render/context";
-import { attractionBlueMaterial, attractionRedMaterial, attractionYellowMaterial, bridgeSteelMaterial, cargoContainerMaterials, concretePortMaterial, concreteSeamMaterial, dockMaterial, portCraneMaterial, privateBoatMaterial, roadDrainMaterial, rubberFenderMaterial, safetySignMaterial, shipCabinMaterial, shipHullMaterial, woodPierMaterial } from "../render/materials";
+import { attractionBlueMaterial, attractionRedMaterial, attractionYellowMaterial, bridgeSteelMaterial, cargoContainerMaterials, concretePortMaterial, concreteSeamMaterial, dockMaterial, privateBoatMaterial, roadDrainMaterial, rubberFenderMaterial, safetySignMaterial, shipCabinMaterial, shipHullMaterial, woodPierMaterial } from "../render/materials";
 import { mainBoundaryMaxX } from "../world/frame";
 
 export function addCargoShip(name: string, x: number, z: number) {
@@ -339,72 +339,6 @@ export function addPrivateMarinaSupportPiles(marinaCenterZ: number) {
     dockMaterial,
     PLATFORM_SURFACE_Y + 0.1,
     berthPlacements,
-  );
-}
-
-export function addCargoCrane(name: string, x: number, z: number) {
-  addBox(`${name}-mast`, 8, 38, 8, portCraneMaterial, x, PLATFORM_SURFACE_Y + 19, z);
-  addBox(`${name}-boom`, 78, 5, 7, portCraneMaterial, x + 34, PLATFORM_SURFACE_Y + 39, z);
-  addBox(`${name}-counterweight`, 16, 8, 10, concretePortMaterial, x - 13, PLATFORM_SURFACE_Y + 35, z);
-  addBox(`${name}-cabin`, 12, 9, 12, shipCabinMaterial, x + 10, PLATFORM_SURFACE_Y + 31, z);
-}
-
-export function addCargoContainers(cargoPortCenterX: number, cargoPortCenterZ: number) {
-  const placementsByMaterial: XYZPlacement[][] = cargoContainerMaterials.map(() => []);
-
-  for (let index = 0; index < CARGO_CONTAINER_COUNT; index += 1) {
-    const column = index % 4;
-    const row = Math.floor(index / 4);
-    const x = cargoPortCenterX - 70 + column * 38;
-    const z = cargoPortCenterZ - 66 + row * 38;
-    const materialIndex = index % cargoContainerMaterials.length;
-    placementsByMaterial[materialIndex].push({
-      x,
-      y: PLATFORM_SURFACE_Y + 4,
-      z,
-    });
-  }
-
-  placementsByMaterial.forEach((placements, materialIndex) => {
-    addBoxInstances(
-      `cargo-containers-${materialIndex + 1}`,
-      28,
-      8,
-      12,
-      cargoContainerMaterials[materialIndex],
-      placements,
-    );
-  });
-}
-
-export function addCargoPortEquipment(
-  cargoPortCenterX: number,
-  cargoPortCenterZ: number,
-  cargoPortEastEdge: number,
-) {
-  addCargoContainers(cargoPortCenterX, cargoPortCenterZ);
-
-  for (const [index, z] of [cargoPortCenterZ - 72, cargoPortCenterZ + 72].entries()) {
-    addCargoCrane(`cargo-port-crane-${index + 1}`, cargoPortEastEdge - 64, z);
-  }
-
-  const bollardPlacements: XZPlacement[] = [];
-  for (let index = 0; index < CARGO_BOLLARD_COUNT; index += 1) {
-    const z = THREE.MathUtils.lerp(
-      cargoPortCenterZ - CARGO_PORT_DEPTH_M * 0.42,
-      cargoPortCenterZ + CARGO_PORT_DEPTH_M * 0.42,
-      index / (CARGO_BOLLARD_COUNT - 1),
-    );
-    bollardPlacements.push({ x: cargoPortEastEdge - 16, z });
-  }
-
-  addCylinderInstances(
-    "cargo-port-bollards",
-    3.2,
-    4.8,
-    dockMaterial,
-    PLATFORM_SURFACE_Y + 4.8,
-    bollardPlacements,
   );
 }
 

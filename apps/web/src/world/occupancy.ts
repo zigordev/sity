@@ -146,15 +146,16 @@ interface CutPoint {
   roadY: number;
   halfWidth: number;
   isCut: boolean;
+  group: string;
 }
 
 const CUT_BUCKET_M = 30;
 const cutBuckets = new Map<string, CutPoint[]>();
 
-export function registerCut(x: number, z: number, roadY: number, halfWidth: number, isCut = true) {
+export function registerCut(x: number, z: number, roadY: number, halfWidth: number, isCut = true, group = "") {
   const key = `${Math.floor(x / CUT_BUCKET_M)}:${Math.floor(z / CUT_BUCKET_M)}`;
   const list = cutBuckets.get(key);
-  const point = { x, z, roadY, halfWidth, isCut };
+  const point = { x, z, roadY, halfWidth, isCut, group };
   if (list) {
     list.push(point);
   } else {
@@ -168,6 +169,7 @@ export function cutLimitAt(x: number, z: number, slope = 1.7, reachM = 70) {
   const iz = Math.floor(z / CUT_BUCKET_M);
   let nearest: CutPoint | undefined;
   let nearestClearance = Number.POSITIVE_INFINITY;
+  const candidates: Array<{ point: CutPoint; clearance: number }> = [];
   for (let ox = -reach; ox <= reach; ox += 1) {
     for (let oz = -reach; oz <= reach; oz += 1) {
       const list = cutBuckets.get(`${ix + ox}:${iz + oz}`);
@@ -176,6 +178,10 @@ export function cutLimitAt(x: number, z: number, slope = 1.7, reachM = 70) {
       }
       for (const point of list) {
         const clearance = Math.hypot(point.x - x, point.z - z) - point.halfWidth;
+        if (clearance > reachM) {
+          continue;
+        }
+        candidates.push({ point, clearance });
         if (clearance < nearestClearance) {
           nearestClearance = clearance;
           nearest = point;
@@ -183,10 +189,20 @@ export function cutLimitAt(x: number, z: number, slope = 1.7, reachM = 70) {
       }
     }
   }
-  if (!nearest || !nearest.isCut) {
+  if (!nearest) {
     return Number.POSITIVE_INFINITY;
   }
-  return nearest.roadY + Math.max(0, nearestClearance - 4) * slope;
+  let limit = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    if (!candidate.point.isCut || candidate.point.group !== nearest.group) {
+      continue;
+    }
+    if (candidate.clearance > nearestClearance + 12) {
+      continue;
+    }
+    limit = Math.min(limit, candidate.point.roadY + Math.max(0, candidate.clearance - 4) * slope);
+  }
+  return limit;
 }
 
 export function registeredZones() {

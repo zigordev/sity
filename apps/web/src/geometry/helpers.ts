@@ -254,10 +254,12 @@ export function addTopAlignedBox(
     bevelRadius > 0.22
       ? new RoundedBoxGeometry(width, height, depth, 2, Math.min(bevelRadius, 2.2))
       : new THREE.BoxGeometry(width, height, depth);
+  geometry.computeBoundingBox();
+  const actualTop = geometry.boundingBox?.max.y ?? height * 0.5;
   const box = new THREE.Mesh(geometry, material);
   box.name = name;
   box.renderOrder = renderOrder;
-  box.position.set(x, topY - height * 0.5, z);
+  box.position.set(x, topY - actualTop, z);
   box.castShadow = true;
   box.receiveShadow = true;
   parent.add(box);

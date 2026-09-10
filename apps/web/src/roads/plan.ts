@@ -99,7 +99,7 @@ node("blvd-market", 760, -160, { control: signal });
 node("blvd-bridge-n", 760, -100);
 node("blvd-bridge-s", 760, 290);
 node("blvd-southbank", 760, 520, { control: signal });
-node("blvd-beach-end", 760, 740, { turnaround: true });
+node("blvd-beach-end", 760, 740, { destination: { kind: "parking", width: 30, depth: 60, name: "Beach car park" } });
 
 chain("coast-blvd-n", "arterial", ["blvd-n-edge", "blvd-harbour", "blvd-station", "blvd-central", "blvd-market", "blvd-bridge-n"], 2, 2, { name: "Coast Boulevard" });
 road("coast-blvd-bridge", "arterial", "blvd-bridge-n", "blvd-bridge-s", 2, 2, {
@@ -113,15 +113,15 @@ road("coast-blvd-bridge", "arterial", "blvd-bridge-n", "blvd-bridge-s", 2, 2, {
 });
 chain("coast-blvd-s", "arterial", ["blvd-bridge-s", "blvd-southbank", "blvd-beach-end"], 2, 2, { name: "Coast Boulevard" });
 
-node("harbour-w-end", 330, -560, { turnaround: true });
+node("harbour-w-end", 290, -560, { destination: { kind: "parking", width: 64, depth: 84, name: "Arena car park" } });
 node("harbour-park", 450, -560, { control: stop });
 node("harbour-off", 560, -560, { control: signal });
 node("harbour-on", 600, -560, { control: signal });
-node("harbour-port-end", 805, -560, { turnaround: true });
+node("harbour-port-end", 805, -560, { destination: { kind: "yard", width: 44, depth: 20, name: "Port gate" } });
 chain("harbour-road", "industrial", ["harbour-w-end", "harbour-park", "harbour-off", "harbour-on", "blvd-harbour", "harbour-port-end"], 1, 1, { name: "Harbour Road" });
 
 node("depot-park", 450, -650);
-node("depot-end", 580, -650, { turnaround: true });
+node("depot-end", 556, -650, { destination: { kind: "yard", width: 44, depth: 32, name: "Depot yard" } });
 road("park-st-north", "industrial", "harbour-park", "depot-park", 1, 1, { name: "Park Street" });
 road("depot-street", "industrial", "depot-park", "depot-end", 1, 1, { name: "Depot Street" });
 
@@ -136,7 +136,7 @@ road("ramp-n-on", "ramp", "harbour-on", "ring-n-on", 1, 0, {
   via: [{ x: 606, z: -640 }, { x: 604, z: -700 }, { x: 570, z: -742 }],
 });
 
-node("station-w-end", 200, -400, { turnaround: true });
+node("station-w-end", 200, -400, { destination: { kind: "forecourt", width: 46, depth: 56, name: "Bus station" } });
 node("station-oneway-s", 240, -400, { control: stop });
 node("station-oneway-n", 320, -400, { control: stop });
 node("station-park", 450, -400, { roundabout: { radius: 20 } });
@@ -181,13 +181,13 @@ node("market-oneway-s", 240, -160, { control: signal });
 node("market-oneway-n", 320, -160, { control: signal });
 node("market-park", 450, -160, { control: signal });
 node("market-x520", 520, -160, { control: stop });
-node("pier-end", 800, -160, { turnaround: true });
+node("pier-end", 788, -160, { destination: { kind: "parking", width: 34, depth: 24, name: "Pier car park" } });
 chain("market-street", "collector", ["market-w-end", "market-west", "market-main", "market-oneway-s", "market-oneway-n", "market-park", "market-x520", "blvd-market"], 1, 1, { name: "Market Street", parkingLane: true });
 road("pier-access", "local", "blvd-market", "pier-end", 1, 1, { name: "Pier Access" });
-node("marina-end", 800, -400, { turnaround: true });
+node("marina-end", 800, -400, { destination: { kind: "parking", width: 40, depth: 48, name: "Marina car park" } });
 road("marina-access", "local", "blvd-station", "marina-end", 1, 1, { name: "Marina Access" });
 
-node("riverside-w-end", -140, 190, { turnaround: true });
+node("riverside-w-end", -140, 176);
 node("riverside-x-60", -60, 228, { control: stop });
 node("riverside-west", 40, 247, { control: stop });
 node("riverside-main", 120, 215, { control: signal });
@@ -215,6 +215,15 @@ road("west-street", "collector", "central-west", "market-west", 1, 1, { name: "W
 road("west-street-2", "collector", "market-west", "bridge-west", 1, 1, { name: "West Street" });
 road("west-street-3", "collector", "bridge-west", "riverside-west", 1, 1, { name: "West Street" });
 road("elm-street", "local", "market-w-end", "riverside-x-60", 1, 1, { name: "Elm Street" });
+road("weir-bridge-road", "collector", "riverside-w-end", "southbank-w-end", 1, 1, {
+  name: "Weir Bridge Road",
+  elevation: "control",
+  via: [
+    { x: -140, z: 250, y: 8.2 },
+    { x: -140, z: 440, y: 8.2 },
+  ],
+  structures: [{ kind: "bridge", fromControl: 1, toControl: 2 }],
+});
 
 road("main-street-1", "arterial", "central-main", "market-main", 2, 2, { name: "Main Street" });
 road("main-street-2", "arterial", "market-main", "bridge-main", 2, 2, { name: "Main Street" });
@@ -277,7 +286,7 @@ road("mill-street-2", "local", "central-x520", "market-x520", 1, 1, { name: "Mil
 road("mill-street-3", "local", "market-x520", "bridge-x520", 1, 1, { name: "Mill Street" });
 road("mill-street-4", "local", "bridge-x520", "riverside-x520", 1, 1, { name: "Mill Street" });
 
-node("southbank-w-end", -140, 520, { turnaround: true });
+node("southbank-w-end", -140, 520);
 node("southbank-x-60", -60, 520, { control: stop });
 node("southbank-x30", 30, 520, { control: stop });
 node("southbank-x220", 220, 520, { control: stop });
@@ -286,8 +295,8 @@ node("southbank-x420", 420, 520, { control: stop });
 chain("southbank-road", "collector", ["southbank-w-end", "southbank-x-60", "southbank-x30", "main-southbank", "southbank-x220", "southbank-x320", "southbank-x420", "blvd-southbank"], 1, 1, { name: "South Bank Road" });
 
 node("orchard-x-60", -60, 640, { control: stop });
-node("orchard-x30", 30, 640, { turnaround: true });
-node("orchard-x220", 220, 640, { turnaround: true });
+node("orchard-x30", 30, 640);
+node("orchard-x220", 220, 640);
 node("orchard-x320", 320, 640, { control: stop });
 node("orchard-x420", 420, 640, { control: stop });
 road("cedar-lane", "local", "southbank-x-60", "orchard-x-60", 1, 1, { name: "Cedar Lane" });
@@ -299,20 +308,16 @@ road("ash-lane", "local", "southbank-x420", "orchard-x420", 1, 1, { name: "Ash L
 road("orchard-lane-e1", "local", "orchard-x220", "orchard-x320", 1, 1, { name: "Orchard Lane" });
 road("orchard-lane-e2", "local", "orchard-x320", "orchard-x420", 1, 1, { name: "Orchard Lane" });
 
-node("mountain-viewpoint", -360, -420, { turnaround: true });
+node("mountain-viewpoint", -250, -70, { destination: { kind: "viewpoint", width: 40, depth: 44, name: "Westhill viewpoint" } });
 road("mountain-road", "mountain", "central-west", "mountain-viewpoint", 1, 1, {
   name: "Mountain Road",
   via: [
-    { x: -20, z: -300 },
-    { x: -70, z: -250 },
-    { x: -130, z: -215 },
-    { x: -200, z: -240 },
-    { x: -230, z: -300 },
-    { x: -190, z: -360 },
-    { x: -140, z: -400 },
-    { x: -170, z: -450 },
-    { x: -250, z: -470 },
-    { x: -320, z: -450 },
+    { x: -10, z: -268 },
+    { x: -70, z: -236 },
+    { x: -130, z: -196 },
+    { x: -190, z: -150 },
+    { x: -235, z: -118 },
+    { x: -262, z: -98 },
   ],
 });
 

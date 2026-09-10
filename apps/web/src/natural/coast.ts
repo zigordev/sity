@@ -6,8 +6,10 @@ import { ScaledOrientedXYZPlacement, ScaledXYZPlacement, XYZPlacement, XZPlaceme
 import { fullTerrainSurfaceYAt, isLowlandDetailAllowed, terrainSurfaceYAt, visibleLowlandSurfaceYAt } from "./terrain";
 import { artificialElements, naturalElements } from "../render/context";
 import { attractionBlueMaterial, attractionRedMaterial, beachBinMaterial, beachFlagMaterial, beachGrassMaterial, beachSandMaterial, beachShellMaterial, beachTowelMaterials, beachUmbrellaMaterials, beachWhiteMaterial, concretePortMaterial, dockMaterial, duneSandMaterial, lowlandDryGrassMaterial, lowlandScrubMaterial, roadStructureConcreteMaterial, shorelineFoamMaterial, smallRockMaterial, wetSandMaterial, woodPierMaterial } from "../render/materials";
-import { addAttractionPierSupportPiles, addCargoPortEquipment, addCargoPortSurfaceDetail, addCargoShip, addPierAttractionPark, addPierStructuralDetail, addPrivateBoat, addPrivateMarinaHardware, addPrivateMarinaSupportPiles } from "../waterfront/structures";
+import { addAttractionPierSupportPiles, addCargoPortSurfaceDetail, addCargoShip, addPierAttractionPark, addPierStructuralDetail, addPrivateBoat, addPrivateMarinaHardware, addPrivateMarinaSupportPiles } from "../waterfront/structures";
+import { addCargoPortYard } from "../waterfront/port";
 import { mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, riverEstuaryStart, riverMouth, riverPath, sampleGroundPath } from "../world/frame";
+import { corridorClearance, zoneAt } from "../world/occupancy";
 
 export let lowlandGroundCoverInstanceCount = 0;
 
@@ -583,14 +585,17 @@ export function addNaturalRockClusters() {
     });
   }
 
-  for (let index = 0; placements.length < NATURAL_ROCK_CLUSTER_COUNT; index += 1) {
+  for (let index = 0; placements.length < NATURAL_ROCK_CLUSTER_COUNT && index < NATURAL_ROCK_CLUSTER_COUNT * 3; index += 1) {
     const z = THREE.MathUtils.lerp(
       riverMouth.z + 175,
       mainBoundaryMaxZ - 130,
-      index / (NATURAL_ROCK_CLUSTER_COUNT - 24 - 1),
+      (index % (NATURAL_ROCK_CLUSTER_COUNT - 24)) / (NATURAL_ROCK_CLUSTER_COUNT - 24 - 1),
     );
-    const x = mainBoundaryMaxX - BEACH_INLAND_WIDTH_M - 16 - (index % 3) * 9;
+    const x = mainBoundaryMaxX - BEACH_INLAND_WIDTH_M - 16 - (index % 3) * 9 + Math.floor(index / (NATURAL_ROCK_CLUSTER_COUNT - 24)) * 22;
     const point = { x, z };
+    if (zoneAt(x, z) || corridorClearance(x, z, 40) < 8) {
+      continue;
+    }
 
     placements.push({
       x,
@@ -832,8 +837,18 @@ export function addSimpleMainlandCoast() {
     8,
     artificialElements,
   );
-  addCargoPortEquipment(cargoPortCenterX, cargoPortCenterZ, cargoPortEastEdge);
   addCargoPortSurfaceDetail(cargoPortCenterX, cargoPortCenterZ, cargoPortEastEdge);
+  addCargoPortYard(
+    {
+      westEdge: cargoPortCenterX - CARGO_PORT_LENGTH_M * 0.5,
+      eastEdge: cargoPortEastEdge,
+      northEdge: cargoPortCenterZ + CARGO_PORT_DEPTH_M * 0.5,
+      southEdge: cargoPortCenterZ - CARGO_PORT_DEPTH_M * 0.5,
+      gateZ: -560,
+      gateHalfWidth: 22,
+    },
+    mainBoundaryMaxX,
+  );
 
   for (const [index, dockZ] of [cargoPortCenterZ - 58, cargoPortCenterZ + 58].entries()) {
     addTopAlignedBox(

@@ -3,7 +3,9 @@ import { SEA_Y } from "../config/constants";
 import { fullTerrainSurfaceYAt, groundSurfaceYAt } from "../natural/terrain";
 import { roadElements } from "../render/context";
 import {
+  barrierArmMaterial,
   embankmentMaterial,
+  fenceMeshMaterial,
   grassMaterial,
   guardrailMaterial,
   highwayAsphaltMaterial,
@@ -16,6 +18,7 @@ import {
   roadMarkingWhiteMaterial,
   roadMarkingYellowMaterial,
   roadStructureConcreteMaterial,
+  shelterGlassMaterial,
   sidewalkMaterial,
   signMaterials,
   signPoleMaterial,
@@ -40,7 +43,7 @@ import {
 } from "./geometry";
 import type { RoadClass } from "./classes";
 import { RING_BRIDGE_CONTROLS, RING_ROAD_ID, RING_TUNNEL_CONTROLS } from "./plan";
-import { perpRight, sampleAtStation, type BuiltRoad, type Lane, type RoadEnd, type StructureKind, type Vec3 } from "./network";
+import { perpRight, sampleAtStation, type BuiltDestination, type BuiltJunction, type BuiltRoad, type Lane, type RoadEnd, type StructureKind, type Vec3 } from "./network";
 
 const LANE_OVERLAY_COLORS: Record<Lane["kind"], number> = {
   road: 0x35d07f,
@@ -102,6 +105,10 @@ const guardrailGeometries: THREE.BufferGeometry[] = [];
 const pierGeometries: THREE.BufferGeometry[] = [];
 const grassTops: THREE.BufferGeometry[] = [];
 const embankmentGeometries: THREE.BufferGeometry[] = [];
+const fenceGeometries: THREE.BufferGeometry[] = [];
+const glassGeometries: THREE.BufferGeometry[] = [];
+const barrierArmGeometries: THREE.BufferGeometry[] = [];
+const destinationLampPlacements: Placement[] = [];
 
 function addMergedMesh(name: string, geometries: THREE.BufferGeometry[], material: THREE.Material, options: { castShadow?: boolean; renderOrder?: number; polygonOffset?: boolean } = {}) {
   const merged = mergeAll(geometries);
@@ -424,6 +431,9 @@ function buildSidewalksAndMedians() {
       if (treeSpacing > 0) {
         for (let s = s0 + 16; s < s1 - 16; s += treeSpacing) {
           const station = sampleAtStation(road.samples, s);
+          if (station.structure !== "ground") {
+            continue;
+          }
           const right = perpRight({ x: station.tx, z: station.tz });
           const offset = road.halfWidth + cls.sidewalkWidth - 0.9;
           for (const sign of [-1, 1]) {
@@ -478,6 +488,240 @@ function buildSidewalksAndMedians() {
         sidewalkTops.push(volume.top);
         kerbSides.push(volume.side);
       }
+    }
+  }
+}
+
+function lineStrip(a: Vec3, b: Vec3, width: number, lift: number, target: THREE.BufferGeometry[]) {
+  target.push(stripFromStations(polylineStations([a, b]), -width * 0.5, width * 0.5, lift));
+}
+
+function postBox(x: number, y: number, z: number, size: number, height: number, target: THREE.BufferGeometry[]) {
+  const post = new THREE.BoxGeometry(size, height, size);
+  post.translate(x, y + height * 0.5, z);
+  target.push(post);
+}
+
+function buildParkingStalls(destination: BuiltDestination, alongFrom: number, alongTo: number, acrossFrom: number, acrossTo: number) {
+  const { origin, axis, right } = destination;
+  const at = (along: number, across: number, lift = 0): Vec3 => ({
+    x: origin.x + axis.x * along + right.x * across,
+    y: origin.y + lift,
+    z: origin.z + axis.z * along + right.z * across,
+  });
+  const usable = acrossTo - acrossFrom;
+  const module = 16.5;
+  if (usable < 12 || alongTo - alongFrom < 6) {
+    return;
+  }
+  const modules = Math.max(1, Math.floor(usable / module));
+  const start = acrossFrom + (usable - modules * module) * 0.5;
+  for (let index = 0; index < modules; index += 1) {
+    const centre = start + module * (index + 0.5);
+    for (const side of [-1, 1] as const) {
+      const inner = centre + side * 3.25;
+      const outer = centre + side * 8.25;
+      lineStrip(at(alongFrom, outer), at(alongTo, outer), 0.12, 0.02, whiteMarkings);
+      for (let along = alongFrom; along <= alongTo + 0.01; along += 2.6) {
+        lineStrip(at(along, inner), at(along, outer), 0.12, 0.02, whiteMarkings);
+      }
+    }
+    lineStrip(at(alongFrom, centre), at(alongTo, centre), 0.14, 0.02, yellowMarkings);
+  }
+}
+
+function buildDestination(junction: BuiltJunction, destination: BuiltDestination) {
+  const { spec, origin, axis, right } = destination;
+  const y = origin.y;
+  const at = (along: number, across: number, lift = 0): Vec3 => ({
+    x: origin.x + axis.x * along + right.x * across,
+    y: y + lift,
+    z: origin.z + axis.z * along + right.z * across,
+  });
+  if (spec.kind === "culdesac") {
+    const centre = junction.center;
+    const island = new THREE.CylinderGeometry(3.0, 3.4, 0.42, 24);
+    island.translate(centre.x, y + 0.21, centre.z);
+    grassTops.push(island);
+    const kerb = new THREE.CylinderGeometry(3.6, 3.6, 0.3, 24);
+    kerb.translate(centre.x, y + 0.15, centre.z);
+    kerbSides.push(kerb);
+    const arc = junction.pad.slice(1, -1);
+    const outward = arc.map((point) => {
+      const dx = point.x - centre.x;
+      const dz = point.z - centre.z;
+      const length = Math.hypot(dx, dz) || 1;
+      return { x: point.x + (dx / length) * 1.6, y: point.y, z: point.z + (dz / length) * 1.6 };
+    });
+    const ring = polygonVolume([...arc, ...outward.slice().reverse()], 0.15, 0.6);
+    if (ring) {
+      sidewalkTops.push(ring.top);
+      kerbSides.push(ring.side);
+    }
+    destinationLampPlacements.push({ x: centre.x, y: y + 0.21, z: centre.z, rotationY: Math.atan2(axis.x, axis.z) });
+    return;
+  }
+  const half = spec.width * 0.5;
+  const depth = spec.depth;
+  const footway = 1.6;
+  const inner = [at(4, half), at(depth, half), at(depth, -half), at(4, -half)];
+  const outer = [at(4, half + footway), at(depth + footway, half + footway), at(depth + footway, -half - footway), at(4, -half - footway)];
+  const ring = polygonVolume([...inner, ...outer.slice().reverse()], 0.15, 0.6);
+  if (ring) {
+    sidewalkTops.push(ring.top);
+    kerbSides.push(ring.side);
+  }
+  const rim = polylineStations([at(4, -half - footway - 0.2), at(depth + footway + 0.2, -half - footway - 0.2), at(depth + footway + 0.2, half + footway + 0.2), at(4, half + footway + 0.2)]);
+  embankmentGeometries.push(skirtFromStations(rim, -1, 0, groundSurfaceYAt));
+  for (const across of [-(half - 2.2), half - 2.2]) {
+    for (const along of [10, depth - 4]) {
+      const point = at(along, across, 0.15);
+      destinationLampPlacements.push({ x: point.x, y: point.y, z: point.z, rotationY: Math.atan2(-right.x * Math.sign(across), -right.z * Math.sign(across)) });
+    }
+  }
+  for (const across of [-half - footway * 0.5, half + footway * 0.5]) {
+    for (let along = 12; along < depth - 4; along += 14) {
+      roadSideSlots.streetTrees.push(at(along, across, 0.15));
+    }
+  }
+
+  if (spec.kind === "parking" || spec.kind === "viewpoint") {
+    const deckRadius = spec.kind === "viewpoint" ? Math.min(half - 2, 13) : 0;
+    const stallsTo = spec.kind === "viewpoint" ? depth - deckRadius - 4 : depth - 2.5;
+    buildParkingStalls(destination, 9, stallsTo, -half + 1.2, half - 1.2);
+    lineStrip(at(9, -half + 1.2), at(9, half - 1.2), 0.12, 0.02, whiteMarkings);
+  }
+  if (spec.kind === "viewpoint") {
+    const deckRadius = Math.min(half - 2, 13);
+    const deck: Vec3[] = [];
+    const segments = 18;
+    for (let index = 0; index <= segments; index += 1) {
+      const angle = -Math.PI * 0.5 + (index / segments) * Math.PI;
+      deck.push(at(depth - deckRadius - 1 + Math.cos(angle) * (deckRadius + 5), Math.sin(angle) * (deckRadius + 5)));
+    }
+    const platform = polygonVolume(deck, 0.32, 0.9);
+    if (platform) {
+      concreteTops.push(platform.top);
+      asphaltSides.push(platform.side);
+    }
+    const deckRim = polylineStations(deck);
+    embankmentGeometries.push(skirtFromStations(deckRim, -1, 0, groundSurfaceYAt));
+    for (let index = 0; index <= segments; index += 1) {
+      const angle = -Math.PI * 0.5 + (index / segments) * Math.PI;
+      const post = at(depth - deckRadius - 1 + Math.cos(angle) * (deckRadius + 4.4), Math.sin(angle) * (deckRadius + 4.4), 0.32);
+      postBox(post.x, post.y, post.z, 0.12, 1.1, guardrailGeometries);
+      if (index < segments) {
+        const nextAngle = -Math.PI * 0.5 + ((index + 1) / segments) * Math.PI;
+        const next = at(depth - deckRadius - 1 + Math.cos(nextAngle) * (deckRadius + 4.4), Math.sin(nextAngle) * (deckRadius + 4.4), 0.32);
+        guardrailGeometries.push(boxBetween(post, next, 0.08, 0.08, 1.02));
+        guardrailGeometries.push(boxBetween(post, next, 0.06, 0.06, 0.55));
+      }
+    }
+    const kiosk = new THREE.BoxGeometry(7, 3.4, 4);
+    kiosk.rotateY(Math.atan2(axis.x, axis.z));
+    const kioskAt = at(depth - deckRadius - 9, -half + 5, 0.15);
+    kiosk.translate(kioskAt.x, kioskAt.y + 1.7, kioskAt.z);
+    barrierGeometries.push(kiosk);
+    const kioskRoof = new THREE.BoxGeometry(8, 0.3, 5);
+    kioskRoof.rotateY(Math.atan2(axis.x, axis.z));
+    kioskRoof.translate(kioskAt.x, kioskAt.y + 3.5, kioskAt.z);
+    barrierGeometries.push(kioskRoof);
+    const bench = at(depth - deckRadius - 1, 0, 0.32);
+    postBox(bench.x, bench.y, bench.z, 0.4, 1.3, guardrailGeometries);
+  }
+  if (spec.kind === "yard") {
+    const perimeter = [at(4, half + footway), at(depth + footway, half + footway), at(depth + footway, -half - footway), at(4, -half - footway)];
+    for (let index = 0; index < perimeter.length - 1; index += 1) {
+      const a = perimeter[index];
+      const b = perimeter[index + 1];
+      const length = Math.hypot(b.x - a.x, b.z - a.z);
+      const steps = Math.max(1, Math.round(length / 3));
+      for (let step = 0; step <= steps; step += 1) {
+        const t = step / steps;
+        postBox(a.x + (b.x - a.x) * t, a.y + 0.15, a.z + (b.z - a.z) * t, 0.12, 2.4, guardrailGeometries);
+      }
+      const mesh = boxBetween({ ...a, y: a.y + 0.15 }, { ...b, y: b.y + 0.15 }, 0.04, 2.1, 0.2);
+      fenceGeometries.push(mesh);
+      guardrailGeometries.push(boxBetween({ ...a, y: a.y + 0.15 }, { ...b, y: b.y + 0.15 }, 0.07, 0.07, 2.3));
+    }
+    const gateY = y + 0.15;
+    for (const side of [-1, 1] as const) {
+      const post = at(4, side * (destination.entryHalfWidth + 0.6), 0.15);
+      postBox(post.x, post.y, post.z, 0.3, 2.6, guardrailGeometries);
+      const wingFrom = at(4, side * (destination.entryHalfWidth + 0.6), 0.15);
+      const wingTo = at(4, side * (half + footway), 0.15);
+      fenceGeometries.push(boxBetween(wingFrom, wingTo, 0.04, 2.1, 0.2));
+      guardrailGeometries.push(boxBetween(wingFrom, wingTo, 0.07, 0.07, 2.3));
+    }
+    const armFrom = at(5.2, -destination.entryHalfWidth - 0.4, 0.15);
+    const armTo = at(5.2, 0.4, 0.15);
+    barrierArmGeometries.push(boxBetween(armFrom, armTo, 0.12, 0.12, 0.95));
+    const armFrom2 = at(5.2, destination.entryHalfWidth + 0.4, 0.15);
+    const armTo2 = at(5.2, -0.4, 0.15);
+    barrierArmGeometries.push(boxBetween(armFrom2, armTo2, 0.12, 0.12, 0.95));
+    const house = at(9, -(destination.entryHalfWidth + 3.4), 0.15);
+    const houseBox = new THREE.BoxGeometry(4.2, 3.0, 3.2);
+    houseBox.rotateY(Math.atan2(axis.x, axis.z));
+    houseBox.translate(house.x, gateY + 1.5, house.z);
+    barrierGeometries.push(houseBox);
+    const houseGlass = new THREE.BoxGeometry(4.4, 1.1, 3.4);
+    houseGlass.rotateY(Math.atan2(axis.x, axis.z));
+    houseGlass.translate(house.x, gateY + 1.9, house.z);
+    glassGeometries.push(houseGlass);
+    const houseRoof = new THREE.BoxGeometry(5.0, 0.25, 4.0);
+    houseRoof.rotateY(Math.atan2(axis.x, axis.z));
+    houseRoof.translate(house.x, gateY + 3.1, house.z);
+    barrierGeometries.push(houseRoof);
+    buildParkingStalls(destination, 12, depth - 3, half * 0.1, half - 1.2);
+    for (let along = 12; along < depth - 4; along += 9) {
+      lineStrip(at(along, -half + 1.4), at(along, -half * 0.35), 0.16, 0.02, yellowMarkings);
+    }
+  }
+  if (spec.kind === "forecourt") {
+    const islandInner = [at(10, 3.4), at(depth - 6, 3.4), at(depth - 6, -3.4), at(10, -3.4)];
+    const island = polygonVolume(islandInner, 0.15, 0.6);
+    if (island) {
+      sidewalkTops.push(island.top);
+      kerbSides.push(island.side);
+    }
+    for (const side of [-1, 1] as const) {
+      for (let along = 14; along < depth - 12; along += 16) {
+        const heading = Math.atan2(axis.x, axis.z);
+        const centre = at(along + 4, side * 1.4, 0.15);
+        for (const dx of [-2.8, 2.8]) {
+          for (const dz of [-1.0, 1.0]) {
+            const post = at(along + 4 + dx, side * 1.4 + dz, 0.15);
+            postBox(post.x, post.y, post.z, 0.12, 2.7, guardrailGeometries);
+          }
+        }
+        const roof = new THREE.BoxGeometry(6.4, 0.16, 2.6);
+        roof.rotateY(heading);
+        roof.translate(centre.x, centre.y + 2.75, centre.z);
+        barrierGeometries.push(roof);
+        const back = new THREE.BoxGeometry(6.2, 2.3, 0.06);
+        back.rotateY(heading);
+        const backAt = at(along + 4, side * 0.5, 0.15);
+        back.translate(backAt.x, backAt.y + 1.4, backAt.z);
+        glassGeometries.push(back);
+        const seat = new THREE.BoxGeometry(4.6, 0.08, 0.45);
+        seat.rotateY(heading);
+        const seatAt = at(along + 4, side * 1.0, 0.15);
+        seat.translate(seatAt.x, seatAt.y + 0.5, seatAt.z);
+        guardrailGeometries.push(seat);
+        lineStrip(at(along - 1, side * 3.6), at(along + 11, side * 3.6), 0.14, 0.02, yellowMarkings);
+        lineStrip(at(along - 1, side * 3.6), at(along - 1, side * 7.2), 0.14, 0.02, yellowMarkings);
+        lineStrip(at(along + 11, side * 3.6), at(along + 11, side * 7.2), 0.14, 0.02, yellowMarkings);
+      }
+    }
+    buildParkingStalls(destination, 12, depth - 3, 9, half - 1.2);
+    buildParkingStalls(destination, 12, depth - 3, -half + 1.2, -9);
+  }
+}
+
+function buildDestinations() {
+  for (const junction of roadNetwork.junctions.values()) {
+    if (junction.destination) {
+      buildDestination(junction, junction.destination);
     }
   }
 }
@@ -707,6 +951,7 @@ function buildLamps() {
       side *= -1;
     }
   }
+  urbanPlacements.push(...destinationLampPlacements);
   addInstances("street-lamp-poles", createLampGeometry(8.5, 2.4, false), lampPoleMaterial, urbanPlacements);
   addInstances("street-lamp-heads", createLampHeadGeometry(2.4, false, 8.5), lampHeadMaterial, urbanPlacements, false);
   addInstances("highway-lamp-poles", createLampGeometry(12, 3.2, true), lampPoleMaterial, highwayPlacements);
@@ -890,6 +1135,7 @@ export function addRoadNetworkMeshes() {
   buildEmbankments();
   buildRoadMarkings();
   buildSidewalksAndMedians();
+  buildDestinations();
   buildStructures();
 
   addMergedMesh("road-surfaces", asphaltTops, highwayAsphaltMaterial, { renderOrder: 9 });
@@ -905,6 +1151,9 @@ export function addRoadNetworkMeshes() {
   addMergedMesh("road-guardrails", guardrailGeometries, guardrailMaterial, { renderOrder: 10, castShadow: true });
   addMergedMesh("road-piers", pierGeometries, pierConcreteMaterial, { renderOrder: 8, castShadow: true });
   addMergedMesh("road-embankments", embankmentGeometries, embankmentMaterial, { renderOrder: 8 });
+  addMergedMesh("yard-fences", fenceGeometries, fenceMeshMaterial, { renderOrder: 12 });
+  addMergedMesh("shelter-glass", glassGeometries, shelterGlassMaterial, { renderOrder: 12 });
+  addMergedMesh("barrier-arms", barrierArmGeometries, barrierArmMaterial, { renderOrder: 10, castShadow: true });
 
   buildLamps();
   buildTrafficSignals();

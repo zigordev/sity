@@ -92,6 +92,46 @@ export function createLinearTexture(
   return texture;
 }
 
+export function createCorrugatedTexture(name: string, size = 128, ridges = 10) {
+  const textureCanvas = document.createElement("canvas");
+  textureCanvas.width = size;
+  textureCanvas.height = size;
+  const context = textureCanvas.getContext("2d");
+
+  if (!context) {
+    throw new Error(`Could not create ${name} texture.`);
+  }
+
+  const period = size / ridges;
+  for (let x = 0; x < size; x += 1) {
+    const phase = ((x % period) / period) * Math.PI * 2;
+    const shade = 176 + Math.round(Math.sin(phase) * 34);
+    context.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+    context.fillRect(x, 0, 1, size);
+  }
+  context.globalAlpha = 0.22;
+  context.fillStyle = "#3a2a1c";
+  for (let index = 0; index < 90; index += 1) {
+    const x = (index * 53) % size;
+    const y = (index * 29) % size;
+    context.fillRect(x, y, 1 + (index % 4), 1 + (index % 3));
+  }
+  context.globalAlpha = 0.5;
+  context.fillStyle = "#c9c9c9";
+  context.fillRect(0, 0, size, 3);
+  context.fillRect(0, size - 3, size, 3);
+  context.globalAlpha = 1;
+
+  const texture = new THREE.CanvasTexture(textureCanvas);
+  texture.name = name;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(5, 1);
+  texture.anisotropy = 8;
+  return texture;
+}
+
 export function createWaterNormalTexture(name: string, size = 256) {
   const textureCanvas = document.createElement("canvas");
   textureCanvas.width = size;
@@ -187,3 +227,5 @@ export const darkWearTexture = createSpeckledTexture("dark-weathering-decal-text
 ], 256, 12);
 
 export const waterNormalTexture = createWaterNormalTexture("generated-water-normal-map");
+
+export const corrugatedTexture = createCorrugatedTexture("corrugated-container-panel-texture");

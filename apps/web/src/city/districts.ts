@@ -17,7 +17,7 @@ export interface DistrictStyle {
   frontGap: number;
 }
 
-export type SpecialKind = "park" | "plaza" | "stadium" | "parking" | "school" | "church" | "beach-parking";
+export type SpecialKind = "park" | "plaza" | "stadium" | "parking" | "school" | "church";
 
 export interface SpecialBlock {
   id: string;
@@ -53,7 +53,6 @@ export const SPECIAL_BLOCKS: SpecialBlock[] = [
   { id: "king-street-parking", kind: "parking", minX: 249, maxX: 311, minZ: -262, maxZ: -178 },
   { id: "south-bank-school", kind: "school", minX: 228, maxX: 312, minZ: 532, maxZ: 630 },
   { id: "west-end-church", kind: "church", minX: -50, maxX: 30, minZ: -6, maxZ: 72 },
-  { id: "beach-parking", kind: "beach-parking", minX: 690, maxX: 746, minZ: 690, maxZ: 738 },
 ];
 
 export function districtAt(x: number, z: number): District | undefined {

@@ -1,8 +1,9 @@
 import * as THREE from "three";
-import { HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_LIFT_M, HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_OFFSET_M, HIGHWAY_BRIDGE_STAY_CABLE_COUNT_PER_FAN, HIGHWAY_BRIDGE_STAY_CABLE_RADIUS_M, HIGHWAY_BRIDGE_STAY_FAN_REACH_PROGRESS, HIGHWAY_BRIDGE_TOWER_HEIGHT_M, HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M, HIGHWAY_BRIDGE_TOWER_WIDTH_M, HIGHWAY_DECK_THICKNESS_M, HIGHWAY_TOTAL_WIDTH_M, HIGHWAY_TUNNEL_DARK_MASK_DEPTH_M, HIGHWAY_TUNNEL_LINING_RIB_COUNT_PER_PORTAL, HIGHWAY_TUNNEL_MOUTH_SHADOW_HEIGHT_M, HIGHWAY_TUNNEL_MOUTH_SHADOW_WIDTH_M, HIGHWAY_TUNNEL_PORTAL_HEIGHT_M, HIGHWAY_TUNNEL_PORTAL_WIDTH_M, HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M, HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M, HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M, SEA_Y } from "../config/constants";
+import { HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_LIFT_M, HIGHWAY_BRIDGE_DECK_CABLE_ANCHOR_OFFSET_M, HIGHWAY_BRIDGE_STAY_CABLE_COUNT_PER_FAN, HIGHWAY_BRIDGE_STAY_CABLE_RADIUS_M, HIGHWAY_BRIDGE_STAY_FAN_REACH_PROGRESS, HIGHWAY_BRIDGE_TOWER_HEIGHT_M, HIGHWAY_BRIDGE_TOWER_SIDE_OFFSET_M, HIGHWAY_BRIDGE_TOWER_WIDTH_M, HIGHWAY_DECK_THICKNESS_M, HIGHWAY_TOTAL_WIDTH_M, HIGHWAY_TUNNEL_DARK_MASK_DEPTH_M, HIGHWAY_TUNNEL_LINING_RIB_COUNT_PER_PORTAL, HIGHWAY_TUNNEL_MOUTH_SHADOW_HEIGHT_M, HIGHWAY_TUNNEL_MOUTH_SHADOW_WIDTH_M, HIGHWAY_TUNNEL_PORTAL_HEIGHT_M, HIGHWAY_TUNNEL_PORTAL_WIDTH_M, HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M, SEA_Y } from "../config/constants";
 import { addOrientedBox, addOrientedBoxInstances } from "../geometry/helpers";
 import { pathTangent } from "../geometry/ribbons";
 import { GroundPathPoint, OrientedXYZPlacement, RoadPathPoint } from "../geometry/types";
+import { fullTerrainSurfaceYAt } from "../natural/terrain";
 import { roadElements } from "../render/context";
 import { bridgeCableMaterial, bridgeSteelMaterial, mountainCutMaterial, roadStructureConcreteMaterial, tunnelOpeningMaterial } from "../render/materials";
 
@@ -426,6 +427,20 @@ export function addOrientedTunnelRockSleeve(
   roadElements.add(mesh);
 }
 
+export function createHeadwallGeometry(width: number, height: number, archWidth: number, archHeight: number, thickness: number) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-width * 0.5, 0);
+  shape.lineTo(width * 0.5, 0);
+  shape.lineTo(width * 0.5, height);
+  shape.lineTo(-width * 0.5, height);
+  shape.lineTo(-width * 0.5, 0);
+  shape.holes.push(createArchHolePath(archWidth, archHeight));
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 24, steps: 1 });
+  geometry.translate(0, 0, -thickness);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export function addTunnelPortal(
   name: string,
   point: RoadPathPoint,
@@ -439,36 +454,25 @@ export function addTunnelPortal(
   const portalZ = point.z + outwardZ * portalOutsetM;
   const rotationY = Math.atan2(outwardX, outwardZ);
   const portalBaseY = point.y - HIGHWAY_DECK_THICKNESS_M;
-  const centerY = portalBaseY + HIGHWAY_TUNNEL_PORTAL_HEIGHT_M * 0.34;
-  const frameOffset = HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M * 0.5 + 3;
+  const frameOffset = HIGHWAY_TUNNEL_PORTAL_WIDTH_M * 0.5 + 4.5;
   const frameAxisX = Math.cos(rotationY);
   const frameAxisZ = -Math.sin(rotationY);
-  const sideWallDepth = HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M * 0.88;
-  const sideWallNormalOffset = -sideWallDepth * 0.38;
-  const wallCenterX = outwardX * sideWallNormalOffset;
-  const wallCenterZ = outwardZ * sideWallNormalOffset;
+  const coverY = Math.min(
+    fullTerrainSurfaceYAt({ x: portalX - outwardX * 22, z: portalZ - outwardZ * 22 }),
+    fullTerrainSurfaceYAt({ x: portalX - outwardX * 36, z: portalZ - outwardZ * 36 }),
+  );
+  const cover = coverY - portalBaseY;
+  const headwallHeight = HIGHWAY_TUNNEL_PORTAL_HEIGHT_M + 4.5;
+  const collarHeight = Math.max(HIGHWAY_TUNNEL_PORTAL_HEIGHT_M + 1, Math.min(headwallHeight - 0.6, cover + 2));
+  const sleeveDepth = Math.min(HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M, 12);
 
   addOrientedTunnelRockSleeve(
-    `${name}-mountain-backfill`,
-    HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M + 48,
-    HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M + 26,
-    HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M - 4,
-    HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M - 3,
-    HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M * 0.9,
-    portalX,
-    portalBaseY - 12,
-    portalZ,
-    rotationY,
-    -7.5,
-    8,
-  );
-  addOrientedTunnelRockSleeve(
     `${name}-rock-sleeve`,
-    HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M,
-    HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M,
+    HIGHWAY_TUNNEL_PORTAL_WIDTH_M + 8,
+    collarHeight,
     HIGHWAY_TOTAL_WIDTH_M + 6,
     HIGHWAY_TUNNEL_PORTAL_HEIGHT_M - 7,
-    HIGHWAY_TUNNEL_ROCK_SLEEVE_DEPTH_M,
+    sleeveDepth,
     portalX,
     portalBaseY - 5,
     portalZ,
@@ -476,19 +480,27 @@ export function addTunnelPortal(
     -3.5,
     9,
   );
-  addOrientedArchRing(
-    `${name}-rock-collar`,
-    HIGHWAY_TUNNEL_ROCK_COLLAR_WIDTH_M,
-    HIGHWAY_TUNNEL_ROCK_COLLAR_HEIGHT_M,
-    HIGHWAY_TUNNEL_PORTAL_WIDTH_M + 8,
-    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M + 5,
-    mountainCutMaterial,
-    portalX,
-    portalBaseY - 5,
-    portalZ,
+  const headwall = new THREE.Mesh(
+    createHeadwallGeometry(HIGHWAY_TUNNEL_PORTAL_WIDTH_M + 10, headwallHeight, HIGHWAY_TUNNEL_PORTAL_WIDTH_M, HIGHWAY_TUNNEL_PORTAL_HEIGHT_M, 2.4),
+    roadStructureConcreteMaterial,
+  );
+  headwall.name = `${name}-concrete-headwall`;
+  headwall.position.set(portalX + outwardX * 0.6, portalBaseY - 0.5, portalZ + outwardZ * 0.6);
+  headwall.rotation.y = rotationY;
+  headwall.renderOrder = 10.5;
+  headwall.castShadow = true;
+  headwall.receiveShadow = true;
+  roadElements.add(headwall);
+  addOrientedBox(
+    `${name}-headwall-parapet`,
+    HIGHWAY_TUNNEL_PORTAL_WIDTH_M + 10.6,
+    0.9,
+    3.2,
+    roadStructureConcreteMaterial,
+    portalX - outwardX * 0.6,
+    portalBaseY - 0.5 + headwallHeight + 0.45,
+    portalZ - outwardZ * 0.6,
     rotationY,
-    -1.25,
-    10,
   );
   addOrientedArchRing(
     `${name}-concrete-rounded-frame`,
@@ -501,7 +513,7 @@ export function addTunnelPortal(
     portalBaseY - 0.5,
     portalZ,
     rotationY,
-    0,
+    0.8,
     11,
   );
   addOrientedArchFace(
@@ -573,26 +585,23 @@ export function addTunnelPortal(
       12.5,
     );
   }
-  addOrientedBox(
-    `${name}-left-retaining-wall`,
-    5,
-    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M * 0.68,
-    sideWallDepth,
-    mountainCutMaterial,
-    portalX + frameAxisX * frameOffset + wallCenterX,
-    centerY,
-    portalZ + frameAxisZ * frameOffset + wallCenterZ,
-    rotationY,
-  );
-  addOrientedBox(
-    `${name}-right-retaining-wall`,
-    5,
-    HIGHWAY_TUNNEL_PORTAL_HEIGHT_M * 0.68,
-    sideWallDepth,
-    mountainCutMaterial,
-    portalX - frameAxisX * frameOffset + wallCenterX,
-    centerY,
-    portalZ - frameAxisZ * frameOffset + wallCenterZ,
-    rotationY,
-  );
+  for (const side of [-1, 1] as const) {
+    const wingLength = 22;
+    const wingAngle = side * 0.42;
+    const hingeX = portalX + frameAxisX * frameOffset * side;
+    const hingeZ = portalZ + frameAxisZ * frameOffset * side;
+    const dirX = frameAxisX * side * Math.cos(wingAngle) + outwardX * Math.sin(wingAngle) * 1;
+    const dirZ = frameAxisZ * side * Math.cos(wingAngle) + outwardZ * Math.sin(wingAngle) * 1;
+    addOrientedBox(
+      `${name}-${side < 0 ? "left" : "right"}-wing-wall`,
+      wingLength,
+      headwallHeight * 0.6,
+      1.6,
+      roadStructureConcreteMaterial,
+      hingeX + dirX * wingLength * 0.5,
+      portalBaseY - 0.5 + headwallHeight * 0.3,
+      hingeZ + dirZ * wingLength * 0.5,
+      Math.atan2(dirX, dirZ) + Math.PI / 2,
+    );
+  }
 }

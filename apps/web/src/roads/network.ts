@@ -16,6 +16,15 @@ export type LaneKind = "road" | "connector" | "ring" | "ramp";
 export type TurnKind = "straight" | "left" | "right" | "uturn" | "merge" | "diverge" | "circulate" | "enter" | "exit";
 export type StructureKind = "ground" | "viaduct" | "bridge" | "tunnel";
 
+export type DestinationKind = "parking" | "yard" | "forecourt" | "viewpoint" | "culdesac";
+
+export interface DestinationSpec {
+  kind: DestinationKind;
+  width: number;
+  depth: number;
+  name?: string;
+}
+
 export interface NodeSpec {
   id: string;
   x: number;
@@ -24,6 +33,7 @@ export interface NodeSpec {
   control?: JunctionControl;
   roundabout?: { radius: number };
   turnaround?: boolean;
+  destination?: DestinationSpec;
   edge?: boolean;
   name?: string;
 }
@@ -105,6 +115,14 @@ export interface JunctionCorner {
   points: Vec3[];
 }
 
+export interface BuiltDestination {
+  spec: DestinationSpec;
+  origin: Vec3;
+  axis: Vec2;
+  right: Vec2;
+  entryHalfWidth: number;
+}
+
 export interface BuiltJunction {
   nodeId: string;
   center: Vec3;
@@ -113,6 +131,7 @@ export interface BuiltJunction {
   pad: Vec3[];
   corners: JunctionCorner[];
   hasSidewalks: boolean;
+  destination?: BuiltDestination;
 }
 
 export interface BuiltRoundabout {
@@ -244,17 +263,17 @@ function limitGrade(values: number[], spacing: number, maxGrade: number) {
   return result;
 }
 
-export function sampleAtStation(samples: RoadSample[], s: number): Vec3 & { tx: number; tz: number } {
+export function sampleAtStation(samples: RoadSample[], s: number): Vec3 & { tx: number; tz: number; structure: StructureKind } {
   if (samples.length === 0) {
     throw new Error("Cannot sample an empty road.");
   }
   if (s <= samples[0].s) {
     const first = samples[0];
-    return { x: first.x, y: first.y, z: first.z, tx: first.tx, tz: first.tz };
+    return { x: first.x, y: first.y, z: first.z, tx: first.tx, tz: first.tz, structure: first.structure };
   }
   const last = samples[samples.length - 1];
   if (s >= last.s) {
-    return { x: last.x, y: last.y, z: last.z, tx: last.tx, tz: last.tz };
+    return { x: last.x, y: last.y, z: last.z, tx: last.tx, tz: last.tz, structure: last.structure };
   }
   let low = 0;
   let high = samples.length - 1;
@@ -275,6 +294,7 @@ export function sampleAtStation(samples: RoadSample[], s: number): Vec3 & { tx: 
     z: lerp(a.z, b.z, t),
     tx: lerp(a.tx, b.tx, t),
     tz: lerp(a.tz, b.tz, t),
+    structure: t < 0.5 ? a.structure : b.structure,
   };
 }
 
@@ -710,7 +730,8 @@ export class NetworkBuilder {
           trim = Math.max(trim, needed);
         });
         if (ends.length === 1) {
-          trim = node.spec.turnaround ? end.road.cls.cornerRadius * 1.4 : 0;
+          const destination = node.spec.destination;
+          trim = destination && destination.kind !== "culdesac" ? 6 : node.spec.turnaround ? end.road.cls.cornerRadius * 1.4 : 0;
         }
         trim = Math.min(trim, Math.max(end.road.length * 0.42, 1));
         if (end.atStart) {
@@ -883,7 +904,7 @@ export class NetworkBuilder {
     if (ends.length === 0 || node.spec.edge) {
       return;
     }
-    if (ends.length > 1 || node.spec.turnaround) {
+    if (ends.length > 1 || node.spec.turnaround || node.spec.destination) {
       this.buildJunctionGeometry(node, ends);
     }
 
@@ -891,7 +912,7 @@ export class NetworkBuilder {
     const outgoing = this.lanesStartingAt(nodeId);
 
     if (ends.length === 1) {
-      if (node.spec.turnaround) {
+      if (node.spec.turnaround || node.spec.destination) {
         for (const lane of incoming) {
           for (const target of outgoing) {
             this.addConnector(nodeId, lane, target, "uturn", 0.9);
@@ -1087,9 +1108,24 @@ export class NetworkBuilder {
 
     const pad: Vec3[] = [];
     const corners: JunctionCorner[] = [];
-    if (roadEnds.length === 1) {
+    let destination: BuiltDestination | undefined;
+    const destinationSpec = node.spec.destination;
+    if (roadEnds.length === 1 && destinationSpec && destinationSpec.kind !== "culdesac") {
       const end = roadEnds[0];
-      const radius = Math.max(end.halfWidth + 2, end.cornerRadius * 1.1);
+      const axis = { x: -end.dir.x, z: -end.dir.z };
+      const right = perpRight(end.dir);
+      const origin = end.endCenter;
+      const half = destinationSpec.width * 0.5;
+      const at = (along: number, across: number): Vec3 => ({
+        x: origin.x + axis.x * along + right.x * across,
+        y: origin.y,
+        z: origin.z + axis.z * along + right.z * across,
+      });
+      pad.push(end.cornerA, end.cornerB, at(4, half), at(destinationSpec.depth, half), at(destinationSpec.depth, -half), at(4, -half));
+      destination = { spec: destinationSpec, origin, axis, right, entryHalfWidth: end.halfWidth };
+    } else if (roadEnds.length === 1) {
+      const end = roadEnds[0];
+      const radius = destinationSpec ? Math.max(end.halfWidth + 3, 10) : Math.max(end.halfWidth + 2, end.cornerRadius * 1.1);
       const backward = { x: -end.dir.x, z: -end.dir.z };
       const segments = 14;
       pad.push(end.cornerA);
@@ -1102,6 +1138,9 @@ export class NetworkBuilder {
         });
       }
       pad.push(end.cornerB);
+      if (destinationSpec) {
+        destination = { spec: destinationSpec, origin: end.endCenter, axis: backward, right: perpRight(end.dir), entryHalfWidth: end.halfWidth };
+      }
     } else {
       for (let index = 0; index < roadEnds.length; index += 1) {
         const current = roadEnds[index];
@@ -1122,6 +1161,7 @@ export class NetworkBuilder {
       pad,
       corners,
       hasSidewalks,
+      destination,
     });
   }
 

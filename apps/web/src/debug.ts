@@ -19,10 +19,11 @@ import {
   SNOW_MOUNTAIN_SNOWLINE_M,
 } from "./config/constants";
 import { assetLoadComplete, assetLoadFailures, importedModelInstanceCount, loadedTextureAssetKeys } from "./assets/pipeline";
-import { cityStats } from "./city";
+import { auditCity, cityStats } from "./city";
 import { DISTRICTS, SPECIAL_BLOCKS } from "./city/districts";
 import { lots } from "./city/lots";
-import { groundSurfaceYAt } from "./natural/terrain";
+import { fullTerrainSurfaceYAt, groundSurfaceBaseYAt, groundSurfaceYAt, mountainHeightAt, snowMountainHeightAt } from "./natural/terrain";
+import { cutLimitAt } from "./world/occupancy";
 import { sharedSeaWaterSurfaceCount } from "./natural/water";
 import { camera, composer, controls, renderer, scene } from "./render/context";
 import { estimateVisibleSceneRenderStats } from "./render/stats";
@@ -49,7 +50,7 @@ declare global {
       getNaturalFeatures: () => {
         mountain: { center: { x: number; z: number }; maxHeightM: number };
         snowMountain: { center: { x: number; z: number }; maxHeightM: number; snowLineM: number };
-        river: { source: { x: number; z: number }; mouth: { x: number; z: number }; widthM: number };
+        river: { source: { x: number; z: number }; mouth: { x: number; z: number }; widthM: number; path: Array<{ x: number; z: number }> };
         reservoir: { center: { x: number; z: number }; radiusXM: number; radiusZM: number; waterDepthM: number };
         dam: { center: { x: number; z: number }; lengthM: number; heightM: number };
         coast: { beachInlandWidthM: number };
@@ -58,6 +59,8 @@ declare global {
         groundYAt: (x: number, z: number) => number;
       };
       getRoadGraph: () => { stats: NetworkStats; invariants: NetworkInvariants };
+      probeTerrain: (x: number, z: number) => { ground: number; base: number; cutLimit: number; full: number; mountain: number; snow: number };
+      getRoadSamples: (roadId: string) => Array<import("./roads/network").RoadSample> | undefined;
       exportRoadGraph: () => ReturnType<RoadGraph["toJSON"]>;
       getLane: (id: string) => import("./roads/network").Lane | undefined;
       findRoute: (fromLaneId: string, toLaneId: string) => RouteResult | undefined;
@@ -72,6 +75,8 @@ declare global {
         specialBlockCount: number;
         lotsByDistrict: Record<string, number>;
       };
+      auditCity: () => ReturnType<typeof auditCity>;
+      listDeadEnds: () => Array<{ nodeId: string; roadId: string; destination?: string; edge: boolean }>;
       getCategoryVisibility: () => ReturnType<typeof getLayerVisibility>;
       getCompassBearingDegrees: () => number;
       getAxisScale: () => {
@@ -119,7 +124,7 @@ window.__SITY_DEBUG__ = {
   getNaturalFeatures: () => ({
     mountain: { center: mountainCenter, maxHeightM: MOUNTAIN_HEIGHT_M },
     snowMountain: { center: snowMountainCenter, maxHeightM: SNOW_MOUNTAIN_HEIGHT_M, snowLineM: SNOW_MOUNTAIN_SNOWLINE_M },
-    river: { source: riverPath[0], mouth: riverMouth, widthM: RIVER_WIDTH_M },
+    river: { source: riverPath[0], mouth: riverMouth, widthM: RIVER_WIDTH_M, path: riverPath.map((point) => ({ ...point })) },
     reservoir: { center: reservoirCenter, radiusXM: RESERVOIR_RADIUS_X_M, radiusZM: RESERVOIR_RADIUS_Z_M, waterDepthM: RESERVOIR_WATER_DEPTH_M },
     dam: { center: damCenter, lengthM: DAM_LENGTH_M, heightM: DAM_HEIGHT_M },
     coast: { beachInlandWidthM: BEACH_INLAND_WIDTH_M },
@@ -133,6 +138,15 @@ window.__SITY_DEBUG__ = {
     groundYAt: (x, z) => groundSurfaceYAt(x, z),
   }),
   getRoadGraph: () => ({ stats: roadGraph.stats(), invariants: roadGraph.invariants() }),
+  probeTerrain: (x, z) => ({
+    ground: groundSurfaceYAt(x, z),
+    base: groundSurfaceBaseYAt(x, z),
+    cutLimit: cutLimitAt(x, z),
+    full: fullTerrainSurfaceYAt({ x, z }),
+    mountain: mountainHeightAt(x, z),
+    snow: snowMountainHeightAt(x, z),
+  }),
+  getRoadSamples: (roadId) => roadNetwork.roads.get(roadId)?.samples.map((sample) => ({ ...sample })),
   exportRoadGraph: () => roadGraph.toJSON(),
   getLane: (id) => {
     const lane = roadNetwork.lanes.get(id);
@@ -152,6 +166,22 @@ window.__SITY_DEBUG__ = {
       specialBlockCount: SPECIAL_BLOCKS.length,
       lotsByDistrict,
     };
+  },
+  auditCity: () => auditCity(),
+  listDeadEnds: () => {
+    const ends: Array<{ nodeId: string; roadId: string; destination?: string; edge: boolean }> = [];
+    for (const node of roadNetwork.nodes.values()) {
+      if (node.isCut || node.roadIds.length !== 1) {
+        continue;
+      }
+      ends.push({
+        nodeId: node.spec.id,
+        roadId: node.roadIds[0],
+        destination: node.spec.destination?.kind,
+        edge: Boolean(node.spec.edge),
+      });
+    }
+    return ends;
   },
   getCategoryVisibility: () => getLayerVisibility(),
   getCompassBearingDegrees: () => compassBearingDegrees,

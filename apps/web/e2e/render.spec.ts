@@ -109,6 +109,8 @@ test.describe('scene', () => {
     expect(graph.invariants.connectorsTouchNeighbours).toBe(true);
     expect(graph.invariants.everyLinkIsBidirectional).toBe(true);
     expect(graph.invariants.strandedLaneIds).toEqual([]);
+    const junctions = await page.evaluate(() => window.__SITY_DEBUG__.listDeadEnds());
+    expect(junctions.filter((end) => !end.destination && !end.edge)).toEqual([]);
 
     const exported = await page.evaluate(() => window.__SITY_DEBUG__.exportRoadGraph());
     expect(exported.lanes).toHaveLength(graph.stats.laneCount);
@@ -134,6 +136,11 @@ test.describe('scene', () => {
     expect(city.lotCount).toBeGreaterThanOrEqual(180);
     expect(city.buildingCount).toBeGreaterThanOrEqual(250);
     expect(city.treeCount).toBeGreaterThanOrEqual(2000);
+
+    const audit = await page.evaluate(() => window.__SITY_DEBUG__.auditCity());
+    expect(audit.footprintCount).toBeGreaterThanOrEqual(200);
+    expect(audit.overlappingPairs).toEqual([]);
+    expect(audit.buildingsOnPavement).toEqual([]);
 
     const visibility = await page.evaluate(() => window.__SITY_DEBUG__.getCategoryVisibility());
     expect(visibility).toMatchObject({ natural: true, roads: true, buildings: true, vegetation: true, help: true });

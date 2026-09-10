@@ -142,23 +142,23 @@ sunLight.position.set(-1_600, 2_800, 1_800);
 
 sunLight.castShadow = true;
 
-sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.mapSize.set(4096, 4096);
 
-sunLight.shadow.camera.left = -2_800;
+sunLight.shadow.camera.left = -1_500;
 
-sunLight.shadow.camera.right = 2_800;
+sunLight.shadow.camera.right = 1_500;
 
-sunLight.shadow.camera.top = 2_800;
+sunLight.shadow.camera.top = 1_500;
 
-sunLight.shadow.camera.bottom = -2_800;
+sunLight.shadow.camera.bottom = -1_500;
 
 sunLight.shadow.camera.near = 200;
 
 sunLight.shadow.camera.far = 7_000;
 
-sunLight.shadow.bias = -0.00008;
+sunLight.shadow.bias = -0.00004;
 
-sunLight.shadow.normalBias = 1.5;
+sunLight.shadow.normalBias = 0.9;
 
 scene.add(sunLight);
 

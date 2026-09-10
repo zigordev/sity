@@ -90,10 +90,10 @@ function parkingLines(block: SpecialBlock, y: number, lift: number) {
     const rowZ = block.minZ + 6 + row * 16;
     for (let x = -width * 0.5 + 4; x <= width * 0.5 - 4; x += 2.6) {
       const line = new THREE.BoxGeometry(0.12, 0.02, 5);
-      line.translate(centerX + x, y + lift + 0.01, rowZ + 2.5);
+      line.translate(centerX + x, y + lift + 0.03, rowZ + 2.5);
       parts.push(line);
       const line2 = new THREE.BoxGeometry(0.12, 0.02, 5);
-      line2.translate(centerX + x, y + lift + 0.01, rowZ + 9);
+      line2.translate(centerX + x, y + lift + 0.03, rowZ + 9);
       parts.push(line2);
     }
   }
@@ -300,7 +300,7 @@ export function buildSpecialBlocks() {
       buildPark(block);
     } else if (block.kind === "stadium") {
       buildStadium(block);
-    } else if (block.kind === "parking" || block.kind === "beach-parking") {
+    } else if (block.kind === "parking") {
       buildParking(block);
     } else if (block.kind === "school") {
       buildSchool(block);

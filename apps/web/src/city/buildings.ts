@@ -19,6 +19,35 @@ export interface BuildingInstance {
   seed: number;
 }
 
+export interface BuildingFootprint {
+  group: string;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  rotationY: number;
+  baseY: number;
+  height: number;
+}
+
+export const buildingFootprints: BuildingFootprint[] = [];
+
+export function footprintCorners(footprint: BuildingFootprint) {
+  const cos = Math.cos(footprint.rotationY);
+  const sin = Math.sin(footprint.rotationY);
+  const halfW = footprint.width * 0.5;
+  const halfD = footprint.depth * 0.5;
+  return [
+    { x: -halfW, z: -halfD },
+    { x: halfW, z: -halfD },
+    { x: halfW, z: halfD },
+    { x: -halfW, z: halfD },
+  ].map((corner) => ({
+    x: footprint.x + corner.x * cos + corner.z * sin,
+    z: footprint.z - corner.x * sin + corner.z * cos,
+  }));
+}
+
 export interface RoofInstance {
   x: number;
   y: number;
@@ -162,8 +191,43 @@ export class BuildingBatch {
   readonly walls: BuildingInstance[] = [];
   readonly roofs: RoofInstance[] = [];
 
-  addBox(instance: BuildingInstance) {
+  addBox(instance: BuildingInstance, footprintGroup?: string) {
     this.walls.push(instance);
+    if (footprintGroup) {
+      buildingFootprints.push({
+        group: footprintGroup,
+        x: instance.x,
+        z: instance.z,
+        width: instance.width,
+        depth: instance.depth,
+        rotationY: instance.rotationY,
+        baseY: instance.y,
+        height: instance.height,
+      });
+    }
+  }
+
+  addPlinth(lot: Lot, width: number, depth: number, centre: { x: number; z: number }, color: THREE.Color) {
+    const rise = lot.groundMaxY - lot.groundMinY;
+    if (rise < 0.3) {
+      return lot.groundY;
+    }
+    const top = lot.groundMaxY + 0.2;
+    this.walls.push({
+      x: centre.x,
+      y: lot.groundMinY - 0.4,
+      z: centre.z,
+      width: width + 0.6,
+      height: top - lot.groundMinY + 0.4,
+      depth: depth + 0.6,
+      rotationY: lot.rotationY,
+      color,
+      floorHeight: 40,
+      windowWidth: 1,
+      windowRatio: 0,
+      seed: 0,
+    });
+    return top;
   }
 
   addRoof(instance: RoofInstance) {
@@ -242,12 +306,13 @@ export function buildLotBuildings(lots: Lot[]) {
     const style = DISTRICT_STYLES[lot.district];
     const seed = hash2(lot.center.x, lot.center.z, 7) * 1000;
     const floors = Math.round(style.floors[0] + random() * (style.floors[1] - style.floors[0]));
-    const baseY = lot.groundY;
     const rotation = lot.rotationY;
     const centerAt = (frontDistance: number) => ({
       x: lot.front.x + lot.inward.x * frontDistance,
       z: lot.front.z + lot.inward.z * frontDistance,
     });
+    const plinthColor = color.setHex(0x8f8c84).clone();
+    const groundedBase = (width: number, depth: number, centre: { x: number; z: number }) => batch.addPlinth(lot, width, depth, centre, plinthColor);
 
     if (style.building === "tower") {
       const closeness = 1 - Math.min(1, Math.hypot(lot.center.x - DOWNTOWN_CENTER.x, lot.center.z - DOWNTOWN_CENTER.z) / 240);
@@ -257,11 +322,12 @@ export function buildLotBuildings(lots: Lot[]) {
       const podiumDepth = lot.depth - 2;
       const podiumCenter = centerAt(podiumDepth * 0.5 + 1);
       const podiumColor = color.setHex(pick(WALL_PALETTES.concrete, random)).clone();
+      const baseY = groundedBase(podiumWidth, podiumDepth, podiumCenter);
       batch.addBox({
         x: podiumCenter.x, y: baseY, z: podiumCenter.z,
         width: podiumWidth, height: podiumFloors * 4.2, depth: podiumDepth, rotationY: rotation,
         color: podiumColor, floorHeight: 4.2, windowWidth: 3.2, windowRatio: 0.62, seed,
-      });
+      }, lot.id);
       const towerWidth = Math.max(14, podiumWidth - 6 - random() * 4);
       const towerDepth = Math.max(14, podiumDepth - 6 - random() * 4);
       const towerCenter = centerAt(podiumDepth * 0.5 + 1);
@@ -288,10 +354,11 @@ export function buildLotBuildings(lots: Lot[]) {
       const paletteName = random() > 0.6 ? "brick" : random() > 0.5 ? "plaster" : "concrete";
       const wallColor = color.setHex(pick(WALL_PALETTES[paletteName], random)).clone();
       const height = floors * style.floorHeight;
+      const baseY = groundedBase(width, depth, center);
       batch.addBox({
         x: center.x, y: baseY, z: center.z, width, height, depth, rotationY: rotation,
         color: wallColor, floorHeight: style.floorHeight, windowWidth: 2.4 + random() * 0.8, windowRatio: 0.42 + random() * 0.18, seed,
-      });
+      }, lot.id);
       if (random() > 0.45) {
         batch.addBox({
           x: center.x, y: baseY + height, z: center.z,
@@ -307,10 +374,11 @@ export function buildLotBuildings(lots: Lot[]) {
       const paletteName = random() > 0.5 ? "plaster" : random() > 0.4 ? "white" : "brick";
       const wallColor = color.setHex(pick(WALL_PALETTES[paletteName], random)).clone();
       const height = floors * style.floorHeight;
+      const baseY = groundedBase(width, depth, center);
       batch.addBox({
         x: center.x, y: baseY, z: center.z, width, height, depth, rotationY: rotation,
         color: wallColor, floorHeight: style.floorHeight, windowWidth: 2.6, windowRatio: 0.38, seed,
-      });
+      }, lot.id);
       const roofColor = color.setHex(random() > 0.5 ? 0x8d4a3b : random() > 0.5 ? 0x5b5f66 : 0xa35f45).clone();
       batch.addRoof({
         x: center.x, y: baseY + height, z: center.z,
@@ -324,10 +392,11 @@ export function buildLotBuildings(lots: Lot[]) {
       const center = centerAt(depth * 0.5 + 8);
       const wallColor = color.setHex(pick(WALL_PALETTES.metal, random)).clone();
       const height = 8 + random() * 5;
+      const baseY = groundedBase(width, depth, center);
       batch.addBox({
         x: center.x, y: baseY, z: center.z, width, height, depth, rotationY: rotation,
         color: wallColor, floorHeight: height, windowWidth: 4, windowRatio: 0.28, seed,
-      });
+      }, lot.id);
       if (random() > 0.4) {
         const officeWidth = Math.min(16, width * 0.4);
         const officeCenter = centerAt(4.2);
@@ -335,7 +404,7 @@ export function buildLotBuildings(lots: Lot[]) {
           x: officeCenter.x + lot.tangent.x * (width * 0.5 - officeWidth * 0.5), y: baseY, z: officeCenter.z + lot.tangent.z * (width * 0.5 - officeWidth * 0.5),
           width: officeWidth, height: 6.6, depth: 8, rotationY: rotation,
           color: color.setHex(pick(WALL_PALETTES.plaster, random)).clone(), floorHeight: 3.3, windowWidth: 2.4, windowRatio: 0.5, seed: seed + 2,
-        });
+        }, lot.id);
         count += 1;
       }
       count += 1;
@@ -345,10 +414,11 @@ export function buildLotBuildings(lots: Lot[]) {
       const center = centerAt(depth * 0.5 + 1.5);
       const wallColor = color.setHex(pick(random() > 0.5 ? WALL_PALETTES.white : WALL_PALETTES.glass, random)).clone();
       const height = floors * style.floorHeight;
+      const baseY = groundedBase(width, depth, center);
       batch.addBox({
         x: center.x, y: baseY, z: center.z, width, height, depth, rotationY: rotation,
         color: wallColor, floorHeight: style.floorHeight, windowWidth: 3.0, windowRatio: 0.7, seed,
-      });
+      }, lot.id);
       batch.addBox({
         x: center.x, y: baseY + height, z: center.z,
         width: width * 0.5, height: 3.2, depth: depth * 0.5, rotationY: rotation,
