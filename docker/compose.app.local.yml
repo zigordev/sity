@@ -1,0 +1,36 @@
+name: sity-app-local
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+    labels: 'com.docker.compose.project,com.docker.compose.service'
+
+services:
+  sity_web:
+    security_opt:
+      - no-new-privileges:true
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      target: local
+    restart: unless-stopped
+    ports:
+      - '3031:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    logging: *default-logging
+    networks:
+      sity_shared:
+        aliases:
+          - sity-web
+
+networks:
+  sity_shared:
+    name: platform_ops_shared
+    external: true
