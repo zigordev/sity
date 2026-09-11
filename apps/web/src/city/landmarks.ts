@@ -212,9 +212,18 @@ function buildStadium(block: SpecialBlock) {
   const hole = new THREE.Path();
   hole.absellipse(0, 0, innerX, innerZ, 0, Math.PI * 2, true, 0);
   shape.holes.push(hole);
-  const stands = new THREE.ExtrudeGeometry(shape, { depth: 17, bevelEnabled: false, curveSegments: 48 });
+  let base = y;
+  for (let index = 0; index < 32; index += 1) {
+    const angle = (index / 32) * Math.PI * 2;
+    base = Math.min(
+      base,
+      groundSurfaceYAt(cx + Math.cos(angle) * outerX, cz + Math.sin(angle) * outerZ),
+      groundSurfaceYAt(cx + Math.cos(angle) * innerX, cz + Math.sin(angle) * innerZ),
+    );
+  }
+  const stands = new THREE.ExtrudeGeometry(shape, { depth: y + 17 - base + 1, bevelEnabled: false, curveSegments: 48 });
   stands.rotateX(-Math.PI / 2);
-  stands.translate(cx, y + 17, cz);
+  stands.translate(cx, base - 1, cz);
   addMesh(`${block.id}-stands`, stands, stadiumMaterial);
   const roofShape = new THREE.Shape();
   roofShape.absellipse(0, 0, outerX + 2, outerZ + 2, 0, Math.PI * 2, false, 0);
@@ -223,7 +232,7 @@ function buildStadium(block: SpecialBlock) {
   roofShape.holes.push(roofHole);
   const roof = new THREE.ExtrudeGeometry(roofShape, { depth: 1.4, bevelEnabled: false, curveSegments: 48 });
   roof.rotateX(-Math.PI / 2);
-  roof.translate(cx, y + 20.4, cz);
+  roof.translate(cx, y + 17, cz);
   addMesh(`${block.id}-roof`, roof, stadiumRoofMaterial);
   const pitch = new THREE.BoxGeometry(innerX * 1.5, 0.3, innerZ * 1.4);
   pitch.translate(cx, y + 0.35, cz);
