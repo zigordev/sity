@@ -1,0 +1,266 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HUSKY: '0'
+
+jobs:
+  quality:
+    name: Quality (Format + Lint + Typecheck + Unit + Build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests with coverage
+        run: npm run test:cov
+
+      - name: Upload web coverage
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-web
+          path: apps/web/coverage
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Build
+        run: npm run build
+
+  secrets-scan:
+    name: Secrets Scan (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+
+  web-smoke:
+    name: Web Smoke (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+
+      - name: Build web image
+        run: docker build -f apps/web/Dockerfile --target prod -t sity-web:ci .
+
+      - name: Run container
+        run: |
+          docker run -d --name sity-web -p 3031:8080 sity-web:ci
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3031/health > /dev/null; then
+              echo "web is up"; exit 0
+            fi
+            sleep 2
+          done
+          echo "web did not become healthy" >&2
+          docker logs sity-web >&2
+          exit 1
+
+      - name: Smoke probes
+        run: |
+          set -euo pipefail
+          curl -sf http://localhost:3031/health | grep -q '"status":"ok"'
+          body="$(curl -sf http://localhost:3031/)"
+          for needle in "Sity" "toggle-lanes" "route-random" "scene-stats"; do
+            printf '%s' "$body" | grep -qF "$needle" || { echo "missing: $needle" >&2; exit 1; }
+          done
+          curl -sf http://localhost:3031/assets/sity/asset-manifest.json | grep -q '"units": "meters"'
+
+      - name: Container logs (on failure)
+        if: failure()
+        run: docker logs sity-web || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f sity-web || true
+
+  e2e-render:
+    name: Render, routing and accessibility (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Build
+        run: npm run build
+
+      - name: Run render, routing and accessibility suite
+        run: npm run e2e
+        working-directory: apps/web
+
+      - name: Upload render screenshots
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: render-verification
+          path: apps/web/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report-web
+          path: apps/web/playwright-report
+          retention-days: 7
+          if-no-files-found: ignore
+
+  security-supply-chain:
+    name: Security + Supply Chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Licence check (prod dependencies)
+        run: node ./scripts/check-licences.mjs .
+
+      - name: Audit dependencies (prod only, high+)
+        run: npm run audit:prod:gate
+
+      - name: Build prod image
+        run: docker build -f apps/web/Dockerfile --target prod -t sity-web:ci .
+
+      - name: Prepare artifacts dir
+        run: mkdir -p artifacts
+
+      - name: Generate SBOM (web image)
+        uses: anchore/sbom-action@aa80c8c5bd439a416a62804f2151ab38c671a638 # v0
+        with:
+          image: sity-web:ci
+          format: spdx-json
+          output-file: artifacts/sbom-sity-web.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Validate SBOM file
+        run: |
+          test -s artifacts/sbom-sity-web.spdx.json
+          jq -e '.spdxVersion and (.packages | type == "array")' artifacts/sbom-sity-web.spdx.json
+
+      - name: Upload SBOM (web image)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-web
+          path: artifacts/sbom-sity-web.spdx.json
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Trivy report (web image)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: sity-web:ci
+          format: json
+          output: artifacts/trivy-sity-web.json
+          exit-code: '0'
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+      - name: Upload Trivy report (web image)
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: trivy-web
+          path: artifacts/trivy-sity-web.json
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Trivy scan (web image)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: sity-web:ci
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.99.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+
+      - name: Scan
+        run: |
+          semgrep scan \
+            --config p/default \
+            --config p/secrets \
+            --exclude-rule dockerfile.security.missing-user.missing-user \
+            --exclude-rule dockerfile.security.missing-user-entrypoint.missing-user-entrypoint \
+            --exclude-rule yaml.docker-compose.security.writable-filesystem-service.writable-filesystem-service \
+            --exclude-rule yaml.docker-compose.security.no-new-privileges.no-new-privileges \
+            --exclude-rule bash.lang.security.ifs-tampering.ifs-tampering \
+            --exclude-rule generic.secrets.security.detected-generic-secret.detected-generic-secret \
+            --exclude-rule javascript.lang.security.audit.prototype-pollution.prototype-pollution-loop.prototype-pollution-loop \
+            --exclude-rule javascript.lang.security.audit.incomplete-sanitization.incomplete-sanitization \
+            --exclude-rule javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp \
+            --error \
+            --metrics=off

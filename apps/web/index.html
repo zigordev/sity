@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <title>Sity</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene" aria-label="Sity city and road simulation scene"></canvas>
+      <aside class="compass" aria-label="Compass, north points to the top of the map">
+        <div class="compass-ring">
+          <div id="compass-needle" class="compass-needle" aria-hidden="true">
+            <span>N</span>
+          </div>
+          <span class="compass-center" aria-hidden="true"></span>
+        </div>
+      </aside>
+      <aside class="axis-scale" aria-label="Scale axes in meters">
+        <div class="axis-scale-stage" aria-hidden="true">
+          <span class="axis-scale-center"></span>
+          <span id="scale-axis-x" class="axis-scale-arm axis-scale-x"><span>X</span></span>
+          <span id="scale-axis-y" class="axis-scale-arm axis-scale-y"><span>Y</span></span>
+          <span id="scale-axis-z" class="axis-scale-arm axis-scale-z"><span>Z</span></span>
+        </div>
+        <div class="axis-scale-measures">
+          <span><strong>X</strong><span id="scale-measure-x"></span></span>
+          <span><strong>Y</strong><span id="scale-measure-y"></span></span>
+          <span><strong>Z</strong><span id="scale-measure-z"></span></span>
+        </div>
+      </aside>
+      <aside class="layer-panel" aria-label="Scene controls">
+        <div class="layer-panel-title">Sity</div>
+        <div class="layer-panel-subtitle">Coastal city and road network</div>
+        <section class="panel-section">
+          <div class="panel-section-title">Layers</div>
+          <label><input id="toggle-natural" type="checkbox" checked /><span>Terrain &amp; water</span></label>
+          <label><input id="toggle-artificial" type="checkbox" checked /><span>Waterfront</span></label>
+          <label><input id="toggle-roads" type="checkbox" checked /><span>Roads</span></label>
+          <label><input id="toggle-furniture" type="checkbox" checked /><span>Signals, lamps &amp; signs</span></label>
+          <label><input id="toggle-buildings" type="checkbox" checked /><span>Buildings</span></label>
+          <label><input id="toggle-vegetation" type="checkbox" checked /><span>Vegetation</span></label>
+          <label><input id="toggle-vehicles" type="checkbox" checked /><span>Parked vehicles</span></label>
+          <label><input id="toggle-lanes" type="checkbox" /><span>Lane graph</span></label>
+          <label><input id="toggle-help" type="checkbox" checked /><span>Compass &amp; scale</span></label>
+        </section>
+        <section class="panel-section">
+          <div class="panel-section-title">Views</div>
+          <div class="view-buttons" id="view-buttons"></div>
+        </section>
+        <section class="panel-section">
+          <div class="panel-section-title">Routing</div>
+          <div class="route-buttons">
+            <button id="route-random" type="button">Random route</button>
+            <button id="route-clear" type="button">Clear</button>
+          </div>
+          <div id="route-info" class="route-info">Pick a random route to trace it through the lane graph.</div>
+        </section>
+        <section class="panel-section">
+          <div class="panel-section-title">Scene</div>
+          <dl class="stats" id="scene-stats"></dl>
+        </section>
+      </aside>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
