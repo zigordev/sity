@@ -580,6 +580,19 @@ export class NetworkBuilder {
       samples.forEach((sample, index) => {
         sample.y = profile[index];
       });
+      const tunnelStations = samples.filter((sample) => sample.structure === "tunnel").map((sample) => sample.s);
+      for (const sample of samples) {
+        if (sample.structure !== "ground") {
+          continue;
+        }
+        const nearTunnel = tunnelStations.some((station) => {
+          const gap = Math.abs(sample.s - station);
+          return (closed ? Math.min(gap, totalLength - gap) : gap) < 120;
+        });
+        if (!nearTunnel) {
+          sample.y = Math.max(sample.y, sample.terrainY + this.roadLift - 0.15);
+        }
+      }
     } else {
       let profile = samples.map((sample) => sample.terrainY + this.roadLift);
       profile = smoothProfile(profile, spacing, 22, 2);

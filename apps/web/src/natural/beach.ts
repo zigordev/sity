@@ -23,6 +23,7 @@ import {
 import { boxBetween, mergeAll } from "../roads/geometry";
 import { MaterialBatch } from "../geometry/batch";
 import { mainBoundaryMaxZ, riverMouth } from "../world/frame";
+import { pavementClearance } from "../world/occupancy";
 
 const surfaceY = COAST_SURFACE_Y;
 
@@ -34,7 +35,37 @@ function hash(a: number, b: number) {
 const batch = new MaterialBatch(artificialElements, "beach");
 
 function addMerged(_name: string, parts: THREE.BufferGeometry[], material: THREE.Material, castShadow = true) {
+  if (parts.length === 0) {
+    return;
+  }
   batch.add(material, parts, castShadow);
+}
+
+function clear(x: number, z: number, radius: number) {
+  return pavementClearance(x, z, radius + 30) >= radius + 0.5;
+}
+
+function promenadeRuns(beachInnerX: number, fromZ: number, toZ: number) {
+  const runs: Array<[number, number]> = [];
+  let start: number | undefined;
+  let previous = fromZ;
+  for (let z = fromZ; z <= toZ + 0.01; z += 2) {
+    const open = clear(beachInnerX + 3.2, z, 3.4);
+    if (open && start === undefined) {
+      start = z;
+    }
+    if (!open && start !== undefined) {
+      if (previous - start >= 8) {
+        runs.push([start, previous]);
+      }
+      start = undefined;
+    }
+    previous = z;
+  }
+  if (start !== undefined && previous - start >= 8) {
+    runs.push([start, previous]);
+  }
+  return runs;
 }
 
 function instanced(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, matrices: THREE.Matrix4[], castShadow = true) {
@@ -68,36 +99,42 @@ function placement(x: number, y: number, z: number, rotationY = 0, scale = 1) {
 function addPromenade(beachInnerX: number, fromZ: number, toZ: number) {
   const width = 6;
   const centreX = beachInnerX + width * 0.5;
-  addMerged("beach-promenade", [boxAt(width, 0.5, toZ - fromZ, centreX, surfaceY - 0.15, (fromZ + toZ) * 0.5)], sidewalkMaterial, false);
-  addMerged("beach-promenade-kerb", [boxAt(0.4, 0.62, toZ - fromZ, beachInnerX + width + 0.2, surfaceY - 0.2, (fromZ + toZ) * 0.5)], roadStructureConcreteMaterial, false);
+  const railX = beachInnerX + width - 0.3;
+  const decks: THREE.BufferGeometry[] = [];
+  const kerbs: THREE.BufferGeometry[] = [];
   const posts: THREE.BufferGeometry[] = [];
   const rails: THREE.BufferGeometry[] = [];
-  const railX = beachInnerX + width - 0.3;
-  for (let z = fromZ + 2; z <= toZ - 2; z += 4) {
-    posts.push(boxAt(0.1, 1.1, 0.1, railX, surfaceY + 0.35, z));
-  }
-  for (const lift of [0.75, 1.35]) {
-    rails.push(boxBetween({ x: railX, y: surfaceY + 0.35, z: fromZ + 2 }, { x: railX, y: surfaceY + 0.35, z: toZ - 2 }, 0.06, 0.06, lift - 0.03));
-  }
-  addMerged("beach-promenade-rail-posts", posts, guardrailMaterial);
-  addMerged("beach-promenade-rails", rails, guardrailMaterial, false);
   const lampPoles: THREE.BufferGeometry[] = [];
   const lampHeads: THREE.BufferGeometry[] = [];
   const benches: THREE.BufferGeometry[] = [];
-  for (let z = fromZ + 16; z < toZ - 10; z += 30) {
-    const pole = new THREE.CylinderGeometry(0.07, 0.11, 4.6, 8);
-    pole.translate(beachInnerX + 1.0, surfaceY + 2.65, z);
-    lampPoles.push(pole);
-    const head = new THREE.SphereGeometry(0.32, 10, 8);
-    head.translate(beachInnerX + 1.0, surfaceY + 5.1, z);
-    lampHeads.push(head);
-    if (Math.floor(z / 30) % 2 === 0) {
-      benches.push(boxAt(0.45, 0.08, 1.8, beachInnerX + 1.6, surfaceY + 0.8, z + 12));
-      benches.push(boxAt(0.06, 0.4, 1.8, beachInnerX + 1.4, surfaceY + 0.88, z + 12));
-      benches.push(boxAt(0.5, 0.44, 0.08, beachInnerX + 1.6, surfaceY + 0.35, z + 12 - 0.8));
-      benches.push(boxAt(0.5, 0.44, 0.08, beachInnerX + 1.6, surfaceY + 0.35, z + 12 + 0.8));
+  for (const [runFrom, runTo] of promenadeRuns(beachInnerX, fromZ, toZ)) {
+    decks.push(boxAt(width, 0.5, runTo - runFrom, centreX, surfaceY - 0.15, (runFrom + runTo) * 0.5));
+    kerbs.push(boxAt(0.4, 0.62, runTo - runFrom, beachInnerX + width + 0.2, surfaceY - 0.2, (runFrom + runTo) * 0.5));
+    for (let z = runFrom + 2; z <= runTo - 2; z += 4) {
+      posts.push(boxAt(0.1, 1.1, 0.1, railX, surfaceY + 0.35, z));
+    }
+    for (const lift of [0.75, 1.35]) {
+      rails.push(boxBetween({ x: railX, y: surfaceY + 0.35, z: runFrom + 2 }, { x: railX, y: surfaceY + 0.35, z: runTo - 2 }, 0.06, 0.06, lift - 0.03));
+    }
+    for (let z = runFrom + 16; z < runTo - 10; z += 30) {
+      const pole = new THREE.CylinderGeometry(0.07, 0.11, 4.6, 8);
+      pole.translate(beachInnerX + 1.0, surfaceY + 2.65, z);
+      lampPoles.push(pole);
+      const head = new THREE.SphereGeometry(0.32, 10, 8);
+      head.translate(beachInnerX + 1.0, surfaceY + 5.1, z);
+      lampHeads.push(head);
+      if (Math.floor(z / 30) % 2 === 0 && z + 13 < runTo) {
+        benches.push(boxAt(0.45, 0.08, 1.8, beachInnerX + 1.6, surfaceY + 0.8, z + 12));
+        benches.push(boxAt(0.06, 0.4, 1.8, beachInnerX + 1.4, surfaceY + 0.88, z + 12));
+        benches.push(boxAt(0.5, 0.44, 0.08, beachInnerX + 1.6, surfaceY + 0.35, z + 12 - 0.8));
+        benches.push(boxAt(0.5, 0.44, 0.08, beachInnerX + 1.6, surfaceY + 0.35, z + 12 + 0.8));
+      }
     }
   }
+  addMerged("beach-promenade", decks, sidewalkMaterial, false);
+  addMerged("beach-promenade-kerb", kerbs, roadStructureConcreteMaterial, false);
+  addMerged("beach-promenade-rail-posts", posts, guardrailMaterial);
+  addMerged("beach-promenade-rails", rails, guardrailMaterial, false);
   addMerged("beach-promenade-lamp-poles", lampPoles, lampPoleMaterial);
   addMerged("beach-promenade-lamp-heads", lampHeads, lampHeadMaterial, false);
   addMerged("beach-promenade-benches", benches, dockMaterial);
@@ -110,6 +147,9 @@ function addBeachHuts(beachInnerX: number, fromZ: number, count: number) {
   for (let index = 0; index < count; index += 1) {
     const z = fromZ + index * 5.2;
     const x = beachInnerX + 11;
+    if (!clear(x, z, 2.6)) {
+      continue;
+    }
     byMaterial[index % hutMaterials.length].push(placement(x, surfaceY + 1.35, z));
     roofs.push(placement(x, surfaceY + 2.7, z));
   }
@@ -127,6 +167,9 @@ function addKiosks(beachInnerX: number, zs: number[]) {
   const counters: THREE.BufferGeometry[] = [];
   for (const z of zs) {
     const x = beachInnerX + 12;
+    if (!clear(x + 2, z, 5)) {
+      continue;
+    }
     walls.push(boxAt(5, 3.2, 4, x, surfaceY, z));
     awnings.push(boxAt(6.2, 0.12, 2.4, x + 3.1, surfaceY + 2.9, z));
     counters.push(boxAt(0.6, 1.1, 4.2, x + 2.8, surfaceY, z));
@@ -152,6 +195,9 @@ function addUmbrellaGrid(beachInnerX: number, fromZ: number, toZ: number) {
       }
       const x = beachInnerX + 26 + column * 11 + (hash(column, z) - 0.5) * 4;
       const zz = z + (hash(z * 3, column) - 0.5) * 4;
+      if (!clear(x, zz, 2.4)) {
+        continue;
+      }
       poles.push(placement(x, surfaceY + 1.15, zz));
       canopies[Math.floor(hash(x, zz) * canopies.length) % canopies.length].push(placement(x, surfaceY + 2.35, zz, hash(zz, x) * Math.PI));
       for (const side of [-1, 1]) {
@@ -160,7 +206,9 @@ function addUmbrellaGrid(beachInnerX: number, fromZ: number, toZ: number) {
     }
     if (hash(z, 9) > 0.5) {
       const tx = beachInnerX + 40 + hash(z, 4) * 40;
-      towels[Math.floor(hash(tx, z) * towels.length) % towels.length].push(placement(tx, surfaceY + 0.06, z + 6, hash(z, tx) * Math.PI));
+      if (clear(tx, z + 6, 1.2)) {
+        towels[Math.floor(hash(tx, z) * towels.length) % towels.length].push(placement(tx, surfaceY + 0.06, z + 6, hash(z, tx) * Math.PI));
+      }
     }
   }
   instanced("beach-umbrella-poles", new THREE.CylinderGeometry(0.035, 0.045, 2.3, 6), dockMaterial, poles, false);
@@ -185,6 +233,9 @@ function addVolleyballCourts(beachInnerX: number, zs: number[]) {
   const nets: THREE.BufferGeometry[] = [];
   for (const z of zs) {
     const cx = beachInnerX + 48;
+    if (!clear(cx, z, 9.5)) {
+      continue;
+    }
     lines.push(boxAt(0.1, 0.03, 16, cx - 4, surfaceY + 0.05, z));
     lines.push(boxAt(0.1, 0.03, 16, cx + 4, surfaceY + 0.05, z));
     lines.push(boxAt(8, 0.03, 0.1, cx, surfaceY + 0.05, z - 8));
@@ -205,6 +256,9 @@ function addLifeguardTowers(beachInnerX: number, zs: number[]) {
   const roofs: THREE.BufferGeometry[] = [];
   for (const z of zs) {
     const x = beachInnerX + 66;
+    if (!clear(x, z, 4)) {
+      continue;
+    }
     for (const dx of [-1.3, 1.3]) {
       for (const dz of [-1.3, 1.3]) {
         wood.push(boxAt(0.2, 3.2, 0.2, x + dx, surfaceY, z + dz));
@@ -233,15 +287,23 @@ function addShowersBinsFlags(beachInnerX: number, fromZ: number, toZ: number) {
   const flags: THREE.BufferGeometry[] = [];
   for (let z = fromZ + 40; z < toZ - 20; z += 200) {
     const x = beachInnerX + 9;
+    if (!clear(x, z, 1)) {
+      continue;
+    }
     showers.push(boxAt(0.12, 2.6, 0.12, x, surfaceY, z));
     showers.push(boxAt(0.5, 0.08, 0.5, x, surfaceY + 2.55, z));
     showers.push(boxAt(1.4, 0.06, 1.4, x, surfaceY + 0.02, z));
   }
   for (let z = fromZ + 10; z < toZ - 10; z += 45) {
-    bins.push(placement(beachInnerX + 7.2, surfaceY + 0.45, z));
+    if (clear(beachInnerX + 7.2, z, 0.5)) {
+      bins.push(placement(beachInnerX + 7.2, surfaceY + 0.45, z));
+    }
   }
   for (let z = fromZ + 90; z < toZ - 40; z += 240) {
     const x = beachInnerX + 70;
+    if (!clear(x, z, 1)) {
+      continue;
+    }
     const pole = new THREE.CylinderGeometry(0.05, 0.07, 4.2, 6);
     pole.translate(x, surfaceY + 2.1, z);
     flagPoles.push(pole);
@@ -258,7 +320,9 @@ function addBoardwalks(beachInnerX: number, fromZ: number, toZ: number) {
   const plank = new THREE.BoxGeometry(0.28, 0.05, 2.4);
   for (let z = fromZ + 60; z < toZ - 30; z += 200) {
     for (let x = beachInnerX + 7; x < beachInnerX + 62; x += 0.34) {
-      planks.push(placement(x, surfaceY + 0.06, z));
+      if (clear(x, z, 1.3)) {
+        planks.push(placement(x, surfaceY + 0.06, z));
+      }
     }
   }
   instanced("beach-boardwalks", plank, woodPierMaterial, planks, false);
@@ -266,6 +330,9 @@ function addBoardwalks(beachInnerX: number, fromZ: number, toZ: number) {
 
 function addBeachBar(beachInnerX: number, z: number) {
   const x = beachInnerX + 22;
+  if (!clear(x, z + 4, 14)) {
+    return;
+  }
   addMerged("beach-bar-building", [boxAt(10, 3.4, 8, x, surfaceY, z)], craneWhiteMaterial);
   const roof = new THREE.ConeGeometry(8.5, 3.2, 8);
   roof.translate(x, surfaceY + 5.0, z);

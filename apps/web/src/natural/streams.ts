@@ -151,9 +151,10 @@ function addCulverts() {
       const flow = { x: next.x - previous.x, z: next.z - previous.z };
       const length = Math.hypot(flow.x, flow.z) || 1;
       const heading = Math.atan2(flow.x / length, flow.z / length);
-      const span = road.width + road.cls.sidewalkWidth * 2 + 4;
-      const bedY = groundSurfaceBaseYAt(sample.x, sample.z) - stream.depth;
+      const crossing = Math.max(0.35, Math.abs((flow.x / length) * sample.tz - (flow.z / length) * sample.tx));
+      const span = (2 * (road.halfWidth + road.cls.sidewalkWidth + 2)) / crossing;
       const radius = Math.min(stream.width * 0.45, 1.1);
+      const bedY = Math.min(groundSurfaceBaseYAt(sample.x, sample.z) - stream.depth, sample.y - 0.55 - radius * 2 - 0.2);
       const pipe = new THREE.CylinderGeometry(radius, radius, span, 12, 1, true);
       pipe.rotateX(Math.PI / 2);
       pipe.rotateY(heading);

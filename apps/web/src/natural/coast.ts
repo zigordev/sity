@@ -11,7 +11,7 @@ import { addCargoPortYard } from "../waterfront/port";
 import { addPierAmusements } from "../waterfront/pier";
 import { addHumanScaleBeach } from "./beach";
 import { mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, riverEstuaryStart, riverMouth, riverPath, sampleGroundPath } from "../world/frame";
-import { corridorClearance, zoneAt } from "../world/occupancy";
+import { corridorClearance, zoneAt, pavementClearance } from "../world/occupancy";
 
 export let lowlandGroundCoverInstanceCount = 0;
 
@@ -183,6 +183,9 @@ export function addNaturalRockClusters() {
       x: point.x + tangent.normalX * offset * sideSign,
       z: point.z + tangent.normalZ * offset * sideSign,
     };
+    if (pavementClearance(rockPoint.x, rockPoint.z, 30) < 4) {
+      continue;
+    }
 
     placements.push({
       x: rockPoint.x,

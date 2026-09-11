@@ -32,6 +32,7 @@ import { camera, composer, controls, renderer, scene } from "./render/context";
 import { estimateVisibleSceneRenderStats } from "./render/stats";
 import { roadGraph, roadNetwork } from "./roads/build";
 import { roadSideSlots } from "./roads/render";
+import { auditRoadClearance, type RoadClearanceAudit } from "./roads/clearance";
 import type { NetworkInvariants, NetworkStats, RoadGraph, RouteResult } from "./roads/graph";
 import { compassBearingDegrees, scaleAxisAnglesDegrees } from "./ui/overlays";
 import { flyToViewId, getLayerVisibility, lastRoute, setLaneOverlayVisible, showRandomRoute } from "./ui/panel";
@@ -84,6 +85,7 @@ declare global {
         busStopCount: number;
       };
       auditCity: () => ReturnType<typeof auditCity>;
+      auditRoadClearance: () => RoadClearanceAudit;
       listDeadEnds: () => Array<{ nodeId: string; roadId: string; destination?: string; edge: boolean }>;
       getCategoryVisibility: () => ReturnType<typeof getLayerVisibility>;
       getCompassBearingDegrees: () => number;
@@ -180,6 +182,7 @@ window.__SITY_DEBUG__ = {
     };
   },
   auditCity: () => auditCity(),
+  auditRoadClearance: () => auditRoadClearance(),
   listDeadEnds: () => {
     const ends: Array<{ nodeId: string; roadId: string; destination?: string; edge: boolean }> = [];
     for (const node of roadNetwork.nodes.values()) {

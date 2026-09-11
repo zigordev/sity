@@ -142,6 +142,9 @@ test.describe('scene', () => {
     expect(city.buildingCount).toBeGreaterThanOrEqual(250);
     expect(city.treeCount).toBeGreaterThanOrEqual(12000);
 
+    const clearance = await page.evaluate(() => window.__SITY_DEBUG__.auditRoadClearance());
+    expect(clearance.pavementCells).toBeGreaterThan(500_000);
+    expect(clearance.offenders.map((offender) => `${offender.group}/${offender.mesh} visible=${offender.visibleCells} flush=${offender.flushCells} overhead=${offender.overheadCells}`)).toEqual([]);
     const audit = await page.evaluate(() => window.__SITY_DEBUG__.auditCity());
     expect(audit.footprintCount).toBeGreaterThanOrEqual(200);
     expect(audit.overlappingPairs).toEqual([]);

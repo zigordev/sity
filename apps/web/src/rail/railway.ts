@@ -46,35 +46,61 @@ export const RAILWAY_LINES: RailwayLine[] = [
 const BALLAST_HALF_WIDTH_M = 3.2;
 const TRACK_LIFT_M = 0.12;
 
+const RAIL_EMBED_M = 0.33;
+const TRACK_STEP_M = 2;
+
+function crossingSites() {
+  return [...roadNetwork.junctions.values()]
+    .filter((junction) => junction.control === "crossing")
+    .map((junction) => ({
+      x: junction.center.x,
+      z: junction.center.z,
+      y: junction.center.y,
+      reach: Math.max(...junction.ends.map((end) => end.halfWidth)) + 2.5,
+    }));
+}
+
 function trackStations(line: RailwayLine): Station[] {
+  const crossings = crossingSites();
   const points: Vec3[] = [];
+  const push = (x: number, z: number) => {
+    let y = groundSurfaceYAt(x, z) + TRACK_LIFT_M;
+    for (const crossing of crossings) {
+      const distance = Math.hypot(x - crossing.x, z - crossing.z);
+      if (distance >= crossing.reach + 10) {
+        continue;
+      }
+      const weight = distance <= crossing.reach ? 1 : 1 - (distance - crossing.reach) / 10;
+      y = Math.min(y, THREE.MathUtils.lerp(y, crossing.y - RAIL_EMBED_M, weight));
+    }
+    points.push({ x, y, z });
+  };
   for (let index = 0; index < line.points.length - 1; index += 1) {
     const a = line.points[index];
     const b = line.points[index + 1];
     const length = Math.hypot(b.x - a.x, b.z - a.z);
-    const steps = Math.max(1, Math.ceil(length / 10));
+    const steps = Math.max(1, Math.ceil(length / TRACK_STEP_M));
     for (let step = 0; step < steps; step += 1) {
       const t = step / steps;
-      const x = a.x + (b.x - a.x) * t;
-      const z = a.z + (b.z - a.z) * t;
-      points.push({ x, y: groundSurfaceYAt(x, z) + TRACK_LIFT_M, z });
+      push(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t);
     }
   }
   const last = line.points[line.points.length - 1];
-  points.push({ x: last.x, y: groundSurfaceYAt(last.x, last.z) + TRACK_LIFT_M, z: last.z });
+  push(last.x, last.z);
   return polylineStations(points);
 }
 
 function addMerged(name: string, parts: THREE.BufferGeometry[], material: THREE.Material, castShadow = true) {
   const merged = mergeAll(parts);
   if (!merged) {
-    return;
+    return undefined;
   }
   const mesh = new THREE.Mesh(merged, material);
   mesh.name = name;
   mesh.castShadow = castShadow;
   mesh.receiveShadow = true;
   artificialElements.add(mesh);
+  return mesh;
 }
 
 function stationAt(stations: Station[], s: number) {
@@ -317,15 +343,18 @@ function addLevelCrossings() {
     const first = junction.ends[0];
     const deck = new THREE.BoxGeometry(8.8, 0.14, first.halfWidth * 2 + 0.4);
     deck.rotateY(Math.atan2(first.dir.x, first.dir.z) + Math.PI / 2);
-    deck.translate(centre.x, centre.y + 0.05, centre.z);
+    deck.translate(centre.x, centre.y - 0.058, centre.z);
     decks.push(deck);
   }
   addMerged("level-crossing-posts", posts, lampPoleMaterial);
   addMerged("level-crossing-arms", arms, barrierArmMaterial);
   addMerged("level-crossing-crossbucks", crossbucks, crossbuckMaterial, false);
   addMerged("level-crossing-lights", lights, signalLensRedMaterial, false);
-  addMerged("level-crossing-markings", markings, roadMarkingWhiteMaterial, false);
-  addMerged("level-crossing-decks", decks, sleeperMaterial, false);
+  for (const mesh of [addMerged("level-crossing-markings", markings, roadMarkingWhiteMaterial, false), addMerged("level-crossing-decks", decks, sleeperMaterial, false)]) {
+    if (mesh) {
+      mesh.userData.roadClearanceIgnore = true;
+    }
+  }
 }
 
 export function addRailway() {

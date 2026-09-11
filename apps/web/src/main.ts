@@ -8,6 +8,7 @@ import { addCoastalEstuary, addCoastalEstuaryBanks, addCoastalShallowWaterShelf,
 import { animationClock, camera, composer, controls } from "./render/context";
 import { sharedSeaWaterMaterial } from "./render/materials";
 import { addRoadNetworkMeshes } from "./roads/render";
+import { PavementFloor } from "./roads/pavement";
 import { addCity, registerCityZones } from "./city";
 import { addCountryside } from "./city/countryside";
 import { addRailway, registerRailwayCorridors } from "./rail/railway";
@@ -31,7 +32,9 @@ registerRailwayCorridors();
 
 registerStreamCuts();
 
-addMicroDisplacedGrassTerrain();
+const pavementFloor = new PavementFloor();
+
+addMicroDisplacedGrassTerrain(pavementFloor);
 
 addSimpleMainlandCoast();
 
@@ -41,11 +44,11 @@ addLowlandGroundCover();
 
 addNaturalDetailPass();
 
-addMountainFoothillBlend();
+addMountainFoothillBlend(pavementFloor);
 
-addClippedMountain();
+addClippedMountain(pavementFloor);
 
-addSnowCappedMountain();
+addSnowCappedMountain(pavementFloor);
 
 addSnowCapOverlay();
 
@@ -53,7 +56,7 @@ addMountainStrataRidges();
 
 addMountainTalusFields();
 
-addReservoirBasin();
+addReservoirBasin(pavementFloor);
 
 addDamSideShoreClosures();
 
@@ -65,9 +68,9 @@ addDam();
 
 addDamDetail();
 
-addRiverChannelBanks();
+addRiverChannelBanks(pavementFloor);
 
-addCoastalEstuaryBanks();
+addCoastalEstuaryBanks(pavementFloor);
 
 addRiver();
 

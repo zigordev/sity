@@ -9,6 +9,7 @@ import { BuildingBatch } from "./buildings";
 import { createRandom } from "./random";
 import { addTree } from "./vegetation";
 import { roadSideSlots } from "../roads/render";
+import { corridorClearance, pavementClearance } from "../world/occupancy";
 
 const plasterMaterial = new THREE.MeshStandardMaterial({ color: 0xe6dfcf, roughness: 0.8 });
 const stoneMaterial = new THREE.MeshStandardMaterial({ color: 0xd9d3c4, roughness: 0.85 });
@@ -21,6 +22,10 @@ const benchMaterial = new THREE.MeshStandardMaterial({ color: 0x7a5a3b, roughnes
 const spireMaterial = new THREE.MeshStandardMaterial({ color: 0x5c6670, roughness: 0.6, metalness: 0.3 });
 
 const benchPlacements: Array<{ x: number; y: number; z: number; rotationY: number }> = [];
+
+function clearOfRoads(x: number, z: number, radius: number) {
+  return corridorClearance(x, z, radius + 30) >= radius + 1;
+}
 
 function addMesh(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, castShadow = true) {
   const mesh = new THREE.Mesh(geometry, material);
@@ -316,15 +321,20 @@ function buildStation(block: SpecialBlock) {
   const concourse = new THREE.BoxGeometry(westX - 531.5 + 1, 0.5, 60);
   concourse.translate((westX + 531.5) * 0.5, y + 0.7, cz);
   addMesh(`${block.id}-concourse`, concourse, sidewalkMaterial, false);
-  const canopy = new THREE.BoxGeometry(14, 0.2, 30);
-  canopy.translate(eastX + 5, y + 4.6, cz);
+  let reach = 12;
+  while (reach > 3 && Array.from({ length: 13 }, (_, index) => -15 + index * 2.5).some((dz) => pavementClearance(eastX + reach + 0.3, cz + dz, 30) < 0.6)) {
+    reach -= 0.5;
+  }
+  const canopyCenterX = eastX - 2 + (reach + 2) * 0.5;
+  const canopy = new THREE.BoxGeometry(reach + 2, 0.2, 30);
+  canopy.translate(canopyCenterX, y + 4.6, cz);
   addMesh(`${block.id}-entrance-canopy`, canopy, craneWhiteMaterial);
-  const canopyGlass = new THREE.BoxGeometry(13.6, 0.06, 29.6);
-  canopyGlass.translate(eastX + 5, y + 4.72, cz);
+  const canopyGlass = new THREE.BoxGeometry(reach + 1.6, 0.06, 29.6);
+  canopyGlass.translate(canopyCenterX, y + 4.72, cz);
   addMesh(`${block.id}-entrance-glass`, canopyGlass, shelterGlassMaterial, false);
   for (const dz of [-13, 0, 13]) {
     const post = new THREE.CylinderGeometry(0.16, 0.16, 4.6, 10);
-    post.translate(eastX + 11, y + 2.3, cz + dz);
+    post.translate(eastX + reach - 1, y + 2.3, cz + dz);
     addMesh(`${block.id}-canopy-post-${dz}`, post, lampPoleMaterial);
   }
 }
@@ -478,6 +488,9 @@ function groundPatch(block: SpecialBlock, material: THREE.Material, name: string
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
       const a = row * stride + column;
+      if ([a, a + 1, a + stride, a + stride + 1].some((corner) => corridorClearance(positions[corner * 3], positions[corner * 3 + 2], 30) < 1)) {
+        continue;
+      }
       indices.push(a, a + stride, a + 1, a + 1, a + stride, a + stride + 1);
     }
   }
@@ -506,6 +519,9 @@ function buildGolf(block: SpecialBlock) {
     const gx = block.minX + 16 + random() * (block.maxX - block.minX - 32);
     const gz = block.minZ + 44 + random() * (block.maxZ - block.minZ - 60);
     const gy = groundSurfaceYAt(gx, gz);
+    if (!clearOfRoads(gx, gz, 20)) {
+      continue;
+    }
     const green = new THREE.CylinderGeometry(9 + random() * 4, 9 + random() * 4, 0.12, 24);
     green.scale(1 + random() * 0.4, 1, 1);
     green.translate(gx, gy + 0.14, gz);
@@ -519,6 +535,9 @@ function buildGolf(block: SpecialBlock) {
     for (let bunker = 0; bunker < 2; bunker += 1) {
       const bx = gx + (random() - 0.5) * 30;
       const bz = gz + (random() - 0.5) * 30;
+      if (!clearOfRoads(bx, bz, 12)) {
+        continue;
+      }
       const sand = new THREE.CylinderGeometry(4 + random() * 3, 4 + random() * 3, 0.1, 16);
       sand.scale(1 + random() * 0.6, 1, 1);
       sand.rotateY(random() * Math.PI);
@@ -545,12 +564,18 @@ function buildGolf(block: SpecialBlock) {
   for (let index = 0; index < 26; index += 1) {
     const tx = block.minX + 6 + random() * (block.maxX - block.minX - 12);
     const tz = block.minZ + 36 + random() * (block.maxZ - block.minZ - 42);
+    if (!clearOfRoads(tx, tz, 5)) {
+      continue;
+    }
     addTree(random() > 0.5 ? "broadleaf" : "conifer", tx, tz, groundSurfaceYAt(tx, tz), 0.8 + random() * 0.6, 72);
+  }
+  const px = block.minX + 30;
+  const pz = block.maxZ - 30;
+  if (!clearOfRoads(px, pz, 17)) {
+    return;
   }
   const pond = new THREE.CircleGeometry(16, 32);
   pond.rotateX(-Math.PI / 2);
-  const px = block.maxX - 40;
-  const pz = block.maxZ - 50;
   pond.translate(px, groundSurfaceYAt(px, pz) + 0.09, pz);
   const pondMesh = new THREE.Mesh(pond, sharedSeaWaterMaterial);
   pondMesh.name = `${block.id}-pond`;
@@ -567,9 +592,27 @@ function buildCampsite(block: SpecialBlock) {
   reception.commit(`${block.id}-buildings`);
   const tracks: THREE.BufferGeometry[] = [];
   for (let z = block.minZ + 30; z < block.maxZ - 10; z += 34) {
-    const track = new THREE.BoxGeometry(block.maxX - block.minX - 12, 0.1, 3.2);
-    track.translate((block.minX + block.maxX) * 0.5, groundSurfaceYAt((block.minX + block.maxX) * 0.5, z) + 0.1, z);
-    tracks.push(track);
+    const xs: number[] = [];
+    for (let x = block.minX + 6; x <= block.maxX - 6 + 0.01; x += 3) {
+      xs.push(x);
+    }
+    let runStart = -1;
+    xs.forEach((x, index) => {
+      const open = clearOfRoads(x, z, 2);
+      if (open && runStart < 0) {
+        runStart = index;
+      }
+      if (runStart >= 0 && (!open || index === xs.length - 1)) {
+        const from = xs[runStart];
+        const to = open ? x : xs[index - 1];
+        if (to - from >= 6) {
+          const track = new THREE.BoxGeometry(to - from, 0.1, 3.2);
+          track.translate((from + to) * 0.5, groundSurfaceYAt((from + to) * 0.5, z) + 0.1, z);
+          tracks.push(track);
+        }
+        runStart = -1;
+      }
+    });
   }
   const trackMerged = mergeAll(tracks);
   if (trackMerged) {
@@ -585,6 +628,9 @@ function buildCampsite(block: SpecialBlock) {
       }
       const px = x + (random() - 0.5) * 4;
       const pz = z + (random() - 0.5) * 4;
+      if (!clearOfRoads(px, pz, 4)) {
+        continue;
+      }
       const py = groundSurfaceYAt(px, pz);
       if (roll < 0.7) {
         const tent = new THREE.ConeGeometry(2.2, 2.0, 4);
@@ -610,6 +656,9 @@ function buildCampsite(block: SpecialBlock) {
   for (let index = 0; index < 18; index += 1) {
     const tx = block.minX + 4 + random() * (block.maxX - block.minX - 8);
     const tz = block.minZ + 24 + random() * (block.maxZ - block.minZ - 30);
+    if (!clearOfRoads(tx, tz, 5)) {
+      continue;
+    }
     addTree("broadleaf", tx, tz, groundSurfaceYAt(tx, tz), 0.7 + random() * 0.5, 83);
   }
 }
@@ -716,7 +765,7 @@ function buildSawmill(block: SpecialBlock) {
   chimney.translate(cx + 6, y + 7, cz + 30);
   addMesh(`${block.id}-chimney`, chimney, stoneMaterial);
   for (let index = 0; index < 4; index += 1) {
-    addTree("pine", block.maxX - 4, block.minZ + 10 + index * 26, y, 1.1, 51);
+    addTree("pine", block.minX + 3, block.minZ + 10 + index * 26, y, 1.1, 51);
   }
 }
 

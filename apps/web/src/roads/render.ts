@@ -166,7 +166,7 @@ function structureRuns(road: BuiltRoad): Array<{ kind: StructureKind; s0: number
   return runs;
 }
 
-function deckThickness(road: BuiltRoad, kind: StructureKind) {
+export function deckThickness(road: BuiltRoad, kind: StructureKind) {
   if (kind === "viaduct" || kind === "bridge") {
     return road.spec.class === "highway" ? 1.8 : road.spec.class === "ramp" ? 1.2 : 1.4;
   }

@@ -117,6 +117,15 @@ and stop, yield, speed, school and no-entry signs. Destination pads get parking
 stalls, kerbed footways, lamps, fences with barrier arms and a gatehouse, bus shelters or a railed lookout
 deck according to their kind.
 
+Pavement stays clean. `apps/web/src/roads/pavement.ts` lists every paved triangle once (carriageways,
+sidewalks, junction pads and corners, roundabout rings, destination pads, bridge decks), and the terrain skin,
+both mountain grids, the river and estuary banks and the reservoir basin are clamped below any pavement they
+overlap. Everything placed near a road checks its own footprint against the pavement corridors: trees by crown
+radius, fields by exact rectangle clearance, golf, campsite and beach props by their extent, culverts by the
+crossing angle, and railway track is embedded flush through level crossings. `auditRoadClearance()` rasterises
+the pavement at 1 m and reports any non-road triangle that is flush with it, above it or hanging over it; the
+Playwright suite requires an empty report.
+
 The terrain follows the roads rather than the other way round: cut points are registered along the
 centreline and both pavement edges of every road (so a road on a side slope gets a cutting on the uphill
 side and an embankment on the downhill side), the cutting continues a few metres into each tunnel so the
@@ -180,7 +189,7 @@ and bus stops (shelter, bench, flag) stand every 240 m along arterials and colle
 ## Debug API
 
 `window.__SITY_DEBUG__` exposes the site layout, natural features (including the sampled river path),
-road graph statistics and invariants, the exported graph (`exportRoadGraph`), `findRoute`,
+road graph statistics and invariants, the exported graph (`exportRoadGraph`), `auditRoadClearance`, `findRoute`,
 `showRandomRoute`, `getRoadSamples`, `listDeadEnds`, `probeTerrain` (ground, cut limit and mountain heights
 at a point), city statistics, `auditCity`, layer visibility, performance estimates, camera views
 (`listViews`, `flyTo`, `setView`) and the lane overlay toggle. The Playwright suite drives the scene

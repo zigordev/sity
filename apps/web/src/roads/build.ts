@@ -18,7 +18,7 @@ for (const road of roadNetwork.roads.values()) {
   const groundRuns: Array<Array<{ x: number; z: number }>> = [];
   let current: Array<{ x: number; z: number }> = [];
   for (const sample of road.samples) {
-    if (sample.structure === "ground") {
+    if (sample.structure !== "tunnel") {
       current.push({ x: sample.x, z: sample.z });
     } else if (current.length > 1) {
       groundRuns.push(current);
@@ -95,6 +95,14 @@ for (const junction of roadNetwork.junctions.values()) {
         `pavement:destination:${junction.nodeId}`,
       );
     }
+    if (spec.kind !== "culdesac") {
+      const edge = half + 0.8;
+      const footwayAt = (along: number, across: number) => ({
+        x: origin.x + axis.x * along + destination.right.x * across,
+        z: origin.z + axis.z * along + destination.right.z * across,
+      });
+      registerCorridor([footwayAt(4, edge), footwayAt(reach + 0.8, edge), footwayAt(reach + 0.8, -edge), footwayAt(4, -edge)], 1.0, `pavement:destination:${junction.nodeId}`);
+    }
     const roadY = origin.y - ROAD_SURFACE_LIFT_M - 0.35;
     for (let along = 0; along <= reach; along += 6) {
       for (let across = -half; across <= half; across += 6) {
@@ -111,5 +119,10 @@ for (const roundabout of roadNetwork.roundabouts.values()) {
     [roundabout.center, { x: roundabout.center.x + 0.01, z: roundabout.center.z }],
     roundabout.ringRadius + roundabout.ringWidth + 14,
     `roundabout:${roundabout.nodeId}`,
+  );
+  registerCorridor(
+    [roundabout.center, { x: roundabout.center.x + 0.01, z: roundabout.center.z }],
+    roundabout.ringRadius + roundabout.ringWidth * 0.5 + 0.5,
+    `pavement:roundabout:${roundabout.nodeId}`,
   );
 }

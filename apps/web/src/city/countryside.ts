@@ -3,7 +3,7 @@ import { groundSurfaceYAt } from "../natural/terrain";
 import { cityElements } from "../render/context";
 import { fieldMaterials, gravelVergeMaterial } from "../render/materials";
 import { mergeAll } from "../roads/geometry";
-import { corridorClearance } from "../world/occupancy";
+import { corridorClearance, rectClearance } from "../world/occupancy";
 import { rasterValueAt } from "./lots";
 import { districtAt } from "./districts";
 import { WESTERN_COUNTRY_SPLIT_Z_M } from "../config/constants";
@@ -70,7 +70,7 @@ function addHedgerow(field: Field, random: () => number) {
   ];
   for (const [a, b] of perimeter) {
     const length = Math.hypot(b.x - a.x, b.z - a.z);
-    for (let s = 4; s < length - 3; s += 7 + random() * 4) {
+    for (let s = 4; s < length - 3; s += 9 + random() * 5) {
       const t = s / length;
       const x = a.x + (b.x - a.x) * t + (random() - 0.5) * 1.5;
       const z = a.z + (b.z - a.z) * t + (random() - 0.5) * 1.5;
@@ -82,8 +82,7 @@ function addHedgerow(field: Field, random: () => number) {
   }
 }
 
-function addFurrows(field: Field) {
-  const parts: THREE.BufferGeometry[] = [];
+function addFurrows(field: Field, parts: THREE.BufferGeometry[]) {
   for (let z = field.minZ + 4; z < field.maxZ - 2; z += 4.5) {
     const columns = Math.ceil((field.maxX - field.minX - 8) / 12);
     for (let column = 0; column < columns; column += 1) {
@@ -96,14 +95,6 @@ function addFurrows(field: Field) {
       parts.push(geometry);
     }
   }
-  const merged = mergeAll(parts);
-  if (!merged) {
-    return;
-  }
-  const mesh = new THREE.Mesh(merged, gravelVergeMaterial);
-  mesh.name = "field-furrows";
-  mesh.receiveShadow = true;
-  cityElements.add(mesh);
 }
 
 function addFarmstead() {
@@ -128,6 +119,58 @@ function addFarmstead() {
   }
 }
 
+const FIELD_VERGE_M = 8;
+const MIN_FIELD_SIZE_M = 40;
+const FIELD_GAP_M = 6;
+
+function fieldIsClear(minX: number, maxX: number, minZ: number, maxZ: number) {
+  if (rectClearance(minX, maxX, minZ, maxZ) < FIELD_VERGE_M) {
+    return false;
+  }
+  for (let row = 0; row <= 8; row += 1) {
+    for (let column = 0; column <= 8; column += 1) {
+      const x = minX + ((maxX - minX) * column) / 8;
+      const z = minZ + ((maxZ - minZ) * row) / 8;
+      if (rasterValueAt(x, z) !== 0 || districtAt(x, z)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function fitFields(bounds: { minX: number; maxX: number; minZ: number; maxZ: number }, random: () => number, fields: Field[], template?: Field, depth = 0) {
+  const { minX, maxX, minZ, maxZ } = bounds;
+  if (maxX - minX < MIN_FIELD_SIZE_M || maxZ - minZ < MIN_FIELD_SIZE_M) {
+    return;
+  }
+  if (fieldIsClear(minX, maxX, minZ, maxZ)) {
+    fields.push({
+      minX,
+      maxX,
+      minZ,
+      maxZ,
+      material: template ? template.material : Math.floor(random() * 4),
+      furrows: template ? template.furrows : random() > 0.6,
+    });
+    return;
+  }
+  if (depth >= 3) {
+    return;
+  }
+  const midX = (minX + maxX) * 0.5;
+  const midZ = (minZ + maxZ) * 0.5;
+  const half = FIELD_GAP_M * 0.5;
+  for (const [x0, x1, z0, z1] of [
+    [minX, midX - half, minZ, midZ - half],
+    [midX + half, maxX, minZ, midZ - half],
+    [minX, midX - half, midZ + half, maxZ],
+    [midX + half, maxX, midZ + half, maxZ],
+  ]) {
+    fitFields({ minX: x0, maxX: x1, minZ: z0, maxZ: z1 }, random, fields, template, depth + 1);
+  }
+}
+
 function generateFarmland(random: () => number) {
   const fields: Field[] = [];
   const minX = -3380;
@@ -140,37 +183,25 @@ function generateFarmland(random: () => number) {
   const cellD = (maxZ - minZ) / rows;
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
-      const x0 = minX + column * cellW + 14;
-      const x1 = minX + (column + 1) * cellW - 14;
-      const z0 = minZ + row * cellD + 14;
-      const z1 = minZ + (row + 1) * cellD - 14;
-      const candidate: Field = { minX: x0, maxX: x1, minZ: z0, maxZ: z1, material: (column * 3 + row * 5 + Math.floor(random() * 2)) % 4, furrows: random() > 0.62 };
-      const probes = [
-        [x0, z0], [x1, z0], [x0, z1], [x1, z1], [(x0 + x1) * 0.5, (z0 + z1) * 0.5], [(x0 + x1) * 0.5, z0], [(x0 + x1) * 0.5, z1], [x0, (z0 + z1) * 0.5], [x1, (z0 + z1) * 0.5],
-      ];
-      let blocked = false;
-      for (const [px, pz] of probes) {
-        if (corridorClearance(px, pz, 80) < 12 || rasterValueAt(px, pz) !== 0 || districtAt(px, pz)) {
-          blocked = true;
-          break;
-        }
-      }
-      if (blocked) {
-        for (const [sx0, sx1, sz0, sz1] of [
-          [x0, (x0 + x1) * 0.5 - 8, z0, (z0 + z1) * 0.5 - 8],
-          [(x0 + x1) * 0.5 + 8, x1, z0, (z0 + z1) * 0.5 - 8],
-          [x0, (x0 + x1) * 0.5 - 8, (z0 + z1) * 0.5 + 8, z1],
-          [(x0 + x1) * 0.5 + 8, x1, (z0 + z1) * 0.5 + 8, z1],
-        ]) {
-          const subProbes = [[sx0, sz0], [sx1, sz0], [sx0, sz1], [sx1, sz1], [(sx0 + sx1) * 0.5, (sz0 + sz1) * 0.5]];
-          if (subProbes.every(([px, pz]) => corridorClearance(px, pz, 80) >= 12 && rasterValueAt(px, pz) === 0 && !districtAt(px, pz))) {
-            fields.push({ minX: sx0, maxX: sx1, minZ: sz0, maxZ: sz1, material: Math.floor(random() * 4), furrows: random() > 0.6 });
-          }
-        }
-        continue;
-      }
-      fields.push(candidate);
+      fitFields(
+        {
+          minX: minX + column * cellW + 14,
+          maxX: minX + (column + 1) * cellW - 14,
+          minZ: minZ + row * cellD + 14,
+          maxZ: minZ + (row + 1) * cellD - 14,
+        },
+        random,
+        fields,
+      );
     }
+  }
+  return fields;
+}
+
+function fitStaticFields(random: () => number) {
+  const fields: Field[] = [];
+  for (const field of FIELDS) {
+    fitFields(field, random, fields, field);
   }
   return fields;
 }
@@ -211,6 +242,9 @@ function addFarmyard(x: number, z: number, rotation: number, seed: number) {
   }
   for (let index = 0; index < 4; index += 1) {
     const point = at(-30 + random() * 60, 26 + random() * 10);
+    if (corridorClearance(point.x, point.z, 40) < 5) {
+      continue;
+    }
     addTree("broadleaf", point.x, point.z, groundSurfaceYAt(point.x, point.z), 0.9 + random() * 0.5, seed + 9);
   }
 }
@@ -226,15 +260,31 @@ export function addCountryside() {
   ] as const) {
     addFarmyard(x, z, rotation, seed);
   }
-  [...FIELDS, ...farmland].forEach((field, index) => {
-    const mesh = new THREE.Mesh(fieldGeometry(field), fieldMaterials[field.material % fieldMaterials.length]);
-    mesh.name = `field-${index + 1}`;
-    mesh.receiveShadow = true;
-    cityElements.add(mesh);
+  const surfaces: THREE.BufferGeometry[][] = fieldMaterials.map(() => []);
+  const furrows: THREE.BufferGeometry[] = [];
+  for (const field of [...fitStaticFields(random), ...farmland]) {
+    surfaces[field.material % fieldMaterials.length].push(fieldGeometry(field));
     addHedgerow(field, random);
     if (field.furrows) {
-      addFurrows(field);
+      addFurrows(field, furrows);
     }
+  }
+  surfaces.forEach((parts, material) => {
+    const merged = mergeAll(parts);
+    if (!merged) {
+      return;
+    }
+    const mesh = new THREE.Mesh(merged, fieldMaterials[material]);
+    mesh.name = `fields-${material + 1}`;
+    mesh.receiveShadow = true;
+    cityElements.add(mesh);
   });
+  const furrowMerged = mergeAll(furrows);
+  if (furrowMerged) {
+    const mesh = new THREE.Mesh(furrowMerged, gravelVergeMaterial);
+    mesh.name = "field-furrows";
+    mesh.receiveShadow = true;
+    cityElements.add(mesh);
+  }
   addFarmstead();
 }

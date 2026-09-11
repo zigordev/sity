@@ -472,8 +472,9 @@ node("market-oneway-s", 240, -160, { control: signal });
 node("market-oneway-n", 320, -160, { control: signal });
 node("market-park", 450, -160, { control: signal });
 node("market-x520", 520, -160, { control: stop });
+node("market-riverside", 600, -160, { control: stop });
 node("pier-end", 788, -160, { destination: { kind: "parking", width: 34, depth: 24, name: "Pier car park" } });
-chain("market-street", "collector", ["market-w-end", "market-west", "market-main", "market-oneway-s", "market-oneway-n", "market-park", "market-x520", "blvd-market"], 1, 1, { name: "Market Street", parkingLane: true });
+chain("market-street", "collector", ["market-w-end", "market-west", "market-main", "market-oneway-s", "market-oneway-n", "market-park", "market-x520", "market-riverside", "blvd-market"], 1, 1, { name: "Market Street", parkingLane: true });
 road("pier-access", "local", "blvd-market", "pier-end", 1, 1, { name: "Pier Access" });
 node("marina-end", 800, -400, { destination: { kind: "parking", width: 40, depth: 48, name: "Marina car park" } });
 road("marina-access", "local", "blvd-station", "marina-end", 1, 1, { name: "Marina Access" });
@@ -493,7 +494,7 @@ road("riverside-4", "collector", "riverside-main", "riverside-oneway-s", 1, 1, {
 road("riverside-5", "collector", "riverside-oneway-s", "riverside-oneway-n", 1, 1, { name: "Riverside Drive" });
 road("riverside-6", "collector", "riverside-oneway-n", "riverside-park", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 390, z: 300 }] });
 road("riverside-7", "collector", "riverside-park", "riverside-x520", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 500, z: 270 }] });
-road("riverside-8", "collector", "riverside-x520", "blvd-market", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 620, z: 120 }, { x: 700, z: -40 }] });
+road("riverside-8", "collector", "riverside-x520", "market-riverside", 1, 1, { name: "Riverside Drive", cycleTrack: true, via: [{ x: 548, z: 150 }, { x: 590, z: 20 }] });
 
 node("bridge-west", 40, 30, { control: stop });
 node("bridge-main", 120, 30, { control: signal });
@@ -583,7 +584,11 @@ node("southbank-x30", 30, 520, { control: stop });
 node("southbank-x220", 220, 520, { control: stop });
 node("southbank-x320", 320, 520, { control: stop });
 chain("southbank-road", "collector", ["southbank-w-end", "southbank-x-60", "southbank-x30", "main-southbank", "southbank-x220", "southbank-x320", "blvd-southbank"], 1, 1, (index) =>
-  index === 4 ? { name: "South Bank Road", speedKph: 30 } : { name: "South Bank Road" },
+  index === 4
+    ? { name: "South Bank Road", speedKph: 30 }
+    : index === 5
+      ? { name: "South Bank Road", via: [{ x: 360, z: 552 }, { x: 446, z: 572 }, { x: 530, z: 556 }] }
+      : { name: "South Bank Road" },
 );
 
 node("orchard-x-60", -60, 640, { control: stop });

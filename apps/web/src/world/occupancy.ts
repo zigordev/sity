@@ -74,7 +74,7 @@ function segmentDistance(x: number, z: number, segment: Segment) {
   return Math.hypot(x - px, z - pz);
 }
 
-export function corridorClearance(x: number, z: number, searchRadius = 90, tagPrefix?: string) {
+export function corridorClearance(x: number, z: number, searchRadius = 90, tagPrefix?: string, excludePrefix?: string) {
   let best = Number.POSITIVE_INFINITY;
   const reach = Math.ceil(searchRadius / BUCKET_M);
   const ix = bucketIndex(x);
@@ -94,10 +94,80 @@ export function corridorClearance(x: number, z: number, searchRadius = 90, tagPr
         if (tagPrefix && !segment.tag.startsWith(tagPrefix)) {
           continue;
         }
+        if (excludePrefix && segment.tag.startsWith(excludePrefix)) {
+          continue;
+        }
         const distance = segmentDistance(x, z, segment) - segment.halfWidth;
         if (distance < best) {
           best = distance;
         }
+      }
+    }
+  }
+  return best;
+}
+
+export function pavementClearance(x: number, z: number, searchRadius = 60) {
+  return corridorClearance(x, z, searchRadius, "pavement:", "pavement:railway:");
+}
+
+function pointSegmentDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number) {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lengthSq = dx * dx + dz * dz;
+  const t = lengthSq > 0.0001 ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / lengthSq)) : 0;
+  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+}
+
+function segmentsCross(ax: number, az: number, bx: number, bz: number, cx: number, cz: number, dx: number, dz: number) {
+  const orient = (px: number, pz: number, qx: number, qz: number, rx: number, rz: number) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+  const o1 = orient(ax, az, bx, bz, cx, cz);
+  const o2 = orient(ax, az, bx, bz, dx, dz);
+  const o3 = orient(cx, cz, dx, dz, ax, az);
+  const o4 = orient(cx, cz, dx, dz, bx, bz);
+  return o1 * o2 <= 0 && o3 * o4 <= 0;
+}
+
+function segmentRectDistance(segment: Segment, minX: number, maxX: number, minZ: number, maxZ: number) {
+  const outside = (px: number, pz: number) => Math.hypot(Math.max(minX - px, 0, px - maxX), Math.max(minZ - pz, 0, pz - maxZ));
+  const fromA = outside(segment.ax, segment.az);
+  const fromB = outside(segment.bx, segment.bz);
+  if (fromA === 0 || fromB === 0) {
+    return 0;
+  }
+  const corners: Array<[number, number]> = [
+    [minX, minZ],
+    [maxX, minZ],
+    [maxX, maxZ],
+    [minX, maxZ],
+  ];
+  let best = Math.min(fromA, fromB);
+  for (let index = 0; index < 4; index += 1) {
+    const [cx, cz] = corners[index];
+    const [nx, nz] = corners[(index + 1) % 4];
+    if (segmentsCross(segment.ax, segment.az, segment.bx, segment.bz, cx, cz, nx, nz)) {
+      return 0;
+    }
+    best = Math.min(best, pointSegmentDistance(cx, cz, segment.ax, segment.az, segment.bx, segment.bz));
+  }
+  return best;
+}
+
+export function rectClearance(minX: number, maxX: number, minZ: number, maxZ: number) {
+  let best = Number.POSITIVE_INFINITY;
+  const seen = new Set<Segment>();
+  for (let ix = bucketIndex(minX) - 1; ix <= bucketIndex(maxX) + 1; ix += 1) {
+    for (let iz = bucketIndex(minZ) - 1; iz <= bucketIndex(maxZ) + 1; iz += 1) {
+      const list = buckets.get(bucketKey(ix, iz));
+      if (!list) {
+        continue;
+      }
+      for (const segment of list) {
+        if (seen.has(segment)) {
+          continue;
+        }
+        seen.add(segment);
+        best = Math.min(best, segmentRectDistance(segment, minX, maxX, minZ, maxZ) - segment.halfWidth);
       }
     }
   }

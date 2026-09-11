@@ -1,5 +1,6 @@
-import { corridorClearance, cutLimitAt, terrainReliefFactor, zoneFlattenFactor } from "../world/occupancy";
+import { corridorClearance, cutLimitAt, pavementClearance, terrainReliefFactor, zoneFlattenFactor } from "../world/occupancy";
 import * as THREE from "three";
+import type { PavementFloor } from "../roads/pavement";
 import { BEACH_INLAND_WIDTH_M, GRASS_SURFACE_Y, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAINLAND_Y, MAIN_BOUNDARY_TERRAIN_THICKNESS_M, MICRO_TERRAIN_CELL_M, MICRO_TERRAIN_HEIGHT_M, MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, MOUNTAIN_GRID_SEGMENTS, MOUNTAIN_HEIGHT_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, MOUNTAIN_STRATA_RIDGE_COUNT, MOUNTAIN_SURFACE_LIFT_M, MOUNTAIN_TALUS_BOULDER_COUNT, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, RIVER_WIDTH_M, SNOW_MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M, SNOW_MOUNTAIN_GRID_SEGMENTS, SNOW_MOUNTAIN_HEIGHT_M, SNOW_MOUNTAIN_MIN_RENDER_HEIGHT_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M, SNOW_MOUNTAIN_SNOWLINE_M, SNOW_MOUNTAIN_STRATA_RIDGE_COUNT, SNOW_MOUNTAIN_SURFACE_LIFT_M, SNOW_MOUNTAIN_TALUS_BOULDER_COUNT, WESTERN_COUNTRY_SPLIT_Z_M, WESTERN_FARM_HILL_HEIGHT_M, WESTERN_FOREST_HILL_HEIGHT_M, WESTERN_HILLS_START_X_M } from "../config/constants";
 import { addFlatPlane, addLayeredPolygonVolume, addPlanarXZUVs, addScaledSphereInstances, distanceToPath2D, isInsideBounds } from "../geometry/helpers";
 import { GroundPathPoint, ScaledXYZPlacement } from "../geometry/types";
@@ -64,7 +65,7 @@ export function groundSurfaceYAt(x: number, z: number) {
   return Math.min(groundSurfaceBaseYAt(x, z), cutLimitAt(x, z));
 }
 
-export function addMicroDisplacedGrassTerrain() {
+export function addMicroDisplacedGrassTerrain(floor?: PavementFloor) {
   const westX = mainBoundaryMinX + 1;
   const eastX = mainBoundaryMaxX - BEACH_INLAND_WIDTH_M - 55;
   const southZ = mainBoundaryMinZ + 1;
@@ -88,6 +89,8 @@ export function addMicroDisplacedGrassTerrain() {
       uvs.push(x / 95, z / 95);
     }
   }
+
+  floor?.clampGrid(westX, eastX, southZ, northZ, columns, rows, positions);
 
   const rowStride = columns + 1;
   for (let row = 0; row < rows; row += 1) {
@@ -214,7 +217,7 @@ export function addMountainContourRidges(
       const point = { x, z };
       const height = heightAt(x, z);
 
-      if (isInsideBounds(point, bounds, 4) && height > minHeight) {
+      if (isInsideBounds(point, bounds, 4) && height > minHeight && pavementClearance(x, z, 30) > 4) {
         run.push(new THREE.Vector3(x, yAt(x, z, height) + 1.2, z));
         continue;
       }
@@ -481,6 +484,7 @@ export function setMountainVertexColor(height: number, color: THREE.Color) {
 
 export function createMountainSurfaceGeometry(
   shouldIncludeCell: (cellMaxHeight: number) => boolean,
+  floor?: PavementFloor,
 ) {
   const positions: number[] = [];
   const colors: number[] = [];
@@ -512,6 +516,16 @@ export function createMountainSurfaceGeometry(
     }
   }
 
+  floor?.clampGrid(
+    mountainVisibleBounds.minX,
+    mountainVisibleBounds.maxX,
+    mountainVisibleBounds.minZ,
+    mountainVisibleBounds.maxZ,
+    MOUNTAIN_GRID_SEGMENTS,
+    MOUNTAIN_GRID_SEGMENTS,
+    positions,
+  );
+
   const rowLength = MOUNTAIN_GRID_SEGMENTS + 1;
   for (let zIndex = 0; zIndex < MOUNTAIN_GRID_SEGMENTS; zIndex += 1) {
     for (let xIndex = 0; xIndex < MOUNTAIN_GRID_SEGMENTS; xIndex += 1) {
@@ -535,12 +549,13 @@ export function createMountainSurfaceGeometry(
   return geometry;
 }
 
-export function addMountainFoothillBlend() {
+export function addMountainFoothillBlend(floor?: PavementFloor) {
   const foothill = new THREE.Mesh(
     createMountainSurfaceGeometry(
       (cellMaxHeight) =>
         cellMaxHeight > TERRAIN_SKIN_MAX_MOUNTAIN_HEIGHT_M - 6 &&
         cellMaxHeight <= MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M,
+      floor,
     ),
     mountainMaterial,
   );
@@ -550,10 +565,11 @@ export function addMountainFoothillBlend() {
   naturalElements.add(foothill);
 }
 
-export function addClippedMountain() {
+export function addClippedMountain(floor?: PavementFloor) {
   const mountain = new THREE.Mesh(
     createMountainSurfaceGeometry(
       (cellMaxHeight) => cellMaxHeight > MOUNTAIN_FOOTHILL_BLEND_HEIGHT_M,
+      floor,
     ),
     mountainMaterial,
   );
@@ -742,7 +758,7 @@ export function setSnowMountainVertexColor(height: number, color: THREE.Color) {
   color.copy(snowShadowColor).lerp(snowColor, snowBlend);
 }
 
-export function createSnowMountainSurfaceGeometry() {
+export function createSnowMountainSurfaceGeometry(floor?: PavementFloor) {
   const positions: number[] = [];
   const colors: number[] = [];
   const indices: number[] = [];
@@ -773,6 +789,16 @@ export function createSnowMountainSurfaceGeometry() {
     }
   }
 
+  floor?.clampGrid(
+    snowMountainVisibleBounds.minX,
+    snowMountainVisibleBounds.maxX,
+    snowMountainVisibleBounds.minZ,
+    snowMountainVisibleBounds.maxZ,
+    SNOW_MOUNTAIN_GRID_SEGMENTS,
+    SNOW_MOUNTAIN_GRID_SEGMENTS,
+    positions,
+  );
+
   const rowLength = SNOW_MOUNTAIN_GRID_SEGMENTS + 1;
   for (let zIndex = 0; zIndex < SNOW_MOUNTAIN_GRID_SEGMENTS; zIndex += 1) {
     for (let xIndex = 0; xIndex < SNOW_MOUNTAIN_GRID_SEGMENTS; xIndex += 1) {
@@ -796,8 +822,8 @@ export function createSnowMountainSurfaceGeometry() {
   return geometry;
 }
 
-export function addSnowCappedMountain() {
-  const mountain = new THREE.Mesh(createSnowMountainSurfaceGeometry(), mountainMaterial);
+export function addSnowCappedMountain(floor?: PavementFloor) {
+  const mountain = new THREE.Mesh(createSnowMountainSurfaceGeometry(floor), mountainMaterial);
   mountain.name = "higher-snow-capped-southwest-mountain";
   mountain.renderOrder = 4;
   mountain.castShadow = false;
