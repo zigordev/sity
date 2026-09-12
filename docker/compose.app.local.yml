@@ -11,6 +11,7 @@ services:
   sity_web:
     security_opt:
       - no-new-privileges:true
+    init: true
     build:
       context: ..
       dockerfile: apps/web/Dockerfile
@@ -26,11 +27,11 @@ services:
       start_period: 10s
     logging: *default-logging
     networks:
-      sity_shared:
+      platform_ops_shared:
         aliases:
           - sity-web
 
 networks:
-  sity_shared:
+  platform_ops_shared:
     name: platform_ops_shared
     external: true
