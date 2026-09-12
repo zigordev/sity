@@ -23,7 +23,7 @@ COPY apps/web /workspace/apps/web
 WORKDIR /workspace/apps/web
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.29-alpine AS prod
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS prod
 USER root
 RUN apk upgrade --no-cache
 USER nginx
