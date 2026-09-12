@@ -1,0 +1,24 @@
+services:
+  sity_web:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1']
+      start_period: 60s
+    develop:
+      watch:
+        - action: sync
+          path: ../apps/web/src
+          target: /workspace/apps/web/src
+        - action: sync
+          path: ../apps/web/public
+          target: /workspace/apps/web/public
+        - action: sync+restart
+          path: ../apps/web/vite.config.ts
+          target: /workspace/apps/web/vite.config.ts
+        - action: rebuild
+          path: ../package-lock.json
+        - action: rebuild
+          path: ../apps/web/package.json
