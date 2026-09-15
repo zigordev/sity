@@ -1106,12 +1106,11 @@ function otherRoadClearance(x: number, z: number, excludeRoadId: string) {
 
 function buildStructures() {
   const ring = roadNetwork.roads.get(RING_ROAD_ID);
-  let bridgeStations: Station[] = [];
   if (ring) {
     const controlStations = ringControlStations(ring);
     const bridgeS0 = controlStations[RING_BRIDGE_CONTROLS.from];
     const bridgeS1 = controlStations[RING_BRIDGE_CONTROLS.to];
-    bridgeStations = stationsBetween(ring.samples, bridgeS0, bridgeS1);
+    const bridgeStations = stationsBetween(ring.samples, bridgeS0, bridgeS1);
     addCableStayedBridgeStructure(
       "ring-river-cable-stayed-bridge",
       bridgeStations.map((station) => ({ x: station.x, y: station.y, z: station.z })),
