@@ -65,7 +65,15 @@ async function sampleCanvas(page: Page) {
     for (const xFactor of [0.15, 0.3, 0.45, 0.6, 0.75, 0.9]) {
       for (const yFactor of [0.2, 0.4, 0.6, 0.8]) {
         const pixel = new Uint8Array(4);
-        gl.readPixels(Math.floor(canvas.width * xFactor), Math.floor(canvas.height * yFactor), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        gl.readPixels(
+          Math.floor(canvas.width * xFactor),
+          Math.floor(canvas.height * yFactor),
+          1,
+          1,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          pixel
+        );
         total += 1;
         if (pixel[0] + pixel[1] + pixel[2] > 24) {
           visible += 1;
@@ -118,17 +126,31 @@ test.describe('scene', () => {
 
     const exported = await page.evaluate(() => window.__SITY_DEBUG__.exportRoadGraph());
     expect(exported.lanes).toHaveLength(graph.stats.laneCount);
-    const ringLane = exported.lanes.find((lane) => lane.roadId === 'ring-highway' && lane.direction === 'forward' && lane.laneIndex === 0);
-    const mainLane = exported.lanes.find((lane) => lane.roadId === 'main-street-1' && lane.direction === 'forward' && lane.laneIndex === 0);
+    const ringLane = exported.lanes.find(
+      (lane) =>
+        lane.roadId === 'ring-highway' && lane.direction === 'forward' && lane.laneIndex === 0
+    );
+    const mainLane = exported.lanes.find(
+      (lane) =>
+        lane.roadId === 'main-street-1' && lane.direction === 'forward' && lane.laneIndex === 0
+    );
     expect(ringLane).toBeDefined();
     expect(mainLane).toBeDefined();
-    expect(exported.lanes.filter((lane) => lane.pocket === 'left').length).toBeGreaterThanOrEqual(20);
+    expect(exported.lanes.filter((lane) => lane.pocket === 'left').length).toBeGreaterThanOrEqual(
+      20
+    );
 
-    const route = await page.evaluate(([from, to]) => window.__SITY_DEBUG__.findRoute(from, to), [ringLane!.id, mainLane!.id]);
+    const route = await page.evaluate(
+      ([from, to]) => window.__SITY_DEBUG__.findRoute(from, to),
+      [ringLane!.id, mainLane!.id]
+    );
     expect(route).toBeDefined();
     expect(route!.laneIds.length).toBeGreaterThan(2);
     expect(route!.lengthM).toBeGreaterThan(200);
-    const reverse = await page.evaluate(([from, to]) => window.__SITY_DEBUG__.findRoute(from, to), [mainLane!.id, ringLane!.id]);
+    const reverse = await page.evaluate(
+      ([from, to]) => window.__SITY_DEBUG__.findRoute(from, to),
+      [mainLane!.id, ringLane!.id]
+    );
     expect(reverse).toBeDefined();
     expect(reverse!.laneIds.length).toBeGreaterThan(2);
     const random = await page.evaluate(() => window.__SITY_DEBUG__.showRandomRoute(11));
@@ -144,14 +166,25 @@ test.describe('scene', () => {
 
     const clearance = await page.evaluate(() => window.__SITY_DEBUG__.auditRoadClearance());
     expect(clearance.pavementCells).toBeGreaterThan(500_000);
-    expect(clearance.offenders.map((offender) => `${offender.group}/${offender.mesh} visible=${offender.visibleCells} flush=${offender.flushCells} overhead=${offender.overheadCells}`)).toEqual([]);
+    expect(
+      clearance.offenders.map(
+        (offender) =>
+          `${offender.group}/${offender.mesh} visible=${offender.visibleCells} flush=${offender.flushCells} overhead=${offender.overheadCells}`
+      )
+    ).toEqual([]);
     const audit = await page.evaluate(() => window.__SITY_DEBUG__.auditCity());
     expect(audit.footprintCount).toBeGreaterThanOrEqual(200);
     expect(audit.overlappingPairs).toEqual([]);
     expect(audit.buildingsOnPavement).toEqual([]);
 
     const visibility = await page.evaluate(() => window.__SITY_DEBUG__.getCategoryVisibility());
-    expect(visibility).toMatchObject({ natural: true, roads: true, buildings: true, vegetation: true, help: true });
+    expect(visibility).toMatchObject({
+      natural: true,
+      roads: true,
+      buildings: true,
+      vegetation: true,
+      help: true,
+    });
 
     const performance = await page.evaluate(() => window.__SITY_DEBUG__.getPerformance());
     expect(performance.drawCalls).toBeGreaterThan(0);
@@ -167,7 +200,9 @@ test.describe('scene', () => {
     await openScene(page);
     const views = await page.evaluate(() => window.__SITY_DEBUG__.listViews());
     expect(views.length).toBeGreaterThanOrEqual(10);
-    const compassBefore = await page.evaluate(() => window.__SITY_DEBUG__.getCompassBearingDegrees());
+    const compassBefore = await page.evaluate(() =>
+      window.__SITY_DEBUG__.getCompassBearingDegrees()
+    );
     expect(Number.isFinite(compassBefore)).toBe(true);
 
     const viewIds = testInfo.project.name === 'mobile' ? MOBILE_VIEWS : DESKTOP_VIEWS;
@@ -176,12 +211,16 @@ test.describe('scene', () => {
       expect(moved).toBe(true);
       await settleFrames(page, 4);
       const sample = await sampleCanvas(page);
-      expect(sample.visible, `view "${viewId}" rendered blank`).toBeGreaterThanOrEqual(sample.total * 0.9);
+      expect(sample.visible, `view "${viewId}" rendered blank`).toBeGreaterThanOrEqual(
+        sample.total * 0.9
+      );
       expect(sample.uniqueColors, `view "${viewId}" rendered flat`).toBeGreaterThanOrEqual(6);
       await page.screenshot({ path: testInfo.outputPath(`${viewId}.png`) });
     }
 
-    const compassAfter = await page.evaluate(() => window.__SITY_DEBUG__.getCompassBearingDegrees());
+    const compassAfter = await page.evaluate(() =>
+      window.__SITY_DEBUG__.getCompassBearingDegrees()
+    );
     expect(Number.isFinite(compassAfter)).toBe(true);
     expect(Math.abs(compassAfter - compassBefore)).toBeGreaterThan(0.01);
   });

@@ -8,7 +8,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       reportsDirectory: 'coverage',
-      include: ['src/roads/network.ts', 'src/roads/graph.ts', 'src/roads/classes.ts', 'src/roads/plan.ts'],
+      include: [
+        'src/roads/network.ts',
+        'src/roads/graph.ts',
+        'src/roads/classes.ts',
+        'src/roads/plan.ts',
+      ],
     },
   },
 });

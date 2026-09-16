@@ -1,22 +1,22 @@
 export type RoadClass =
-  | "highway"
-  | "ramp"
-  | "arterial"
-  | "collector"
-  | "local"
-  | "industrial"
-  | "mountain"
-  | "rural"
-  | "service";
+  | 'highway'
+  | 'ramp'
+  | 'arterial'
+  | 'collector'
+  | 'local'
+  | 'industrial'
+  | 'mountain'
+  | 'rural'
+  | 'service';
 
-export type CenterMarking = "double-yellow" | "dashed-yellow" | "dashed-white" | "none";
+export type CenterMarking = 'double-yellow' | 'dashed-yellow' | 'dashed-white' | 'none';
 
 export interface RoadClassSpec {
   laneWidth: number;
   outerShoulder: number;
   innerShoulder: number;
   medianWidth: number;
-  medianKind: "barrier" | "planted" | "none";
+  medianKind: 'barrier' | 'planted' | 'none';
   sidewalkWidth: number;
   speedKph: number;
   cornerRadius: number;
@@ -32,12 +32,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 2.6,
     innerShoulder: 0,
     medianWidth: 3.6,
-    medianKind: "barrier",
+    medianKind: 'barrier',
     sidewalkWidth: 0,
     speedKph: 100,
     cornerRadius: 20,
     edgeLine: true,
-    centerMarking: "none",
+    centerMarking: 'none',
     lightingSpacing: 42,
     streetTrees: false,
   },
@@ -46,12 +46,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 1.4,
     innerShoulder: 1.4,
     medianWidth: 0,
-    medianKind: "none",
+    medianKind: 'none',
     sidewalkWidth: 0,
     speedKph: 50,
     cornerRadius: 14,
     edgeLine: true,
-    centerMarking: "none",
+    centerMarking: 'none',
     lightingSpacing: 0,
     streetTrees: false,
   },
@@ -60,12 +60,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 0,
     innerShoulder: 0,
     medianWidth: 7.0,
-    medianKind: "planted",
+    medianKind: 'planted',
     sidewalkWidth: 4.2,
     speedKph: 50,
     cornerRadius: 10,
     edgeLine: false,
-    centerMarking: "none",
+    centerMarking: 'none',
     lightingSpacing: 30,
     streetTrees: true,
   },
@@ -74,12 +74,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 0,
     innerShoulder: 0,
     medianWidth: 0,
-    medianKind: "none",
+    medianKind: 'none',
     sidewalkWidth: 3.4,
     speedKph: 50,
     cornerRadius: 8,
     edgeLine: false,
-    centerMarking: "dashed-white",
+    centerMarking: 'dashed-white',
     lightingSpacing: 32,
     streetTrees: true,
   },
@@ -88,12 +88,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 0,
     innerShoulder: 0,
     medianWidth: 0,
-    medianKind: "none",
+    medianKind: 'none',
     sidewalkWidth: 2.4,
     speedKph: 30,
     cornerRadius: 6,
     edgeLine: false,
-    centerMarking: "none",
+    centerMarking: 'none',
     lightingSpacing: 36,
     streetTrees: false,
   },
@@ -102,12 +102,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 0.8,
     innerShoulder: 0,
     medianWidth: 0,
-    medianKind: "none",
+    medianKind: 'none',
     sidewalkWidth: 2.0,
     speedKph: 50,
     cornerRadius: 14,
     edgeLine: true,
-    centerMarking: "dashed-white",
+    centerMarking: 'dashed-white',
     lightingSpacing: 40,
     streetTrees: false,
   },
@@ -116,12 +116,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 0.9,
     innerShoulder: 0,
     medianWidth: 0,
-    medianKind: "none",
+    medianKind: 'none',
     sidewalkWidth: 0,
     speedKph: 40,
     cornerRadius: 8,
     edgeLine: true,
-    centerMarking: "double-yellow",
+    centerMarking: 'double-yellow',
     lightingSpacing: 0,
     streetTrees: false,
   },
@@ -130,12 +130,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 0.9,
     innerShoulder: 0,
     medianWidth: 0,
-    medianKind: "none",
+    medianKind: 'none',
     sidewalkWidth: 0,
     speedKph: 80,
     cornerRadius: 10,
     edgeLine: true,
-    centerMarking: "dashed-white",
+    centerMarking: 'dashed-white',
     lightingSpacing: 0,
     streetTrees: false,
   },
@@ -144,12 +144,12 @@ export const ROAD_CLASSES: Record<RoadClass, RoadClassSpec> = {
     outerShoulder: 0,
     innerShoulder: 0,
     medianWidth: 0,
-    medianKind: "none",
+    medianKind: 'none',
     sidewalkWidth: 0,
     speedKph: 30,
     cornerRadius: 5,
     edgeLine: false,
-    centerMarking: "none",
+    centerMarking: 'none',
     lightingSpacing: 0,
     streetTrees: false,
   },
@@ -160,7 +160,6 @@ export const POCKET_TAPER_M = 16;
 export function roadTotalWidth(spec: RoadClassSpec, forward: number, backward: number) {
   const laneTotal = (forward + backward) * spec.laneWidth;
   const median = forward > 0 && backward > 0 ? spec.medianWidth : 0;
-  const shoulders =
-    spec.outerShoulder * 2 + (median > 0 ? spec.innerShoulder * 2 : 0);
+  const shoulders = spec.outerShoulder * 2 + (median > 0 ? spec.innerShoulder * 2 : 0);
   return laneTotal + median + shoulders;
 }

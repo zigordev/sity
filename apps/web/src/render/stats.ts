@@ -1,9 +1,15 @@
-import * as THREE from "three";
-import { artificialElements, cityElements, naturalElements, roadElements, vegetationElements } from "./context";
+import * as THREE from 'three';
+import {
+  artificialElements,
+  cityElements,
+  naturalElements,
+  roadElements,
+  vegetationElements,
+} from './context';
 
 function triangleCountForGeometry(geometry: THREE.BufferGeometry) {
   const index = geometry.getIndex();
-  const position = geometry.getAttribute("position");
+  const position = geometry.getAttribute('position');
   if (index) {
     return Math.floor(index.count / 3);
   }
@@ -17,7 +23,10 @@ function materialDrawCallCount(mesh: THREE.Mesh) {
   return 1;
 }
 
-export function estimateSceneRenderStats(object: THREE.Object3D): { drawCalls: number; triangles: number } {
+export function estimateSceneRenderStats(object: THREE.Object3D): {
+  drawCalls: number;
+  triangles: number;
+} {
   if (!object.visible) {
     return { drawCalls: 0, triangles: 0 };
   }
@@ -47,12 +56,18 @@ export function estimateSceneRenderStats(object: THREE.Object3D): { drawCalls: n
       total.triangles += childStats.triangles;
       return total;
     },
-    { drawCalls: 0, triangles: 0 },
+    { drawCalls: 0, triangles: 0 }
   );
 }
 
 export function estimateVisibleSceneRenderStats() {
-  const groups = [naturalElements, artificialElements, roadElements, cityElements, vegetationElements];
+  const groups = [
+    naturalElements,
+    artificialElements,
+    roadElements,
+    cityElements,
+    vegetationElements,
+  ];
   return groups.reduce(
     (total, group) => {
       const stats = estimateSceneRenderStats(group);
@@ -60,6 +75,6 @@ export function estimateVisibleSceneRenderStats() {
       total.triangles += stats.triangles;
       return total;
     },
-    { drawCalls: 0, triangles: 0 },
+    { drawCalls: 0, triangles: 0 }
   );
 }

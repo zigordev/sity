@@ -10,7 +10,7 @@ export type RoadPathPoint = GroundPathPoint & {
 export type LanePath = {
   id: string;
   roadId: string;
-  direction: "clockwise" | "counterclockwise";
+  direction: 'clockwise' | 'counterclockwise';
   laneIndex: number;
   centerOffsetM: number;
   points: RoadPathPoint[];

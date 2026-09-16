@@ -1,14 +1,80 @@
-import * as THREE from "three";
-import type { PavementFloor } from "../roads/pavement";
-import { pavementClearance } from "../world/occupancy";
-import { COASTAL_INLET_OVERLAP_M, DAM_NATURAL_BANK_OPENING_HALF_LENGTH_M, DAM_THICKNESS_M, DAM_WATER_FACE_HALF_LENGTH_M, ESTUARY_BANK_CREST_OFFSET_M, ESTUARY_BANK_CREST_RISE_M, ESTUARY_BANK_INNER_DROP_M, ESTUARY_BANK_WIDTH_M, GRASS_SURFACE_Y, MOUNTAIN_HEIGHT_M, RESERVOIR_BANK_CREST_SCALE, RESERVOIR_BANK_INNER_SCALE, RESERVOIR_BANK_OUTER_SCALE, RESERVOIR_BANK_SEGMENTS, RESERVOIR_DAM_FACE_SAMPLES, RESERVOIR_DAM_OPENING_HALF_ANGLE_RAD, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, RESERVOIR_SEGMENTS, RESERVOIR_WATER_DAM_FACE_SETBACK_M, RESERVOIR_WATER_DEPTH_M, RIVER_CHANNEL_BANK_WIDTH_M, RIVER_CHANNEL_CREST_OFFSET_M, RIVER_CHANNEL_CREST_RISE_M, RIVER_CHANNEL_INNER_DROP_M, RIVER_CHANNEL_WATER_EDGE_OVERLAP_M, RIVER_LOWLAND_WATER_CLEARANCE_M, RIVER_MOUTH_WIDTH_M, RIVER_PEBBLE_COUNT, RIVER_REED_CLUSTER_COUNT, RIVER_SOURCE_TAPER_PROGRESS, RIVER_SOURCE_WIDTH_M, RIVER_WIDTH_M, SEA_MARGIN_M, SEA_Y, SHALLOW_WATER_SHELF_WIDTH_M } from "../config/constants";
-import { addPlanarXZUVs, addScaledOrientedSphereInstances } from "../geometry/helpers";
-import { createRoadRibbonSurfaceGeometry, offsetRoadPath, pathTangent } from "../geometry/ribbons";
-import { GroundPathPoint, RoadPathPoint, ScaledOrientedXYZPlacement } from "../geometry/types";
-import { fullTerrainSurfaceYAt, mountainHeightAt, terrainSurfaceYAt } from "./terrain";
-import { naturalElements } from "../render/context";
-import { concreteSeamMaterial, mountainMaterial, reedMaterial, riverBankCrestColor, riverBankMaterial, riverBankOuterColor, riverBankWetColor, sharedSeaWaterMaterial, smallPebbleMaterial } from "../render/materials";
-import { curvedDamPoint, damCenter, damLongAxis, mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, maxWorldZ, minWorldZ, reservoirCenter, reservoirOutletDirection, reservoirOutletEdge, reservoirOutletScale, riverEstuaryStart, riverMouth, riverPath, riverSeaTransitionPath, seaCenter } from "../world/frame";
+import * as THREE from 'three';
+import type { PavementFloor } from '../roads/pavement';
+import { pavementClearance } from '../world/occupancy';
+import {
+  COASTAL_INLET_OVERLAP_M,
+  DAM_NATURAL_BANK_OPENING_HALF_LENGTH_M,
+  DAM_THICKNESS_M,
+  DAM_WATER_FACE_HALF_LENGTH_M,
+  ESTUARY_BANK_CREST_OFFSET_M,
+  ESTUARY_BANK_CREST_RISE_M,
+  ESTUARY_BANK_INNER_DROP_M,
+  ESTUARY_BANK_WIDTH_M,
+  GRASS_SURFACE_Y,
+  MOUNTAIN_HEIGHT_M,
+  RESERVOIR_BANK_CREST_SCALE,
+  RESERVOIR_BANK_INNER_SCALE,
+  RESERVOIR_BANK_OUTER_SCALE,
+  RESERVOIR_BANK_SEGMENTS,
+  RESERVOIR_DAM_FACE_SAMPLES,
+  RESERVOIR_DAM_OPENING_HALF_ANGLE_RAD,
+  RESERVOIR_RADIUS_X_M,
+  RESERVOIR_RADIUS_Z_M,
+  RESERVOIR_SEGMENTS,
+  RESERVOIR_WATER_DAM_FACE_SETBACK_M,
+  RESERVOIR_WATER_DEPTH_M,
+  RIVER_CHANNEL_BANK_WIDTH_M,
+  RIVER_CHANNEL_CREST_OFFSET_M,
+  RIVER_CHANNEL_CREST_RISE_M,
+  RIVER_CHANNEL_INNER_DROP_M,
+  RIVER_CHANNEL_WATER_EDGE_OVERLAP_M,
+  RIVER_LOWLAND_WATER_CLEARANCE_M,
+  RIVER_MOUTH_WIDTH_M,
+  RIVER_PEBBLE_COUNT,
+  RIVER_REED_CLUSTER_COUNT,
+  RIVER_SOURCE_TAPER_PROGRESS,
+  RIVER_SOURCE_WIDTH_M,
+  RIVER_WIDTH_M,
+  SEA_MARGIN_M,
+  SEA_Y,
+  SHALLOW_WATER_SHELF_WIDTH_M,
+} from '../config/constants';
+import { addPlanarXZUVs, addScaledOrientedSphereInstances } from '../geometry/helpers';
+import { createRoadRibbonSurfaceGeometry, offsetRoadPath, pathTangent } from '../geometry/ribbons';
+import { GroundPathPoint, RoadPathPoint, ScaledOrientedXYZPlacement } from '../geometry/types';
+import { fullTerrainSurfaceYAt, mountainHeightAt, terrainSurfaceYAt } from './terrain';
+import { naturalElements } from '../render/context';
+import {
+  concreteSeamMaterial,
+  mountainMaterial,
+  reedMaterial,
+  riverBankCrestColor,
+  riverBankMaterial,
+  riverBankOuterColor,
+  riverBankWetColor,
+  sharedSeaWaterMaterial,
+  smallPebbleMaterial,
+} from '../render/materials';
+import {
+  curvedDamPoint,
+  damCenter,
+  damLongAxis,
+  mainBoundaryMaxX,
+  mainBoundaryMaxZ,
+  mainBoundaryMinX,
+  mainBoundaryMinZ,
+  maxWorldZ,
+  minWorldZ,
+  reservoirCenter,
+  reservoirOutletDirection,
+  reservoirOutletEdge,
+  reservoirOutletScale,
+  riverEstuaryStart,
+  riverMouth,
+  riverPath,
+  riverSeaTransitionPath,
+  seaCenter,
+} from '../world/frame';
 
 export type ReservoirLakeBoundaryPoint = GroundPathPoint & {
   isDamFace: boolean;
@@ -22,9 +88,9 @@ export function addSharedSeaWaterMesh(
   name: string,
   geometry: THREE.BufferGeometry,
   renderOrder: number,
-  parent: THREE.Object3D = naturalElements,
+  parent: THREE.Object3D = naturalElements
 ) {
-  if (!geometry.getAttribute("uv")) {
+  if (!geometry.getAttribute('uv')) {
     addPlanarXZUVs(geometry);
   }
 
@@ -41,15 +107,15 @@ export function addSurroundingShaderSea() {
   const shaderSeaWidth = SEA_MARGIN_M + COASTAL_INLET_OVERLAP_M + 420;
   const shaderSeaDepth = maxWorldZ - minWorldZ + SEA_MARGIN_M * 2;
   seaWater = addSharedSeaWaterMesh(
-    "surrounding-sea-shader-water",
+    'surrounding-sea-shader-water',
     new THREE.PlaneGeometry(shaderSeaWidth, shaderSeaDepth, 1, 1),
-    0,
+    0
   );
   seaWater.rotation.x = -Math.PI / 2;
   seaWater.position.set(
     mainBoundaryMaxX + shaderSeaWidth * 0.5 - COASTAL_INLET_OVERLAP_M,
     SEA_Y - 0.06,
-    seaCenter.z,
+    seaCenter.z
   );
 }
 
@@ -67,7 +133,7 @@ export function addCoastalShallowWaterShelf() {
   const positions: number[] = [];
   const indices = THREE.ShapeUtils.triangulateShape(
     points.map((point) => new THREE.Vector2(point.x, point.z)),
-    [],
+    []
   ).flat();
 
   for (const point of points) {
@@ -75,11 +141,11 @@ export function addCoastalShallowWaterShelf() {
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   addPlanarXZUVs(geometry);
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
-  addSharedSeaWaterMesh("coastal-shallow-water-shelf", geometry, 1);
+  addSharedSeaWaterMesh('coastal-shallow-water-shelf', geometry, 1);
 }
 
 export function riverRoadLikePath(yLift = 0): RoadPathPoint[] {
@@ -98,12 +164,9 @@ export function addNaturalSurfaceRibbon(
   path: RoadPathPoint[],
   width: number,
   material: THREE.Material,
-  renderOrder: number,
+  renderOrder: number
 ) {
-  const mesh = new THREE.Mesh(
-    createRoadRibbonSurfaceGeometry(path, width, false, 0),
-    material,
-  );
+  const mesh = new THREE.Mesh(createRoadRibbonSurfaceGeometry(path, width, false, 0), material);
   mesh.name = name;
   mesh.renderOrder = renderOrder;
   mesh.receiveShadow = true;
@@ -113,16 +176,13 @@ export function addNaturalSurfaceRibbon(
 export function addRiverErosionRibbons() {
   const basePath = riverRoadLikePath(0.36);
 
-  for (const [index, offset] of [
-    -(RIVER_WIDTH_M * 0.5 + 4),
-    RIVER_WIDTH_M * 0.5 + 4,
-  ].entries()) {
+  for (const [index, offset] of [-(RIVER_WIDTH_M * 0.5 + 4), RIVER_WIDTH_M * 0.5 + 4].entries()) {
     addNaturalSurfaceRibbon(
       `river-wet-erosion-edge-${index + 1}`,
       offsetRoadPath(basePath, offset, false),
       3.8,
       concreteSeamMaterial,
-      6,
+      6
     );
   }
 }
@@ -158,10 +218,14 @@ export function addRiverReedsAndPebbles() {
     reedMatrices.push(reedMatrix.clone());
   }
 
-  const reedMesh = new THREE.InstancedMesh(new THREE.ConeGeometry(0.85, 1, 5), reedMaterial, reedMatrices.length);
+  const reedMesh = new THREE.InstancedMesh(
+    new THREE.ConeGeometry(0.85, 1, 5),
+    reedMaterial,
+    reedMatrices.length
+  );
   reedMatrices.forEach((matrix, index) => reedMesh.setMatrixAt(index, matrix));
   reedMesh.instanceMatrix.needsUpdate = true;
-  reedMesh.name = "riverbank-reed-clusters";
+  reedMesh.name = 'riverbank-reed-clusters';
   reedMesh.castShadow = true;
   reedMesh.receiveShadow = true;
   naturalElements.add(reedMesh);
@@ -189,7 +253,11 @@ export function addRiverReedsAndPebbles() {
     });
   }
 
-  addScaledOrientedSphereInstances("riverbank-pebble-fields", smallPebbleMaterial, pebblePlacements);
+  addScaledOrientedSphereInstances(
+    'riverbank-pebble-fields',
+    smallPebbleMaterial,
+    pebblePlacements
+  );
 }
 
 export function addNaturalDetailPass() {
@@ -200,7 +268,7 @@ export function addNaturalDetailPass() {
 export function reservoirOutletAngle() {
   return Math.atan2(
     (reservoirOutletEdge.z - reservoirCenter.z) / RESERVOIR_RADIUS_Z_M,
-    (reservoirOutletEdge.x - reservoirCenter.x) / RESERVOIR_RADIUS_X_M,
+    (reservoirOutletEdge.x - reservoirCenter.x) / RESERVOIR_RADIUS_X_M
   );
 }
 
@@ -220,7 +288,7 @@ export function reservoirLakeBoundaryPoint(angle: number, index: number) {
 export function reservoirWaterDamFacePoint(lengthOffset: number) {
   const point = curvedDamPoint(
     lengthOffset,
-    -DAM_THICKNESS_M * 0.5 - RESERVOIR_WATER_DAM_FACE_SETBACK_M,
+    -DAM_THICKNESS_M * 0.5 - RESERVOIR_WATER_DAM_FACE_SETBACK_M
   );
 
   return {
@@ -237,8 +305,7 @@ export function createReservoirLakeBoundaryPoints() {
   for (let index = 0; index < RESERVOIR_SEGMENTS; index += 1) {
     const angle = (index / RESERVOIR_SEGMENTS) * Math.PI * 2;
     const inDamOpening =
-      Math.abs(signedAngleDistance(angle, outletAngle)) <
-      RESERVOIR_DAM_OPENING_HALF_ANGLE_RAD;
+      Math.abs(signedAngleDistance(angle, outletAngle)) < RESERVOIR_DAM_OPENING_HALF_ANGLE_RAD;
 
     if (!inDamOpening) {
       boundaryPoints.push(reservoirLakeBoundaryPoint(angle, index));
@@ -251,7 +318,7 @@ export function createReservoirLakeBoundaryPoints() {
         const lengthOffset = THREE.MathUtils.lerp(
           -DAM_WATER_FACE_HALF_LENGTH_M,
           DAM_WATER_FACE_HALF_LENGTH_M,
-          ratio,
+          ratio
         );
         boundaryPoints.push(reservoirWaterDamFacePoint(lengthOffset));
       }
@@ -269,7 +336,7 @@ export function createReservoirLakeGeometry() {
   const boundaryPoints = createReservoirLakeBoundaryPoints();
   const topTriangles = THREE.ShapeUtils.triangulateShape(
     boundaryPoints.map((point) => new THREE.Vector2(point.x, point.z)),
-    [],
+    []
   );
   const signedArea =
     boundaryPoints.reduce((area, point, index) => {
@@ -325,7 +392,7 @@ export function createReservoirLakeGeometry() {
 
   const indices = [...topIndices, ...bottomIndices, ...sideIndices];
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   addPlanarXZUVs(geometry);
   geometry.setIndex(indices);
   geometry.clearGroups();
@@ -343,7 +410,7 @@ export function addReservoirBankVertex(
   positions: number[],
   colors: number[],
   point: GroundPathPoint,
-  y: number,
+  y: number
 ) {
   const lowColor = new THREE.Color(0x6f8d57);
   const midColor = new THREE.Color(0x887c68);
@@ -379,8 +446,7 @@ export function isReservoirBankInDamOpening(point: GroundPathPoint) {
     z: point.z - damCenter.z,
   };
   const alongOutlet =
-    fromReservoir.x * reservoirOutletDirection.x +
-    fromReservoir.z * reservoirOutletDirection.z;
+    fromReservoir.x * reservoirOutletDirection.x + fromReservoir.z * reservoirOutletDirection.z;
   const alongDam = fromDam.x * damLongAxis.x + fromDam.z * damLongAxis.z;
 
   return (
@@ -425,8 +491,8 @@ export function createReservoirBasinGeometry() {
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -436,17 +502,13 @@ export function riverWaterYAt(point: GroundPathPoint, progress: number) {
   void progress;
   return Math.max(
     GRASS_SURFACE_Y + RIVER_LOWLAND_WATER_CLEARANCE_M,
-    GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z) + RIVER_LOWLAND_WATER_CLEARANCE_M,
+    GRASS_SURFACE_Y + mountainHeightAt(point.x, point.z) + RIVER_LOWLAND_WATER_CLEARANCE_M
   );
 }
 
 export function riverWidthAt(progress: number) {
   const outletBlend = THREE.MathUtils.smoothstep(progress, 0, RIVER_SOURCE_TAPER_PROGRESS);
-  const upperCourseWidth = THREE.MathUtils.lerp(
-    RIVER_SOURCE_WIDTH_M,
-    RIVER_WIDTH_M,
-    outletBlend,
-  );
+  const upperCourseWidth = THREE.MathUtils.lerp(RIVER_SOURCE_WIDTH_M, RIVER_WIDTH_M, outletBlend);
   const lowerCourseBlend = THREE.MathUtils.smoothstep(progress, 0.62, 1);
   return THREE.MathUtils.lerp(upperCourseWidth, RIVER_MOUTH_WIDTH_M, lowerCourseBlend);
 }
@@ -455,7 +517,7 @@ export function estuaryWidthAt(progress: number) {
   return THREE.MathUtils.lerp(
     RIVER_MOUTH_WIDTH_M * 1.05,
     RIVER_MOUTH_WIDTH_M * 2.28,
-    THREE.MathUtils.smoothstep(progress, 0, 1),
+    THREE.MathUtils.smoothstep(progress, 0, 1)
   );
 }
 
@@ -471,17 +533,22 @@ export function addRiverBankVertex(
   x: number,
   y: number,
   z: number,
-  color: THREE.Color,
+  color: THREE.Color
 ) {
   positions.push(
     THREE.MathUtils.clamp(x, mainBoundaryMinX, mainBoundaryMaxX),
     y,
-    THREE.MathUtils.clamp(z, mainBoundaryMinZ, mainBoundaryMaxZ),
+    THREE.MathUtils.clamp(z, mainBoundaryMinZ, mainBoundaryMaxZ)
   );
   colors.push(color.r, color.g, color.b);
 }
 
-export function addChannelBankStrip(indices: number[], rowLength: number, columnA: number, columnB: number) {
+export function addChannelBankStrip(
+  indices: number[],
+  rowLength: number,
+  columnA: number,
+  columnB: number
+) {
   for (let index = 0; index < rowLength - 1; index += 1) {
     const current = index * 6;
     const next = current + 6;
@@ -491,7 +558,7 @@ export function addChannelBankStrip(indices: number[], rowLength: number, column
       current + columnB,
       current + columnB,
       next + columnA,
-      next + columnB,
+      next + columnB
     );
   }
 }
@@ -528,7 +595,7 @@ export function createRiverChannelBankGeometry(path: GroundPathPoint[]) {
       point.x + normalX * outerOffset,
       outerY,
       point.z + normalZ * outerOffset,
-      riverBankOuterColor,
+      riverBankOuterColor
     );
     addRiverBankVertex(
       positions,
@@ -536,7 +603,7 @@ export function createRiverChannelBankGeometry(path: GroundPathPoint[]) {
       point.x + normalX * crestOffset,
       crestY,
       point.z + normalZ * crestOffset,
-      riverBankCrestColor,
+      riverBankCrestColor
     );
     addRiverBankVertex(
       positions,
@@ -544,7 +611,7 @@ export function createRiverChannelBankGeometry(path: GroundPathPoint[]) {
       point.x + normalX * waterEdgeOffset,
       innerY,
       point.z + normalZ * waterEdgeOffset,
-      riverBankWetColor,
+      riverBankWetColor
     );
     addRiverBankVertex(
       positions,
@@ -552,7 +619,7 @@ export function createRiverChannelBankGeometry(path: GroundPathPoint[]) {
       point.x - normalX * waterEdgeOffset,
       innerY,
       point.z - normalZ * waterEdgeOffset,
-      riverBankWetColor,
+      riverBankWetColor
     );
     addRiverBankVertex(
       positions,
@@ -560,7 +627,7 @@ export function createRiverChannelBankGeometry(path: GroundPathPoint[]) {
       point.x - normalX * crestOffset,
       crestY,
       point.z - normalZ * crestOffset,
-      riverBankCrestColor,
+      riverBankCrestColor
     );
     addRiverBankVertex(
       positions,
@@ -568,7 +635,7 @@ export function createRiverChannelBankGeometry(path: GroundPathPoint[]) {
       point.x - normalX * outerOffset,
       outerY,
       point.z - normalZ * outerOffset,
-      riverBankOuterColor,
+      riverBankOuterColor
     );
   });
 
@@ -578,8 +645,8 @@ export function createRiverChannelBankGeometry(path: GroundPathPoint[]) {
   addChannelBankStrip(indices, path.length, 4, 5);
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -603,22 +670,22 @@ export function createRiverStripGeometry(path: GroundPathPoint[]) {
     const leftX = THREE.MathUtils.clamp(
       point.x + normalX * width * 0.5,
       mainBoundaryMinX,
-      mainBoundaryMaxX,
+      mainBoundaryMaxX
     );
     const leftZ = THREE.MathUtils.clamp(
       point.z + normalZ * width * 0.5,
       mainBoundaryMinZ,
-      mainBoundaryMaxZ,
+      mainBoundaryMaxZ
     );
     const rightX = THREE.MathUtils.clamp(
       point.x - normalX * width * 0.5,
       mainBoundaryMinX,
-      mainBoundaryMaxX,
+      mainBoundaryMaxX
     );
     const rightZ = THREE.MathUtils.clamp(
       point.z - normalZ * width * 0.5,
       mainBoundaryMinZ,
-      mainBoundaryMaxZ,
+      mainBoundaryMaxZ
     );
 
     positions.push(leftX, y, leftZ, rightX, y, rightZ);
@@ -633,7 +700,7 @@ export function createRiverStripGeometry(path: GroundPathPoint[]) {
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   addPlanarXZUVs(geometry);
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
@@ -663,7 +730,7 @@ export function createEstuaryStripGeometry(path: GroundPathPoint[]) {
       point.z + normalZ * width * 0.5,
       point.x - normalX * width * 0.5,
       y,
-      point.z - normalZ * width * 0.5,
+      point.z - normalZ * width * 0.5
     );
     uvs.push(progress * 4, 0, progress * 4, 1);
   });
@@ -677,7 +744,7 @@ export function createEstuaryStripGeometry(path: GroundPathPoint[]) {
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   void uvs;
@@ -717,7 +784,7 @@ export function createEstuaryBankGeometry(path: GroundPathPoint[]) {
       point.x + normalX * outerOffset,
       outerY,
       point.z + normalZ * outerOffset,
-      riverBankOuterColor,
+      riverBankOuterColor
     );
     addRiverBankVertex(
       positions,
@@ -725,7 +792,7 @@ export function createEstuaryBankGeometry(path: GroundPathPoint[]) {
       point.x + normalX * crestOffset,
       crestY,
       point.z + normalZ * crestOffset,
-      riverBankCrestColor,
+      riverBankCrestColor
     );
     addRiverBankVertex(
       positions,
@@ -733,7 +800,7 @@ export function createEstuaryBankGeometry(path: GroundPathPoint[]) {
       point.x + normalX * waterEdgeOffset,
       innerY,
       point.z + normalZ * waterEdgeOffset,
-      riverBankWetColor,
+      riverBankWetColor
     );
     addRiverBankVertex(
       positions,
@@ -741,7 +808,7 @@ export function createEstuaryBankGeometry(path: GroundPathPoint[]) {
       point.x - normalX * waterEdgeOffset,
       innerY,
       point.z - normalZ * waterEdgeOffset,
-      riverBankWetColor,
+      riverBankWetColor
     );
     addRiverBankVertex(
       positions,
@@ -749,7 +816,7 @@ export function createEstuaryBankGeometry(path: GroundPathPoint[]) {
       point.x - normalX * crestOffset,
       crestY,
       point.z - normalZ * crestOffset,
-      riverBankCrestColor,
+      riverBankCrestColor
     );
     addRiverBankVertex(
       positions,
@@ -757,7 +824,7 @@ export function createEstuaryBankGeometry(path: GroundPathPoint[]) {
       point.x - normalX * outerOffset,
       outerY,
       point.z - normalZ * outerOffset,
-      riverBankOuterColor,
+      riverBankOuterColor
     );
   });
 
@@ -767,8 +834,8 @@ export function createEstuaryBankGeometry(path: GroundPathPoint[]) {
   addChannelBankStrip(indices, bankPath.length, 4, 5);
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -782,35 +849,31 @@ export function addReservoirBasin(floor?: PavementFloor) {
   const geometry = createReservoirBasinGeometry();
   floor?.clampGeometry(geometry);
   const basin = new THREE.Mesh(geometry, mountainMaterial);
-  basin.name = "natural-reservoir-basin";
+  basin.name = 'natural-reservoir-basin';
   basin.renderOrder = 4;
   basin.receiveShadow = true;
   naturalElements.add(basin);
 }
 
 export function addReservoirLake() {
-  const lake = addSharedSeaWaterMesh(
-    "mountain-reservoir-lake",
-    createReservoirLakeGeometry(),
-    5,
-  );
-  lake.name = "mountain-reservoir-lake";
+  const lake = addSharedSeaWaterMesh('mountain-reservoir-lake', createReservoirLakeGeometry(), 5);
+  lake.name = 'mountain-reservoir-lake';
 }
 
 export function addRiver() {
   const river = addSharedSeaWaterMesh(
-    "mountain-to-sea-river",
+    'mountain-to-sea-river',
     createRiverStripGeometry(riverPath),
-    5,
+    5
   );
-  river.name = "mountain-to-sea-river";
+  river.name = 'mountain-to-sea-river';
 }
 
 export function addRiverChannelBanks(floor?: PavementFloor) {
   const geometry = createRiverChannelBankGeometry(riverPath);
   floor?.clampGeometry(geometry);
   const banks = new THREE.Mesh(geometry, riverBankMaterial);
-  banks.name = "sloped-natural-river-channel-banks";
+  banks.name = 'sloped-natural-river-channel-banks';
   banks.renderOrder = 4;
   banks.receiveShadow = true;
   naturalElements.add(banks);
@@ -818,18 +881,18 @@ export function addRiverChannelBanks(floor?: PavementFloor) {
 
 export function addCoastalEstuary() {
   const estuary = addSharedSeaWaterMesh(
-    "river-sea-estuary",
+    'river-sea-estuary',
     createEstuaryStripGeometry(riverSeaTransitionPath),
-    5.2,
+    5.2
   );
-  estuary.name = "river-sea-estuary";
+  estuary.name = 'river-sea-estuary';
 }
 
 export function addCoastalEstuaryBanks(floor?: PavementFloor) {
   const geometry = createEstuaryBankGeometry(riverSeaTransitionPath);
   floor?.clampGeometry(geometry);
   const banks = new THREE.Mesh(geometry, riverBankMaterial);
-  banks.name = "tapered-natural-estuary-banks";
+  banks.name = 'tapered-natural-estuary-banks';
   banks.renderOrder = 4;
   banks.receiveShadow = true;
   naturalElements.add(banks);

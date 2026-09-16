@@ -50,7 +50,8 @@ describe('buildRoadNetwork', () => {
     const outer = network.lanes.get('ew-1:forward:1');
     expect(inner).toBeDefined();
     expect(outer).toBeDefined();
-    const turnsOf = (laneId: string) => (network.lanes.get(laneId)?.next ?? []).map((id) => network.lanes.get(id)?.turn).sort();
+    const turnsOf = (laneId: string) =>
+      (network.lanes.get(laneId)?.next ?? []).map((id) => network.lanes.get(id)?.turn).sort();
     expect(turnsOf(inner!.id)).toEqual(['left', 'straight']);
     expect(turnsOf(outer!.id)).toEqual(['right', 'straight']);
     expect(inner!.adjacent).toContain(outer!.id);
@@ -115,14 +116,44 @@ describe('buildRoadNetwork', () => {
         { id: 'south', x: 0, z: 400, edge: true },
       ],
       roads: [
-        { id: 'hw', class: 'highway', from: 'h0', to: 'h1', forward: 2, backward: 2, elevation: 'control', via: [{ x: 0, z: 0, y: 12 }], cuts: ['off', 'on'] },
-        { id: 'ramp-off', class: 'ramp', from: 'off', to: 't', forward: 1, backward: 0, attachFrom: { roadId: 'hw', direction: 'forward' }, via: [{ x: -60, z: 80 }] },
-        { id: 'ramp-on', class: 'ramp', from: 't', to: 'on', forward: 1, backward: 0, attachTo: { roadId: 'hw', direction: 'forward' }, via: [{ x: 60, z: 80 }] },
+        {
+          id: 'hw',
+          class: 'highway',
+          from: 'h0',
+          to: 'h1',
+          forward: 2,
+          backward: 2,
+          elevation: 'control',
+          via: [{ x: 0, z: 0, y: 12 }],
+          cuts: ['off', 'on'],
+        },
+        {
+          id: 'ramp-off',
+          class: 'ramp',
+          from: 'off',
+          to: 't',
+          forward: 1,
+          backward: 0,
+          attachFrom: { roadId: 'hw', direction: 'forward' },
+          via: [{ x: -60, z: 80 }],
+        },
+        {
+          id: 'ramp-on',
+          class: 'ramp',
+          from: 't',
+          to: 'on',
+          forward: 1,
+          backward: 0,
+          attachTo: { roadId: 'hw', direction: 'forward' },
+          via: [{ x: 60, z: 80 }],
+        },
         { id: 'stem', class: 'collector', from: 't', to: 'south', forward: 1, backward: 1 },
       ],
     };
     const network = buildRoadNetwork(spec, flat);
-    const pieces = [...network.lanes.values()].filter((lane) => lane.roadId === 'hw' && lane.direction === 'forward' && lane.laneIndex === 1);
+    const pieces = [...network.lanes.values()].filter(
+      (lane) => lane.roadId === 'hw' && lane.direction === 'forward' && lane.laneIndex === 1
+    );
     expect(pieces).toHaveLength(3);
     expect(network.lanes.get('hw:forward:1:0')?.next).toContain('ramp-off:forward:0');
     expect(network.lanes.get('ramp-off:forward:0')?.prev).toContain('hw:forward:1:0');
@@ -144,17 +175,37 @@ describe('buildRoadNetwork', () => {
         { id: 'b', x: 200, z: 0, edge: true },
       ],
       roads: [
-        { id: 'bus-1', class: 'arterial', from: 'a', to: 'm', forward: 2, backward: 2, busLane: true },
-        { id: 'bus-2', class: 'arterial', from: 'm', to: 'b', forward: 2, backward: 2, busLane: true },
+        {
+          id: 'bus-1',
+          class: 'arterial',
+          from: 'a',
+          to: 'm',
+          forward: 2,
+          backward: 2,
+          busLane: true,
+        },
+        {
+          id: 'bus-2',
+          class: 'arterial',
+          from: 'm',
+          to: 'b',
+          forward: 2,
+          backward: 2,
+          busLane: true,
+        },
       ],
     };
     const network = buildRoadNetwork(spec, flat);
     expect(network.lanes.get('bus-1:forward:1')?.access).toBe('bus');
     expect(network.lanes.get('bus-1:forward:0')?.access).toBe('all');
     expect(network.lanes.get('bus-1:backward:1')?.access).toBe('bus');
-    const busConnector = [...network.lanes.values()].find((lane) => lane.kind === 'connector' && lane.prev.includes('bus-1:forward:1'));
+    const busConnector = [...network.lanes.values()].find(
+      (lane) => lane.kind === 'connector' && lane.prev.includes('bus-1:forward:1')
+    );
     expect(busConnector?.access).toBe('bus');
-    const carConnector = [...network.lanes.values()].find((lane) => lane.kind === 'connector' && lane.prev.includes('bus-1:forward:0'));
+    const carConnector = [...network.lanes.values()].find(
+      (lane) => lane.kind === 'connector' && lane.prev.includes('bus-1:forward:0')
+    );
     expect(carConnector?.access).toBe('all');
   });
 
@@ -165,7 +216,17 @@ describe('buildRoadNetwork', () => {
         { id: 'toll', x: 0, z: 0, control: 'toll' },
         { id: 'h1', x: 300, z: 0, edge: true },
       ],
-      roads: [{ id: 'mw', class: 'highway', from: 'h0', to: 'h1', forward: 2, backward: 0, cuts: ['toll'] }],
+      roads: [
+        {
+          id: 'mw',
+          class: 'highway',
+          from: 'h0',
+          to: 'h1',
+          forward: 2,
+          backward: 0,
+          cuts: ['toll'],
+        },
+      ],
     };
     const network = buildRoadNetwork(spec, flat);
     const graph = new RoadGraph(network);
@@ -187,8 +248,16 @@ describe('buildRoadNetwork', () => {
     expect(pocket?.prev.length).toBeGreaterThan(0);
     const turns = pocket!.next.map((id) => network.lanes.get(id)?.turn);
     expect(turns).toEqual(['left']);
-    const inner = [...network.lanes.values()].find((lane) => lane.roadId === 'ew-1' && lane.direction === 'forward' && lane.laneIndex === 0 && lane.toNode === 'c');
-    const innerTurns = inner!.next.map((id) => network.lanes.get(id)?.turn).filter((turn) => turn !== 'diverge');
+    const inner = [...network.lanes.values()].find(
+      (lane) =>
+        lane.roadId === 'ew-1' &&
+        lane.direction === 'forward' &&
+        lane.laneIndex === 0 &&
+        lane.toNode === 'c'
+    );
+    const innerTurns = inner!.next
+      .map((id) => network.lanes.get(id)?.turn)
+      .filter((turn) => turn !== 'diverge');
     expect(innerTurns).not.toContain('left');
     expect(network.roads.get('ew-1')?.pocketRanges).toHaveLength(1);
     expect(innerTurns).toContain('straight');

@@ -1,15 +1,15 @@
-import * as THREE from "three";
-import { groundSurfaceYAt } from "../natural/terrain";
-import { cityElements } from "../render/context";
-import { fieldMaterials, gravelVergeMaterial } from "../render/materials";
-import { mergeAll } from "../roads/geometry";
-import { corridorClearance, rectClearance } from "../world/occupancy";
-import { rasterValueAt } from "./lots";
-import { districtAt } from "./districts";
-import { WESTERN_COUNTRY_SPLIT_Z_M } from "../config/constants";
-import { BuildingBatch } from "./buildings";
-import { createRandom } from "./random";
-import { addTree } from "./vegetation";
+import * as THREE from 'three';
+import { groundSurfaceYAt } from '../natural/terrain';
+import { cityElements } from '../render/context';
+import { fieldMaterials, gravelVergeMaterial } from '../render/materials';
+import { mergeAll } from '../roads/geometry';
+import { corridorClearance, rectClearance } from '../world/occupancy';
+import { rasterValueAt } from './lots';
+import { districtAt } from './districts';
+import { WESTERN_COUNTRY_SPLIT_Z_M } from '../config/constants';
+import { BuildingBatch } from './buildings';
+import { createRandom } from './random';
+import { addTree } from './vegetation';
 
 interface Field {
   minX: number;
@@ -54,8 +54,8 @@ function fieldGeometry(field: Field) {
     }
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -63,10 +63,22 @@ function fieldGeometry(field: Field) {
 
 function addHedgerow(field: Field, random: () => number) {
   const perimeter: Array<[{ x: number; z: number }, { x: number; z: number }]> = [
-    [{ x: field.minX, z: field.minZ }, { x: field.maxX, z: field.minZ }],
-    [{ x: field.maxX, z: field.minZ }, { x: field.maxX, z: field.maxZ }],
-    [{ x: field.maxX, z: field.maxZ }, { x: field.minX, z: field.maxZ }],
-    [{ x: field.minX, z: field.maxZ }, { x: field.minX, z: field.minZ }],
+    [
+      { x: field.minX, z: field.minZ },
+      { x: field.maxX, z: field.minZ },
+    ],
+    [
+      { x: field.maxX, z: field.minZ },
+      { x: field.maxX, z: field.maxZ },
+    ],
+    [
+      { x: field.maxX, z: field.maxZ },
+      { x: field.minX, z: field.maxZ },
+    ],
+    [
+      { x: field.minX, z: field.maxZ },
+      { x: field.minX, z: field.minZ },
+    ],
   ];
   for (const [a, b] of perimeter) {
     const length = Math.hypot(b.x - a.x, b.z - a.z);
@@ -77,7 +89,7 @@ function addHedgerow(field: Field, random: () => number) {
       if (corridorClearance(x, z, 40) < 6) {
         continue;
       }
-      addTree("broadleaf", x, z, groundSurfaceYAt(x, z) - 0.6, 0.38 + random() * 0.18, 83);
+      addTree('broadleaf', x, z, groundSurfaceYAt(x, z) - 0.6, 0.38 + random() * 0.18, 83);
     }
   }
 }
@@ -100,11 +112,61 @@ function addFurrows(field: Field, parts: THREE.BufferGeometry[]) {
 function addFarmstead() {
   const batch = new BuildingBatch();
   const y = groundSurfaceYAt(292, -1518);
-  batch.addBox({ x: 292, y, z: -1518, width: 24, height: 6.5, depth: 12, rotationY: 0.62, color: new THREE.Color(0x8c4a3b), floorHeight: 6.5, windowWidth: 3, windowRatio: 0.15, seed: 91 }, "farm-barn");
-  batch.addRoof({ x: 292, y: y + 6.5, z: -1518, width: 25.4, height: 4.2, depth: 13.4, rotationY: 0.62, color: new THREE.Color(0x5a5f66) });
-  batch.addBox({ x: 318, y, z: -1540, width: 11, height: 6.2, depth: 9, rotationY: 0.62, color: new THREE.Color(0xe6dfcf), floorHeight: 3.1, windowWidth: 2.4, windowRatio: 0.4, seed: 92 }, "farm-house");
-  batch.addRoof({ x: 318, y: y + 6.2, z: -1540, width: 12.4, height: 3, depth: 10.4, rotationY: 0.62, color: new THREE.Color(0x8d4a3b) });
-  batch.commit("northfield-farm");
+  batch.addBox(
+    {
+      x: 292,
+      y,
+      z: -1518,
+      width: 24,
+      height: 6.5,
+      depth: 12,
+      rotationY: 0.62,
+      color: new THREE.Color(0x8c4a3b),
+      floorHeight: 6.5,
+      windowWidth: 3,
+      windowRatio: 0.15,
+      seed: 91,
+    },
+    'farm-barn'
+  );
+  batch.addRoof({
+    x: 292,
+    y: y + 6.5,
+    z: -1518,
+    width: 25.4,
+    height: 4.2,
+    depth: 13.4,
+    rotationY: 0.62,
+    color: new THREE.Color(0x5a5f66),
+  });
+  batch.addBox(
+    {
+      x: 318,
+      y,
+      z: -1540,
+      width: 11,
+      height: 6.2,
+      depth: 9,
+      rotationY: 0.62,
+      color: new THREE.Color(0xe6dfcf),
+      floorHeight: 3.1,
+      windowWidth: 2.4,
+      windowRatio: 0.4,
+      seed: 92,
+    },
+    'farm-house'
+  );
+  batch.addRoof({
+    x: 318,
+    y: y + 6.2,
+    z: -1540,
+    width: 12.4,
+    height: 3,
+    depth: 10.4,
+    rotationY: 0.62,
+    color: new THREE.Color(0x8d4a3b),
+  });
+  batch.commit('northfield-farm');
   const silo = new THREE.CylinderGeometry(2.6, 2.6, 13, 18);
   silo.translate(272, y + 6.5, -1500);
   const cap = new THREE.ConeGeometry(2.8, 2.2, 18);
@@ -112,7 +174,7 @@ function addFarmstead() {
   const merged = mergeAll([silo, cap]);
   if (merged) {
     const mesh = new THREE.Mesh(merged, gravelVergeMaterial);
-    mesh.name = "northfield-farm-silo";
+    mesh.name = 'northfield-farm-silo';
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     cityElements.add(mesh);
@@ -139,7 +201,13 @@ function fieldIsClear(minX: number, maxX: number, minZ: number, maxZ: number) {
   return true;
 }
 
-function fitFields(bounds: { minX: number; maxX: number; minZ: number; maxZ: number }, random: () => number, fields: Field[], template?: Field, depth = 0) {
+function fitFields(
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number },
+  random: () => number,
+  fields: Field[],
+  template?: Field,
+  depth = 0
+) {
   const { minX, maxX, minZ, maxZ } = bounds;
   if (maxX - minX < MIN_FIELD_SIZE_M || maxZ - minZ < MIN_FIELD_SIZE_M) {
     return;
@@ -191,7 +259,7 @@ function generateFarmland(random: () => number) {
           maxZ: minZ + (row + 1) * cellD - 14,
         },
         random,
-        fields,
+        fields
       );
     }
   }
@@ -212,15 +280,84 @@ function addFarmyard(x: number, z: number, rotation: number, seed: number) {
   const y = groundSurfaceYAt(x, z);
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
-  const at = (dx: number, dz: number) => ({ x: x + dx * cos + dz * sin, z: z - dx * sin + dz * cos });
+  const at = (dx: number, dz: number) => ({
+    x: x + dx * cos + dz * sin,
+    z: z - dx * sin + dz * cos,
+  });
   const house = at(-22, 0);
-  batch.addBox({ x: house.x, y, z: house.z, width: 12, height: 6.4, depth: 9, rotationY: rotation, color: new THREE.Color(0xe6dfcf), floorHeight: 3.2, windowWidth: 2.2, windowRatio: 0.42, seed }, `farm-${seed}-house`);
-  batch.addRoof({ x: house.x, y: y + 6.4, z: house.z, width: 13.4, height: 3.2, depth: 10.4, rotationY: rotation, color: new THREE.Color(0x8d4a3b) });
+  batch.addBox(
+    {
+      x: house.x,
+      y,
+      z: house.z,
+      width: 12,
+      height: 6.4,
+      depth: 9,
+      rotationY: rotation,
+      color: new THREE.Color(0xe6dfcf),
+      floorHeight: 3.2,
+      windowWidth: 2.2,
+      windowRatio: 0.42,
+      seed,
+    },
+    `farm-${seed}-house`
+  );
+  batch.addRoof({
+    x: house.x,
+    y: y + 6.4,
+    z: house.z,
+    width: 13.4,
+    height: 3.2,
+    depth: 10.4,
+    rotationY: rotation,
+    color: new THREE.Color(0x8d4a3b),
+  });
   const barn = at(4, -18);
-  batch.addBox({ x: barn.x, y, z: barn.z, width: 26, height: 7, depth: 13, rotationY: rotation, color: new THREE.Color(0x8c4a3b), floorHeight: 7, windowWidth: 3, windowRatio: 0.12, seed: seed + 1 }, `farm-${seed}-barn`);
-  batch.addRoof({ x: barn.x, y: y + 7, z: barn.z, width: 27.4, height: 4.6, depth: 14.4, rotationY: rotation, color: new THREE.Color(0x5a5f66) });
+  batch.addBox(
+    {
+      x: barn.x,
+      y,
+      z: barn.z,
+      width: 26,
+      height: 7,
+      depth: 13,
+      rotationY: rotation,
+      color: new THREE.Color(0x8c4a3b),
+      floorHeight: 7,
+      windowWidth: 3,
+      windowRatio: 0.12,
+      seed: seed + 1,
+    },
+    `farm-${seed}-barn`
+  );
+  batch.addRoof({
+    x: barn.x,
+    y: y + 7,
+    z: barn.z,
+    width: 27.4,
+    height: 4.6,
+    depth: 14.4,
+    rotationY: rotation,
+    color: new THREE.Color(0x5a5f66),
+  });
   const shed = at(6, 18);
-  batch.addBox({ x: shed.x, y, z: shed.z, width: 22, height: 5.2, depth: 11, rotationY: rotation, color: new THREE.Color(0x9aa5ad), floorHeight: 5.2, windowWidth: 4, windowRatio: 0.1, seed: seed + 2 }, `farm-${seed}-shed`);
+  batch.addBox(
+    {
+      x: shed.x,
+      y,
+      z: shed.z,
+      width: 22,
+      height: 5.2,
+      depth: 11,
+      rotationY: rotation,
+      color: new THREE.Color(0x9aa5ad),
+      floorHeight: 5.2,
+      windowWidth: 4,
+      windowRatio: 0.1,
+      seed: seed + 2,
+    },
+    `farm-${seed}-shed`
+  );
   batch.commit(`farmyard-${seed}`);
   const silos: THREE.BufferGeometry[] = [];
   for (const dx of [24, 30]) {
@@ -245,7 +382,14 @@ function addFarmyard(x: number, z: number, rotation: number, seed: number) {
     if (corridorClearance(point.x, point.z, 40) < 5) {
       continue;
     }
-    addTree("broadleaf", point.x, point.z, groundSurfaceYAt(point.x, point.z), 0.9 + random() * 0.5, seed + 9);
+    addTree(
+      'broadleaf',
+      point.x,
+      point.z,
+      groundSurfaceYAt(point.x, point.z),
+      0.9 + random() * 0.5,
+      seed + 9
+    );
   }
 }
 
@@ -282,7 +426,7 @@ export function addCountryside() {
   const furrowMerged = mergeAll(furrows);
   if (furrowMerged) {
     const mesh = new THREE.Mesh(furrowMerged, gravelVergeMaterial);
-    mesh.name = "field-furrows";
+    mesh.name = 'field-furrows';
     mesh.receiveShadow = true;
     cityElements.add(mesh);
   }

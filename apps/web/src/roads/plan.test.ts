@@ -26,7 +26,9 @@ describe('the city plan', () => {
     expect(stats.laneCount).toBeGreaterThanOrEqual(600);
     expect(stats.roundaboutCount).toBe(7);
     expect(stats.laneCountByKind.ramp).toBe(28);
-    expect(graph.laneIds().filter((id) => id.endsWith(':pocket-left')).length).toBeGreaterThanOrEqual(20);
+    expect(
+      graph.laneIds().filter((id) => id.endsWith(':pocket-left')).length
+    ).toBeGreaterThanOrEqual(20);
     const invariants = graph.invariants();
     expect(invariants.strandedLaneIds).toEqual([]);
     expect(invariants.everyLinkIsBidirectional).toBe(true);
@@ -45,7 +47,11 @@ describe('the city plan', () => {
   });
 
   it('enumerates bounded paths and finds long random routes', () => {
-    const paths = graph.enumeratePaths(graph.laneIds().find((id) => id.startsWith('main-street-1:forward:0'))!, 400, 50);
+    const paths = graph.enumeratePaths(
+      graph.laneIds().find((id) => id.startsWith('main-street-1:forward:0'))!,
+      400,
+      50
+    );
     expect(paths.length).toBeGreaterThan(1);
     expect(paths.length).toBeLessThanOrEqual(50);
     const route = graph.randomRoute(3, 900);

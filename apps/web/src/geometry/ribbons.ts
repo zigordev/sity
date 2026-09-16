@@ -1,19 +1,19 @@
-import * as THREE from "three";
-import { HIGHWAY_DASH_GAP_SEGMENTS, HIGHWAY_DASH_SEGMENTS } from "../config/constants";
-import { addPlanarXZUVs } from "./helpers";
-import { RoadPathPoint } from "./types";
-import { roadElements } from "../render/context";
+import * as THREE from 'three';
+import { HIGHWAY_DASH_GAP_SEGMENTS, HIGHWAY_DASH_SEGMENTS } from '../config/constants';
+import { addPlanarXZUVs } from './helpers';
+import { RoadPathPoint } from './types';
+import { roadElements } from '../render/context';
 
 export function sampleRoadControlPath(
   controlPoints: RoadPathPoint[],
   closed: boolean,
-  samples: number,
+  samples: number
 ) {
   const curve = new THREE.CatmullRomCurve3(
     controlPoints.map((point) => new THREE.Vector3(point.x, point.y, point.z)),
     closed,
-    "centripetal",
-    0.35,
+    'centripetal',
+    0.35
   );
   const sampled = curve.getSpacedPoints(samples).map((point) => ({
     x: point.x,
@@ -29,18 +29,9 @@ export function sampleRoadControlPath(
 }
 
 export function pathTangent(path: RoadPathPoint[], index: number, closed: boolean) {
-  const previous =
-    index === 0
-      ? closed
-        ? path[path.length - 1]
-        : path[0]
-      : path[index - 1];
+  const previous = index === 0 ? (closed ? path[path.length - 1] : path[0]) : path[index - 1];
   const next =
-    index === path.length - 1
-      ? closed
-        ? path[0]
-        : path[path.length - 1]
-      : path[index + 1];
+    index === path.length - 1 ? (closed ? path[0] : path[path.length - 1]) : path[index + 1];
   const tangentX = next.x - previous.x;
   const tangentZ = next.z - previous.z;
   const length = Math.hypot(tangentX, tangentZ) || 1;
@@ -67,7 +58,7 @@ export function createRoadRibbonSurfaceGeometry(
   path: RoadPathPoint[],
   width: number,
   closed: boolean,
-  yLift = 0,
+  yLift = 0
 ) {
   const positions: number[] = [];
   const indices: number[] = [];
@@ -81,7 +72,7 @@ export function createRoadRibbonSurfaceGeometry(
       point.z + tangent.normalZ * halfWidth,
       point.x - tangent.normalX * halfWidth,
       point.y + yLift,
-      point.z - tangent.normalZ * halfWidth,
+      point.z - tangent.normalZ * halfWidth
     );
   });
 
@@ -96,7 +87,7 @@ export function createRoadRibbonSurfaceGeometry(
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -108,7 +99,7 @@ export function createDashedRoadRibbonSurfaceGeometry(
   closed: boolean,
   yLift: number,
   dashSegments: number,
-  gapSegments: number,
+  gapSegments: number
 ) {
   const positions: number[] = [];
   const indices: number[] = [];
@@ -139,7 +130,7 @@ export function createDashedRoadRibbonSurfaceGeometry(
       pointB.z + tangent.normalZ * halfWidth,
       pointB.x - tangent.normalX * halfWidth,
       pointB.y + yLift,
-      pointB.z - tangent.normalZ * halfWidth,
+      pointB.z - tangent.normalZ * halfWidth
     );
     indices.push(
       baseIndex,
@@ -147,12 +138,12 @@ export function createDashedRoadRibbonSurfaceGeometry(
       baseIndex + 2,
       baseIndex + 2,
       baseIndex + 1,
-      baseIndex + 3,
+      baseIndex + 3
     );
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;
@@ -162,7 +153,7 @@ export function createRoadRibbonVolumeGeometry(
   path: RoadPathPoint[],
   width: number,
   thickness: number,
-  closed: boolean,
+  closed: boolean
 ) {
   const positions: number[] = [];
   const topIndices: number[] = [];
@@ -188,7 +179,7 @@ export function createRoadRibbonVolumeGeometry(
       leftZ,
       rightX,
       point.y - thickness,
-      rightZ,
+      rightZ
     );
   });
 
@@ -223,13 +214,13 @@ export function createRoadRibbonVolumeGeometry(
       rightTopB,
       rightTopB,
       rightBottomA,
-      rightBottomB,
+      rightBottomB
     );
   }
   const indices = [...topIndices, ...sideIndices];
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   addPlanarXZUVs(geometry);
   geometry.setIndex(indices);
   geometry.clearGroups();
@@ -245,11 +236,11 @@ export function addRoadRibbon(
   width: number,
   material: THREE.Material,
   closed: boolean,
-  yLift: number,
+  yLift: number
 ) {
   const mesh = new THREE.Mesh(
     createRoadRibbonSurfaceGeometry(path, width, closed, yLift),
-    material,
+    material
   );
   mesh.name = name;
   mesh.renderOrder = 10;
@@ -263,7 +254,7 @@ export function addDashedRoadRibbon(
   width: number,
   material: THREE.Material,
   closed: boolean,
-  yLift: number,
+  yLift: number
 ) {
   const mesh = new THREE.Mesh(
     createDashedRoadRibbonSurfaceGeometry(
@@ -272,9 +263,9 @@ export function addDashedRoadRibbon(
       closed,
       yLift,
       HIGHWAY_DASH_SEGMENTS,
-      HIGHWAY_DASH_GAP_SEGMENTS,
+      HIGHWAY_DASH_GAP_SEGMENTS
     ),
-    material,
+    material
   );
   mesh.name = name;
   mesh.renderOrder = 11;

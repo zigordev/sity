@@ -1,7 +1,7 @@
-import * as THREE from "three";
-import { SEA_Y } from "../config/constants";
-import { fullTerrainSurfaceYAt, groundSurfaceYAt } from "../natural/terrain";
-import { roadElements } from "../render/context";
+import * as THREE from 'three';
+import { SEA_Y } from '../config/constants';
+import { fullTerrainSurfaceYAt, groundSurfaceYAt } from '../natural/terrain';
+import { roadElements } from '../render/context';
 import {
   barrierArmMaterial,
   busLaneMaterial,
@@ -30,13 +30,12 @@ import {
   signalLensRedMaterial,
   tollGantryMaterial,
   tollSignMaterial,
-} from "../render/materials";
-import { addCableStayedBridgeStructure, addTunnelPortal } from "./structures";
-import { roadNetwork } from "./build";
+} from '../render/materials';
+import { addCableStayedBridgeStructure, addTunnelPortal } from './structures';
+import { roadNetwork } from './build';
 import {
   boxBetween,
   mergeAll,
-
   polygonVolume,
   polylineStations,
   skirtFromStations,
@@ -44,13 +43,23 @@ import {
   stripFromStations,
   volumeFromStations,
   type Station,
-} from "./geometry";
-import type { RoadClass } from "./classes";
-import { POCKET_TAPER_M } from "./classes";
-import { RING_BRIDGE_CONTROLS, RING_ROAD_ID } from "./plan";
-import { perpRight, sampleAtStation, type BuiltDestination, type BuiltJunction, type BuiltRoad, type Lane, type RoadEnd, type StructureKind, type Vec3 } from "./network";
+} from './geometry';
+import type { RoadClass } from './classes';
+import { POCKET_TAPER_M } from './classes';
+import { RING_BRIDGE_CONTROLS, RING_ROAD_ID } from './plan';
+import {
+  perpRight,
+  sampleAtStation,
+  type BuiltDestination,
+  type BuiltJunction,
+  type BuiltRoad,
+  type Lane,
+  type RoadEnd,
+  type StructureKind,
+  type Vec3,
+} from './network';
 
-const LANE_OVERLAY_COLORS: Record<Lane["kind"], number> = {
+const LANE_OVERLAY_COLORS: Record<Lane['kind'], number> = {
   road: 0x35d07f,
   connector: 0xffa63d,
   ring: 0xc46bff,
@@ -70,16 +79,16 @@ const CLASS_RANK: Record<RoadClass, number> = {
 };
 
 export const laneOverlayGroup = new THREE.Group();
-laneOverlayGroup.name = "lane-graph-overlay";
+laneOverlayGroup.name = 'lane-graph-overlay';
 laneOverlayGroup.visible = false;
 roadElements.add(laneOverlayGroup);
 
 export const routeHighlightGroup = new THREE.Group();
-routeHighlightGroup.name = "route-highlight";
+routeHighlightGroup.name = 'route-highlight';
 roadElements.add(routeHighlightGroup);
 
 export const roadFurnitureGroup = new THREE.Group();
-roadFurnitureGroup.name = "road-furniture";
+roadFurnitureGroup.name = 'road-furniture';
 roadElements.add(roadFurnitureGroup);
 
 export interface OrientedSlot extends Vec3 {
@@ -125,7 +134,12 @@ const cycleTrackGeometries: THREE.BufferGeometry[] = [];
 const CYCLE_TRACK_WIDTH_M = 1.6;
 const destinationLampPlacements: Placement[] = [];
 
-function addMergedMesh(name: string, geometries: THREE.BufferGeometry[], material: THREE.Material, options: { castShadow?: boolean; renderOrder?: number; polygonOffset?: boolean } = {}) {
+function addMergedMesh(
+  name: string,
+  geometries: THREE.BufferGeometry[],
+  material: THREE.Material,
+  options: { castShadow?: boolean; renderOrder?: number; polygonOffset?: boolean } = {}
+) {
   const merged = mergeAll(geometries);
   if (!merged) {
     return;
@@ -140,7 +154,9 @@ function addMergedMesh(name: string, geometries: THREE.BufferGeometry[], materia
 
 function structureRuns(road: BuiltRoad): Array<{ kind: StructureKind; s0: number; s1: number }> {
   const s0 = road.spec.closed ? 0 : road.startTrim;
-  const s1 = road.spec.closed ? road.samples[road.samples.length - 1].s : road.length - road.endTrim;
+  const s1 = road.spec.closed
+    ? road.samples[road.samples.length - 1].s
+    : road.length - road.endTrim;
   const runs: Array<{ kind: StructureKind; s0: number; s1: number }> = [];
   let current: { kind: StructureKind; s0: number; s1: number } | undefined;
   for (const sample of road.samples) {
@@ -152,7 +168,11 @@ function structureRuns(road: BuiltRoad): Array<{ kind: StructureKind; s0: number
         current.s1 = sample.s;
         runs.push(current);
       }
-      current = { kind: sample.structure, s0: current ? current.s1 : Math.max(sample.s, s0), s1: sample.s };
+      current = {
+        kind: sample.structure,
+        s0: current ? current.s1 : Math.max(sample.s, s0),
+        s1: sample.s,
+      };
     }
     current.s1 = sample.s;
   }
@@ -167,8 +187,8 @@ function structureRuns(road: BuiltRoad): Array<{ kind: StructureKind; s0: number
 }
 
 export function deckThickness(road: BuiltRoad, kind: StructureKind) {
-  if (kind === "viaduct" || kind === "bridge") {
-    return road.spec.class === "highway" ? 1.8 : road.spec.class === "ramp" ? 1.2 : 1.4;
+  if (kind === 'viaduct' || kind === 'bridge') {
+    return road.spec.class === 'highway' ? 1.8 : road.spec.class === 'ramp' ? 1.2 : 1.4;
   }
   return 0.55;
 }
@@ -177,7 +197,7 @@ function buildEmbankments() {
   for (const road of roadNetwork.roads.values()) {
     const edgeOffset = road.halfWidth + road.cls.sidewalkWidth;
     for (const run of structureRuns(road)) {
-      if (run.kind !== "ground") {
+      if (run.kind !== 'ground') {
         continue;
       }
       const stations = stationsBetween(road.samples, run.s0, run.s1).filter((station) => {
@@ -191,7 +211,9 @@ function buildEmbankments() {
       const flush = () => {
         if (segment.length >= 2) {
           for (const sign of [-1, 1] as const) {
-            embankmentGeometries.push(skirtFromStations(segment, sign, edgeOffset, groundSurfaceYAt));
+            embankmentGeometries.push(
+              skirtFromStations(segment, sign, edgeOffset, groundSurfaceYAt)
+            );
           }
         }
         segment = [];
@@ -218,7 +240,14 @@ function buildSurfaces() {
         continue;
       }
       const thickness = deckThickness(road, run.kind);
-      const volume = volumeFromStations(stations, -road.halfWidth, road.halfWidth, 0, thickness, false);
+      const volume = volumeFromStations(
+        stations,
+        -road.halfWidth,
+        road.halfWidth,
+        0,
+        thickness,
+        false
+      );
       asphaltTops.push(volume.top);
       asphaltSides.push(volume.side);
     }
@@ -229,7 +258,14 @@ function buildSurfaces() {
         { x: last.x, y: last.y, z: last.z },
         { x: first.x, y: first.y, z: first.z },
       ]);
-      const volume = volumeFromStations(joint, -road.halfWidth, road.halfWidth, 0, deckThickness(road, last.structure), false);
+      const volume = volumeFromStations(
+        joint,
+        -road.halfWidth,
+        road.halfWidth,
+        0,
+        deckThickness(road, last.structure),
+        false
+      );
       asphaltTops.push(volume.top);
       asphaltSides.push(volume.side);
     }
@@ -268,29 +304,70 @@ function buildSurfaces() {
   }
 }
 
-function dashedLine(road: BuiltRoad, s0: number, s1: number, offset: number, width: number, dash: number, gap: number, target: THREE.BufferGeometry[], lift = 0.02) {
+function dashedLine(
+  road: BuiltRoad,
+  s0: number,
+  s1: number,
+  offset: number,
+  width: number,
+  dash: number,
+  gap: number,
+  target: THREE.BufferGeometry[],
+  lift = 0.02
+) {
   for (let s = s0; s < s1; s += dash + gap) {
     const end = Math.min(s + dash, s1);
     if (end - s < 0.4) {
       break;
     }
-    target.push(stripFromStations(stationsBetween(road.samples, s, end), offset - width * 0.5, offset + width * 0.5, lift));
+    target.push(
+      stripFromStations(
+        stationsBetween(road.samples, s, end),
+        offset - width * 0.5,
+        offset + width * 0.5,
+        lift
+      )
+    );
   }
 }
 
-function solidLine(road: BuiltRoad, s0: number, s1: number, offset: number, width: number, target: THREE.BufferGeometry[], lift = 0.02) {
+function solidLine(
+  road: BuiltRoad,
+  s0: number,
+  s1: number,
+  offset: number,
+  width: number,
+  target: THREE.BufferGeometry[],
+  lift = 0.02
+) {
   if (s1 - s0 < 0.5) {
     return;
   }
-  target.push(stripFromStations(stationsBetween(road.samples, s0, s1), offset - width * 0.5, offset + width * 0.5, lift));
+  target.push(
+    stripFromStations(
+      stationsBetween(road.samples, s0, s1),
+      offset - width * 0.5,
+      offset + width * 0.5,
+      lift
+    )
+  );
 }
 
 function gapsFor(road: BuiltRoad) {
   return road.markingGaps;
 }
 
-function solidLineWithGaps(road: BuiltRoad, s0: number, s1: number, offset: number, width: number, target: THREE.BufferGeometry[]) {
-  const gaps = gapsFor(road).slice().sort((a, b) => a.s0 - b.s0);
+function solidLineWithGaps(
+  road: BuiltRoad,
+  s0: number,
+  s1: number,
+  offset: number,
+  width: number,
+  target: THREE.BufferGeometry[]
+) {
+  const gaps = gapsFor(road)
+    .slice()
+    .sort((a, b) => a.s0 - b.s0);
   let cursor = s0;
   for (const gap of gaps) {
     if (gap.s1 < cursor || gap.s0 > s1) {
@@ -312,19 +389,28 @@ function buildRoadMarkings() {
     const backward = road.spec.backward;
     const median = road.median;
 
-    for (const direction of ["forward", "backward"] as const) {
+    for (const direction of ['forward', 'backward'] as const) {
       const offsets = road.laneOffsets[direction];
-      const sign = direction === "forward" ? 1 : -1;
+      const sign = direction === 'forward' ? 1 : -1;
       for (let index = 1; index < offsets.length; index += 1) {
         const boundary = sign * (offsets[index - 1] + offsets[index]) * 0.5;
         if (road.spec.busLane && index === offsets.length - 1) {
           solidLine(road, s0 + 1, s1 - 1, boundary, 0.18, whiteMarkings);
           const outer = offsets[index];
           const stations = stationsBetween(road.samples, s0 + 1, s1 - 1);
-          busLaneGeometries.push(stripFromStations(stations, sign * (outer - cls.laneWidth * 0.5 + 0.15), sign * (outer + cls.laneWidth * 0.5 - 0.1), 0.012));
+          busLaneGeometries.push(
+            stripFromStations(
+              stations,
+              sign * (outer - cls.laneWidth * 0.5 + 0.15),
+              sign * (outer + cls.laneWidth * 0.5 - 0.1),
+              0.012
+            )
+          );
           for (let s = s0 + 20; s < s1 - 12; s += 60) {
             const letter = stationsBetween(road.samples, s, s + 4.5);
-            whiteMarkings.push(stripFromStations(letter, sign * (outer - 0.45), sign * (outer + 0.45), 0.025));
+            whiteMarkings.push(
+              stripFromStations(letter, sign * (outer - 0.45), sign * (outer + 0.45), 0.025)
+            );
           }
           continue;
         }
@@ -333,12 +419,12 @@ function buildRoadMarkings() {
     }
 
     if (forward > 0 && backward > 0 && median === 0) {
-      if (cls.centerMarking === "double-yellow") {
+      if (cls.centerMarking === 'double-yellow') {
         solidLine(road, s0, s1, -0.16, 0.12, yellowMarkings);
         solidLine(road, s0, s1, 0.16, 0.12, yellowMarkings);
-      } else if (cls.centerMarking === "dashed-yellow") {
+      } else if (cls.centerMarking === 'dashed-yellow') {
         dashedLine(road, s0 + 1, s1 - 1, 0, 0.14, 3, 6, yellowMarkings);
-      } else if (cls.centerMarking === "dashed-white") {
+      } else if (cls.centerMarking === 'dashed-white') {
         dashedLine(road, s0 + 1, s1 - 1, 0, 0.14, 3, 6, whiteMarkings);
       }
     }
@@ -348,7 +434,7 @@ function buildRoadMarkings() {
       if (forward > 0 && backward > 0) {
         solidLineWithGaps(road, s0, s1, edge, 0.15, whiteMarkings);
         solidLineWithGaps(road, s0, s1, -edge, 0.15, whiteMarkings);
-        if (median > 0 && road.spec.class === "highway") {
+        if (median > 0 && road.spec.class === 'highway') {
           solidLine(road, s0, s1, median * 0.5 + 0.1, 0.12, yellowMarkings);
           solidLine(road, s0, s1, -median * 0.5 - 0.1, 0.12, yellowMarkings);
         }
@@ -365,7 +451,9 @@ function buildRoadMarkings() {
       for (const sign of [-1, 1]) {
         const inner = sign * (road.halfWidth + 0.25);
         const outer = sign * (road.halfWidth + 0.25 + CYCLE_TRACK_WIDTH_M);
-        cycleTrackGeometries.push(stripFromStations(stations, Math.min(inner, outer), Math.max(inner, outer), 0.165));
+        cycleTrackGeometries.push(
+          stripFromStations(stations, Math.min(inner, outer), Math.max(inner, outer), 0.165)
+        );
         whiteMarkings.push(stripFromStations(stations, outer - 0.05, outer + 0.05, 0.17));
         for (let s = s0 + 24; s < s1 - 12; s += 70) {
           const centre = sign * (road.halfWidth + 0.25 + CYCLE_TRACK_WIDTH_M * 0.5);
@@ -410,24 +498,35 @@ function buildRoadMarkings() {
       if (!road) {
         continue;
       }
-      const incomingDirection = end.atStart ? "backward" : "forward";
+      const incomingDirection = end.atStart ? 'backward' : 'forward';
       const incomingOffsets = road.laneOffsets[incomingDirection];
       if (incomingOffsets.length === 0) {
         continue;
       }
       const sign = end.atStart ? -1 : 1;
       const pocket = pocketAtEnd(road, end.atStart);
-      const lanesInner = sign * ((pocket ? pocket.offset : incomingOffsets[0]) - road.cls.laneWidth * 0.5);
-      const lanesOuter = sign * (incomingOffsets[incomingOffsets.length - 1] + road.cls.laneWidth * 0.5);
+      const lanesInner =
+        sign * ((pocket ? pocket.offset : incomingOffsets[0]) - road.cls.laneWidth * 0.5);
+      const lanesOuter =
+        sign * (incomingOffsets[incomingOffsets.length - 1] + road.cls.laneWidth * 0.5);
       const lineStation = end.atStart ? road.startTrim + 2.1 : road.length - road.endTrim - 2.1;
       const control = junction.control;
       const urban = road.cls.sidewalkWidth > 0;
-      if (control === "signal" || control === "stop") {
+      if (control === 'signal' || control === 'stop') {
         const stations = stationsBetween(road.samples, lineStation - 0.25, lineStation + 0.25);
-        whiteMarkings.push(stripFromStations(stations, Math.min(lanesInner, lanesOuter), Math.max(lanesInner, lanesOuter), 0.022));
+        whiteMarkings.push(
+          stripFromStations(
+            stations,
+            Math.min(lanesInner, lanesOuter),
+            Math.max(lanesInner, lanesOuter),
+            0.022
+          )
+        );
       }
-      if (urban && (control === "signal" || (control === "stop" && junction.ends.length >= 3))) {
-        const crossStart = end.atStart ? road.startTrim + 0.6 : road.length - road.endTrim - 0.6 - 2.6;
+      if (urban && (control === 'signal' || (control === 'stop' && junction.ends.length >= 3))) {
+        const crossStart = end.atStart
+          ? road.startTrim + 0.6
+          : road.length - road.endTrim - 0.6 - 2.6;
         const crossStations = stationsBetween(road.samples, crossStart, crossStart + 2.6);
         const inset = 0.35;
         for (let u = -road.halfWidth + inset + 0.3; u <= road.halfWidth - inset - 0.3; u += 1.0) {
@@ -446,7 +545,7 @@ function buildRoadMarkings() {
       if (!road) {
         continue;
       }
-      const incomingDirection = end.atStart ? "backward" : "forward";
+      const incomingDirection = end.atStart ? 'backward' : 'forward';
       const incomingOffsets = road.laneOffsets[incomingDirection];
       if (incomingOffsets.length === 0) {
         continue;
@@ -473,8 +572,8 @@ function buildRoadMarkings() {
 function plantedMedianIntervals(road: BuiltRoad, s0: number, s1: number) {
   let intervals: Array<[number, number]> = [[s0, s1]];
   for (const range of road.pocketRanges) {
-    const gap0 = range.direction === "forward" ? range.s0 - POCKET_TAPER_M : range.s0;
-    const gap1 = range.direction === "forward" ? range.s1 : range.s1 + POCKET_TAPER_M;
+    const gap0 = range.direction === 'forward' ? range.s0 - POCKET_TAPER_M : range.s0;
+    const gap1 = range.direction === 'forward' ? range.s1 : range.s1 + POCKET_TAPER_M;
     const next: Array<[number, number]> = [];
     for (const [a, b] of intervals) {
       if (gap1 <= a || gap0 >= b) {
@@ -496,39 +595,58 @@ function plantedMedianIntervals(road: BuiltRoad, s0: number, s1: number) {
 function buildPocketMarkings(road: BuiltRoad) {
   const laneWidth = road.cls.laneWidth;
   for (const range of road.pocketRanges) {
-    const sign = range.direction === "forward" ? 1 : -1;
+    const sign = range.direction === 'forward' ? 1 : -1;
     const boundary = sign * (range.offset + laneWidth * 0.5);
     const innerEdge = sign * (range.offset - laneWidth * 0.5);
-    const stopEnd = range.direction === "forward" ? range.s1 - 2.6 : range.s1;
-    const stopStart = range.direction === "forward" ? range.s0 : range.s0 + 2.6;
+    const stopEnd = range.direction === 'forward' ? range.s1 - 2.6 : range.s1;
+    const stopStart = range.direction === 'forward' ? range.s0 : range.s0 + 2.6;
     solidLine(road, stopStart, stopEnd, boundary, 0.15, whiteMarkings);
     solidLine(road, stopStart, stopEnd, innerEdge - sign * 0.18, 0.12, yellowMarkings);
     solidLine(road, stopStart, stopEnd, innerEdge - sign * 0.46, 0.12, yellowMarkings);
     solidLine(road, stopStart, stopEnd, -sign * (road.median * 0.5 - 0.15), 0.12, yellowMarkings);
-    const taper0 = range.direction === "forward" ? range.s0 - POCKET_TAPER_M : range.s1;
+    const taper0 = range.direction === 'forward' ? range.s0 - POCKET_TAPER_M : range.s1;
     const taper1 = taper0 + POCKET_TAPER_M;
     const half = road.median * 0.5 - 0.15;
     solidLine(road, taper0, taper1, half, 0.12, yellowMarkings);
     solidLine(road, taper0, taper1, -half, 0.12, yellowMarkings);
     for (let s = taper0 + 1.5; s < taper1 - 1; s += 2.4) {
-      whiteMarkings.push(stripFromStations(stationsBetween(road.samples, s - 0.14, s + 0.14), -half + 0.4, half - 0.4, 0.02));
+      whiteMarkings.push(
+        stripFromStations(
+          stationsBetween(road.samples, s - 0.14, s + 0.14),
+          -half + 0.4,
+          half - 0.4,
+          0.02
+        )
+      );
     }
     const centre = sign * range.offset;
     const backs = range.s1 - range.s0 >= 40 ? [9, 26] : [9];
     for (const back of backs) {
-      const tipStation = range.direction === "forward" ? range.s1 - back : range.s0 + back;
-      const tailStation = range.direction === "forward" ? tipStation - 4 : tipStation + 4;
+      const tipStation = range.direction === 'forward' ? range.s1 - back : range.s0 + back;
+      const tailStation = range.direction === 'forward' ? tipStation - 4 : tipStation + 4;
       leftTurnArrow(road, tailStation, tipStation, centre, -sign);
     }
   }
 }
 
-function leftTurnArrow(road: BuiltRoad, tailStation: number, tipStation: number, centre: number, leftSign: number) {
-  const stem = stationsBetween(road.samples, Math.min(tailStation, tipStation), Math.max(tailStation, tipStation));
+function leftTurnArrow(
+  road: BuiltRoad,
+  tailStation: number,
+  tipStation: number,
+  centre: number,
+  leftSign: number
+) {
+  const stem = stationsBetween(
+    road.samples,
+    Math.min(tailStation, tipStation),
+    Math.max(tailStation, tipStation)
+  );
   whiteMarkings.push(stripFromStations(stem, centre - 0.22, centre + 0.22, 0.026));
   const bar = stationsBetween(road.samples, tipStation - 0.22, tipStation + 0.22);
   const barEnd = centre + leftSign * 1.2;
-  whiteMarkings.push(stripFromStations(bar, Math.min(centre - 0.22, barEnd), Math.max(centre + 0.22, barEnd), 0.026));
+  whiteMarkings.push(
+    stripFromStations(bar, Math.min(centre - 0.22, barEnd), Math.max(centre + 0.22, barEnd), 0.026)
+  );
   for (const [half, from, to] of [
     [0.9, 1.2, 1.5],
     [0.6, 1.5, 1.8],
@@ -549,7 +667,14 @@ function hatchLane(road: BuiltRoad, s0: number, s1: number, across0: number, acr
     for (let step = 0; step < 4; step += 1) {
       const a = low + (span * step) / 4;
       const b = low + (span * (step + 1)) / 4;
-      whiteMarkings.push(stripFromStations(stationsBetween(road.samples, s + step * 0.45, s + step * 0.45 + 0.6), a, b, 0.024));
+      whiteMarkings.push(
+        stripFromStations(
+          stationsBetween(road.samples, s + step * 0.45, s + step * 0.45 + 0.6),
+          a,
+          b,
+          0.024
+        )
+      );
     }
   }
 }
@@ -566,14 +691,14 @@ function buildLaneDrops() {
       if (!road || !next || !outgoingEnd) {
         continue;
       }
-      const inDirection = incomingEnd.atStart ? "backward" : "forward";
-      const outDirection = outgoingEnd.atStart ? "forward" : "backward";
+      const inDirection = incomingEnd.atStart ? 'backward' : 'forward';
+      const outDirection = outgoingEnd.atStart ? 'forward' : 'backward';
       const inOffsets = road.laneOffsets[inDirection];
       const outCount = next.laneOffsets[outDirection].length;
       if (inOffsets.length <= outCount || outCount === 0) {
         continue;
       }
-      const sign = inDirection === "forward" ? 1 : -1;
+      const sign = inDirection === 'forward' ? 1 : -1;
       const endStation = incomingEnd.atStart ? road.startTrim : road.length - road.endTrim;
       const usable = road.length - road.startTrim - road.endTrim;
       const taper = Math.min(60, usable * 0.6);
@@ -581,7 +706,13 @@ function buildLaneDrops() {
       const s1 = incomingEnd.atStart ? endStation + taper : endStation - 3;
       const laneWidth = road.cls.laneWidth;
       for (let index = outCount; index < inOffsets.length; index += 1) {
-        hatchLane(road, s0, s1, sign * (inOffsets[index] - laneWidth * 0.5), sign * (inOffsets[index] + laneWidth * 0.5));
+        hatchLane(
+          road,
+          s0,
+          s1,
+          sign * (inOffsets[index] - laneWidth * 0.5),
+          sign * (inOffsets[index] + laneWidth * 0.5)
+        );
       }
       const boundary = sign * (inOffsets[outCount - 1] + inOffsets[outCount]) * 0.5;
       solidLine(road, s0, s1, boundary, 0.15, whiteMarkings, 0.025);
@@ -595,7 +726,14 @@ function zigzagLine(road: BuiltRoad, s0: number, s1: number, edge: number, ampli
     const phase = ((s - s0) % 4) / 4;
     const wave = phase < 0.5 ? phase * 2 : 2 - phase * 2;
     const across = edge + inward * amplitude * wave;
-    whiteMarkings.push(stripFromStations(stationsBetween(road.samples, s, s + 1.05), across - 0.07, across + 0.07, 0.022));
+    whiteMarkings.push(
+      stripFromStations(
+        stationsBetween(road.samples, s, s + 1.05),
+        across - 0.07,
+        across + 0.07,
+        0.022
+      )
+    );
   }
 }
 
@@ -612,19 +750,26 @@ function buildSchoolZones() {
     const edge = road.halfWidth - 0.35;
     zigzagLine(road, s0, s1, edge, 0.5);
     zigzagLine(road, s0, s1, -edge, 0.5);
-    for (const direction of ["forward", "backward"] as const) {
+    for (const direction of ['forward', 'backward'] as const) {
       const offsets = road.laneOffsets[direction];
       if (offsets.length === 0) {
         continue;
       }
-      const sign = direction === "forward" ? 1 : -1;
+      const sign = direction === 'forward' ? 1 : -1;
       const centre = sign * offsets[offsets.length - 1];
       for (const along of [0.22, 0.5]) {
-        const s = direction === "forward" ? s0 + (s1 - s0) * along : s1 - (s1 - s0) * along;
+        const s = direction === 'forward' ? s0 + (s1 - s0) * along : s1 - (s1 - s0) * along;
         for (let step = 0; step < 6; step += 1) {
           const half = 1.1 * (1 - step / 6);
-          const from = direction === "forward" ? s + step * 0.5 : s - step * 0.5 - 0.5;
-          whiteMarkings.push(stripFromStations(stationsBetween(road.samples, from, from + 0.5), centre - half, centre + half, 0.025));
+          const from = direction === 'forward' ? s + step * 0.5 : s - step * 0.5 - 0.5;
+          whiteMarkings.push(
+            stripFromStations(
+              stationsBetween(road.samples, from, from + 0.5),
+              centre - half,
+              centre + half,
+              0.025
+            )
+          );
         }
       }
     }
@@ -632,8 +777,12 @@ function buildSchoolZones() {
 }
 
 function pocketAtEnd(road: BuiltRoad, atStart: boolean) {
-  const direction = atStart ? "backward" : "forward";
-  return road.pocketRanges.find((range) => range.direction === direction && (atStart ? range.s0 <= road.startTrim + 0.5 : range.s1 >= road.length - road.endTrim - 0.5));
+  const direction = atStart ? 'backward' : 'forward';
+  return road.pocketRanges.find(
+    (range) =>
+      range.direction === direction &&
+      (atStart ? range.s0 <= road.startTrim + 0.5 : range.s1 >= road.length - road.endTrim - 0.5)
+  );
 }
 
 function buildSidewalksAndMedians() {
@@ -654,11 +803,11 @@ function buildSidewalksAndMedians() {
         sidewalkTops.push(volume.top);
         kerbSides.push(volume.side);
       }
-      if ((road.spec.class === "arterial" || road.spec.class === "collector") && s1 - s0 > 260) {
+      if ((road.spec.class === 'arterial' || road.spec.class === 'collector') && s1 - s0 > 260) {
         let stopSide = road.spec.id.length % 2 === 0 ? 1 : -1;
         for (let s = s0 + 130; s < s1 - 60; s += 240) {
           const station = sampleAtStation(road.samples, s);
-          if (station.structure !== "ground") {
+          if (station.structure !== 'ground') {
             continue;
           }
           const right = perpRight({ x: station.tx, z: station.tz });
@@ -667,7 +816,10 @@ function buildSidewalksAndMedians() {
             x: station.x + right.x * offset,
             y: station.y + 0.15,
             z: station.z + right.z * offset,
-            heading: stopSide > 0 ? Math.atan2(station.tx, station.tz) : Math.atan2(-station.tx, -station.tz),
+            heading:
+              stopSide > 0
+                ? Math.atan2(station.tx, station.tz)
+                : Math.atan2(-station.tx, -station.tz),
           });
           stopSide *= -1;
         }
@@ -676,21 +828,31 @@ function buildSidewalksAndMedians() {
       if (treeSpacing > 0) {
         for (let s = s0 + 16; s < s1 - 16; s += treeSpacing) {
           const station = sampleAtStation(road.samples, s);
-          if (station.structure !== "ground") {
+          if (station.structure !== 'ground') {
             continue;
           }
           const right = perpRight({ x: station.tx, z: station.tz });
           const offset = road.halfWidth + cls.sidewalkWidth - 0.9;
           for (const sign of [-1, 1]) {
-            roadSideSlots.streetTrees.push({ x: station.x + right.x * offset * sign, y: station.y + 0.15, z: station.z + right.z * offset * sign });
+            roadSideSlots.streetTrees.push({
+              x: station.x + right.x * offset * sign,
+              y: station.y + 0.15,
+              z: station.z + right.z * offset * sign,
+            });
           }
         }
       }
     }
-    if (road.median > 0 && cls.medianKind === "planted" && s1 - s0 > 40) {
+    if (road.median > 0 && cls.medianKind === 'planted' && s1 - s0 > 40) {
       const half = road.median * 0.5 - 0.3;
       for (const [a, b] of plantedMedianIntervals(road, s0 + 14, s1 - 14)) {
-        const volume = volumeFromStations(stationsBetween(road.samples, a, b), -half, half, 0.18, 0.6);
+        const volume = volumeFromStations(
+          stationsBetween(road.samples, a, b),
+          -half,
+          half,
+          0.18,
+          0.6
+        );
         medianTops.push(volume.top);
         kerbSides.push(volume.side);
         for (let s = a + 8; s < b - 8; s += 12) {
@@ -699,13 +861,23 @@ function buildSidewalksAndMedians() {
         }
       }
     }
-    if (road.median > 0 && cls.medianKind === "barrier") {
+    if (road.median > 0 && cls.medianKind === 'barrier') {
       const volume = volumeFromStations(stations, -0.3, 0.3, 0.9, 0.9, false);
       barrierGeometries.push(volume.top, volume.side);
       if (closed) {
         const last = road.samples[road.samples.length - 1];
         const first = road.samples[0];
-        const joint = volumeFromStations(polylineStations([{ x: last.x, y: last.y, z: last.z }, { x: first.x, y: first.y, z: first.z }]), -0.3, 0.3, 0.9, 0.9, false);
+        const joint = volumeFromStations(
+          polylineStations([
+            { x: last.x, y: last.y, z: last.z },
+            { x: first.x, y: first.y, z: first.z },
+          ]),
+          -0.3,
+          0.3,
+          0.9,
+          0.9,
+          false
+        );
         barrierGeometries.push(joint.top, joint.side);
       }
     }
@@ -726,7 +898,11 @@ function buildSidewalksAndMedians() {
         const dx = point.x - junction.center.x;
         const dz = point.z - junction.center.z;
         const length = Math.hypot(dx, dz) || 1;
-        return { x: point.x + (dx / length) * width, y: point.y, z: point.z + (dz / length) * width };
+        return {
+          x: point.x + (dx / length) * width,
+          y: point.y,
+          z: point.z + (dz / length) * width,
+        };
       });
       const polygon = [...corner.points, ...outward.slice().reverse()];
       const volume = polygonVolume(polygon, 0.15, 0.6);
@@ -742,13 +918,26 @@ function lineStrip(a: Vec3, b: Vec3, width: number, lift: number, target: THREE.
   target.push(stripFromStations(polylineStations([a, b]), -width * 0.5, width * 0.5, lift));
 }
 
-function postBox(x: number, y: number, z: number, size: number, height: number, target: THREE.BufferGeometry[]) {
+function postBox(
+  x: number,
+  y: number,
+  z: number,
+  size: number,
+  height: number,
+  target: THREE.BufferGeometry[]
+) {
   const post = new THREE.BoxGeometry(size, height, size);
   post.translate(x, y + height * 0.5, z);
   target.push(post);
 }
 
-function buildParkingStalls(destination: BuiltDestination, alongFrom: number, alongTo: number, acrossFrom: number, acrossTo: number) {
+function buildParkingStalls(
+  destination: BuiltDestination,
+  alongFrom: number,
+  alongTo: number,
+  acrossFrom: number,
+  acrossTo: number
+) {
   const { origin, axis, right } = destination;
   const at = (along: number, across: number, lift = 0): Vec3 => ({
     x: origin.x + axis.x * along + right.x * across,
@@ -772,7 +961,10 @@ function buildParkingStalls(destination: BuiltDestination, alongFrom: number, al
         lineStrip(at(along, inner), at(along, outer), 0.12, 0.02, whiteMarkings);
         if (along + 2.6 <= alongTo + 0.01) {
           const bay = at(along + 1.3, (inner + outer) * 0.5);
-          roadSideSlots.parkingBays.push({ ...bay, heading: Math.atan2(right.x * side, right.z * side) });
+          roadSideSlots.parkingBays.push({
+            ...bay,
+            heading: Math.atan2(right.x * side, right.z * side),
+          });
         }
       }
     }
@@ -788,7 +980,7 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
     y: y + lift,
     z: origin.z + axis.z * along + right.z * across,
   });
-  if (spec.kind === "culdesac") {
+  if (spec.kind === 'culdesac') {
     const centre = junction.center;
     const island = new THREE.CylinderGeometry(3.0, 3.4, 0.42, 24);
     island.translate(centre.x, y + 0.21, centre.z);
@@ -808,25 +1000,45 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
       sidewalkTops.push(ring.top);
       kerbSides.push(ring.side);
     }
-    destinationLampPlacements.push({ x: centre.x, y: y + 0.21, z: centre.z, rotationY: Math.atan2(axis.x, axis.z) });
+    destinationLampPlacements.push({
+      x: centre.x,
+      y: y + 0.21,
+      z: centre.z,
+      rotationY: Math.atan2(axis.x, axis.z),
+    });
     return;
   }
   const half = spec.width * 0.5;
   const depth = spec.depth;
   const footway = 1.6;
   const inner = [at(4, half), at(depth, half), at(depth, -half), at(4, -half)];
-  const outer = [at(4, half + footway), at(depth + footway, half + footway), at(depth + footway, -half - footway), at(4, -half - footway)];
+  const outer = [
+    at(4, half + footway),
+    at(depth + footway, half + footway),
+    at(depth + footway, -half - footway),
+    at(4, -half - footway),
+  ];
   const ring = polygonVolume([...inner, ...outer.slice().reverse()], 0.15, 0.6);
   if (ring) {
     sidewalkTops.push(ring.top);
     kerbSides.push(ring.side);
   }
-  const rim = polylineStations([at(4, -half - footway - 0.2), at(depth + footway + 0.2, -half - footway - 0.2), at(depth + footway + 0.2, half + footway + 0.2), at(4, half + footway + 0.2)]);
+  const rim = polylineStations([
+    at(4, -half - footway - 0.2),
+    at(depth + footway + 0.2, -half - footway - 0.2),
+    at(depth + footway + 0.2, half + footway + 0.2),
+    at(4, half + footway + 0.2),
+  ]);
   embankmentGeometries.push(skirtFromStations(rim, -1, 0, groundSurfaceYAt));
   for (const across of [-(half - 2.2), half - 2.2]) {
     for (const along of [10, depth - 4]) {
       const point = at(along, across, 0.15);
-      destinationLampPlacements.push({ x: point.x, y: point.y, z: point.z, rotationY: Math.atan2(-right.x * Math.sign(across), -right.z * Math.sign(across)) });
+      destinationLampPlacements.push({
+        x: point.x,
+        y: point.y,
+        z: point.z,
+        rotationY: Math.atan2(-right.x * Math.sign(across), -right.z * Math.sign(across)),
+      });
     }
   }
   for (const across of [-half - footway * 0.5, half + footway * 0.5]) {
@@ -835,19 +1047,24 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
     }
   }
 
-  if (spec.kind === "parking" || spec.kind === "viewpoint") {
-    const deckRadius = spec.kind === "viewpoint" ? Math.min(half - 2, 13) : 0;
-    const stallsTo = spec.kind === "viewpoint" ? depth - deckRadius - 4 : depth - 2.5;
+  if (spec.kind === 'parking' || spec.kind === 'viewpoint') {
+    const deckRadius = spec.kind === 'viewpoint' ? Math.min(half - 2, 13) : 0;
+    const stallsTo = spec.kind === 'viewpoint' ? depth - deckRadius - 4 : depth - 2.5;
     buildParkingStalls(destination, 9, stallsTo, -half + 1.2, half - 1.2);
     lineStrip(at(9, -half + 1.2), at(9, half - 1.2), 0.12, 0.02, whiteMarkings);
   }
-  if (spec.kind === "viewpoint") {
+  if (spec.kind === 'viewpoint') {
     const deckRadius = Math.min(half - 2, 13);
     const deck: Vec3[] = [];
     const segments = 18;
     for (let index = 0; index <= segments; index += 1) {
       const angle = -Math.PI * 0.5 + (index / segments) * Math.PI;
-      deck.push(at(depth - deckRadius - 1 + Math.cos(angle) * (deckRadius + 5), Math.sin(angle) * (deckRadius + 5)));
+      deck.push(
+        at(
+          depth - deckRadius - 1 + Math.cos(angle) * (deckRadius + 5),
+          Math.sin(angle) * (deckRadius + 5)
+        )
+      );
     }
     const platform = polygonVolume(deck, 0.32, 0.9);
     if (platform) {
@@ -858,11 +1075,19 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
     embankmentGeometries.push(skirtFromStations(deckRim, -1, 0, groundSurfaceYAt));
     for (let index = 0; index <= segments; index += 1) {
       const angle = -Math.PI * 0.5 + (index / segments) * Math.PI;
-      const post = at(depth - deckRadius - 1 + Math.cos(angle) * (deckRadius + 4.4), Math.sin(angle) * (deckRadius + 4.4), 0.32);
+      const post = at(
+        depth - deckRadius - 1 + Math.cos(angle) * (deckRadius + 4.4),
+        Math.sin(angle) * (deckRadius + 4.4),
+        0.32
+      );
       postBox(post.x, post.y, post.z, 0.12, 1.1, guardrailGeometries);
       if (index < segments) {
         const nextAngle = -Math.PI * 0.5 + ((index + 1) / segments) * Math.PI;
-        const next = at(depth - deckRadius - 1 + Math.cos(nextAngle) * (deckRadius + 4.4), Math.sin(nextAngle) * (deckRadius + 4.4), 0.32);
+        const next = at(
+          depth - deckRadius - 1 + Math.cos(nextAngle) * (deckRadius + 4.4),
+          Math.sin(nextAngle) * (deckRadius + 4.4),
+          0.32
+        );
         guardrailGeometries.push(boxBetween(post, next, 0.08, 0.08, 1.02));
         guardrailGeometries.push(boxBetween(post, next, 0.06, 0.06, 0.55));
       }
@@ -879,8 +1104,13 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
     const bench = at(depth - deckRadius - 1, 0, 0.32);
     postBox(bench.x, bench.y, bench.z, 0.4, 1.3, guardrailGeometries);
   }
-  if (spec.kind === "yard") {
-    const perimeter = [at(4, half + footway), at(depth + footway, half + footway), at(depth + footway, -half - footway), at(4, -half - footway)];
+  if (spec.kind === 'yard') {
+    const perimeter = [
+      at(4, half + footway),
+      at(depth + footway, half + footway),
+      at(depth + footway, -half - footway),
+      at(4, -half - footway),
+    ];
     for (let index = 0; index < perimeter.length - 1; index += 1) {
       const a = perimeter[index];
       const b = perimeter[index + 1];
@@ -888,11 +1118,20 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
       const steps = Math.max(1, Math.round(length / 3));
       for (let step = 0; step <= steps; step += 1) {
         const t = step / steps;
-        postBox(a.x + (b.x - a.x) * t, a.y + 0.15, a.z + (b.z - a.z) * t, 0.12, 2.4, guardrailGeometries);
+        postBox(
+          a.x + (b.x - a.x) * t,
+          a.y + 0.15,
+          a.z + (b.z - a.z) * t,
+          0.12,
+          2.4,
+          guardrailGeometries
+        );
       }
       const mesh = boxBetween({ ...a, y: a.y + 0.15 }, { ...b, y: b.y + 0.15 }, 0.04, 2.1, 0.2);
       fenceGeometries.push(mesh);
-      guardrailGeometries.push(boxBetween({ ...a, y: a.y + 0.15 }, { ...b, y: b.y + 0.15 }, 0.07, 0.07, 2.3));
+      guardrailGeometries.push(
+        boxBetween({ ...a, y: a.y + 0.15 }, { ...b, y: b.y + 0.15 }, 0.07, 0.07, 2.3)
+      );
     }
     const gateY = y + 0.15;
     for (const side of [-1, 1] as const) {
@@ -927,7 +1166,7 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
       lineStrip(at(along, -half + 1.4), at(along, -half * 0.35), 0.16, 0.02, yellowMarkings);
     }
   }
-  if (spec.kind === "forecourt") {
+  if (spec.kind === 'forecourt') {
     const islandInner = [at(10, 3.4), at(depth - 6, 3.4), at(depth - 6, -3.4), at(10, -3.4)];
     const island = polygonVolume(islandInner, 0.15, 0.6);
     if (island) {
@@ -958,9 +1197,21 @@ function buildDestination(junction: BuiltJunction, destination: BuiltDestination
         const seatAt = at(along + 4, side * 1.0, 0.15);
         seat.translate(seatAt.x, seatAt.y + 0.5, seatAt.z);
         guardrailGeometries.push(seat);
-        lineStrip(at(along - 1, side * 3.6), at(along + 11, side * 3.6), 0.14, 0.02, yellowMarkings);
+        lineStrip(
+          at(along - 1, side * 3.6),
+          at(along + 11, side * 3.6),
+          0.14,
+          0.02,
+          yellowMarkings
+        );
         lineStrip(at(along - 1, side * 3.6), at(along - 1, side * 7.2), 0.14, 0.02, yellowMarkings);
-        lineStrip(at(along + 11, side * 3.6), at(along + 11, side * 7.2), 0.14, 0.02, yellowMarkings);
+        lineStrip(
+          at(along + 11, side * 3.6),
+          at(along + 11, side * 7.2),
+          0.14,
+          0.02,
+          yellowMarkings
+        );
       }
     }
     buildParkingStalls(destination, 12, depth - 3, 9, half - 1.2);
@@ -972,7 +1223,7 @@ function buildTollGantries() {
   const frames: THREE.BufferGeometry[] = [];
   const signs: THREE.BufferGeometry[] = [];
   for (const node of roadNetwork.nodes.values()) {
-    if (node.spec.control !== "toll" || !node.isCut) {
+    if (node.spec.control !== 'toll' || !node.isCut) {
       continue;
     }
     const road = roadNetwork.roads.get(node.roadIds[0]);
@@ -989,14 +1240,21 @@ function buildTollGantries() {
     const span = road.width + 3;
     for (const sign of [-1, 1]) {
       const post = new THREE.BoxGeometry(0.6, 7.2, 0.6);
-      post.translate(station.x + right.x * sign * span * 0.5, station.y + 3.6, station.z + right.z * sign * span * 0.5);
+      post.translate(
+        station.x + right.x * sign * span * 0.5,
+        station.y + 3.6,
+        station.z + right.z * sign * span * 0.5
+      );
       frames.push(post);
     }
     const beam = new THREE.BoxGeometry(span + 0.6, 0.9, 0.7);
     beam.rotateY(heading + Math.PI / 2);
     beam.translate(station.x, station.y + 6.9, station.z);
     frames.push(beam);
-    for (const offset of [...road.laneOffsets.forward, ...road.laneOffsets.backward.map((value) => -value)]) {
+    for (const offset of [
+      ...road.laneOffsets.forward,
+      ...road.laneOffsets.backward.map((value) => -value),
+    ]) {
       const camera = new THREE.BoxGeometry(0.5, 0.5, 0.9);
       camera.rotateY(heading);
       camera.translate(station.x + right.x * offset, station.y + 6.1, station.z + right.z * offset);
@@ -1011,8 +1269,8 @@ function buildTollGantries() {
     bar.translate(station.x, station.y + 0.03, station.z);
     whiteMarkings.push(bar);
   }
-  addMergedMesh("toll-gantries", frames, tollGantryMaterial, { renderOrder: 10, castShadow: true });
-  addMergedMesh("toll-gantry-signs", signs, tollSignMaterial, { renderOrder: 10 });
+  addMergedMesh('toll-gantries', frames, tollGantryMaterial, { renderOrder: 10, castShadow: true });
+  addMergedMesh('toll-gantry-signs', signs, tollSignMaterial, { renderOrder: 10 });
 }
 
 function buildBusStops() {
@@ -1063,7 +1321,12 @@ function buildBusStops() {
     flag.translate(pole.x, pole.y + 2.7, pole.z);
     signs.push(flag);
   }
-  const attach = (name: string, parts: THREE.BufferGeometry[], material: THREE.Material, castShadow: boolean) => {
+  const attach = (
+    name: string,
+    parts: THREE.BufferGeometry[],
+    material: THREE.Material,
+    castShadow: boolean
+  ) => {
     const merged = mergeAll(parts);
     if (!merged) {
       return;
@@ -1074,10 +1337,10 @@ function buildBusStops() {
     mesh.receiveShadow = true;
     roadFurnitureGroup.add(mesh);
   };
-  attach("bus-stop-frames", posts, guardrailMaterial, true);
-  attach("bus-stop-roofs", roofs, roadStructureConcreteMaterial, true);
-  attach("bus-stop-glass", glass, shelterGlassMaterial, false);
-  attach("bus-stop-flags", signs, signMaterials.stop, false);
+  attach('bus-stop-frames', posts, guardrailMaterial, true);
+  attach('bus-stop-roofs', roofs, roadStructureConcreteMaterial, true);
+  attach('bus-stop-glass', glass, shelterGlassMaterial, false);
+  attach('bus-stop-flags', signs, signMaterials.stop, false);
 }
 
 function buildDestinations() {
@@ -1112,49 +1375,73 @@ function buildStructures() {
     const bridgeS1 = controlStations[RING_BRIDGE_CONTROLS.to];
     const bridgeStations = stationsBetween(ring.samples, bridgeS0, bridgeS1);
     addCableStayedBridgeStructure(
-      "ring-river-cable-stayed-bridge",
-      bridgeStations.map((station) => ({ x: station.x, y: station.y, z: station.z })),
+      'ring-river-cable-stayed-bridge',
+      bridgeStations.map((station) => ({ x: station.x, y: station.y, z: station.z }))
     );
   }
 
   for (const road of roadNetwork.roads.values()) {
     for (const run of structureRuns(road)) {
-      if (run.kind !== "tunnel") {
+      if (run.kind !== 'tunnel') {
         continue;
       }
       const closed = Boolean(road.spec.closed);
       const totalLength = closed ? road.samples[road.samples.length - 1].s : road.length;
       if (run.s0 > 0.5 || closed) {
         const entry = sampleAtStation(road.samples, run.s0 + 2);
-        addTunnelPortal(`${road.spec.id}-tunnel-portal-in`, { x: entry.x, y: entry.y, z: entry.z }, { x: -entry.tx, z: -entry.tz }, 0);
+        addTunnelPortal(
+          `${road.spec.id}-tunnel-portal-in`,
+          { x: entry.x, y: entry.y, z: entry.z },
+          { x: -entry.tx, z: -entry.tz },
+          0
+        );
       }
       if (run.s1 < totalLength - 0.5 || closed) {
         const exit = sampleAtStation(road.samples, run.s1 - 2);
-        addTunnelPortal(`${road.spec.id}-tunnel-portal-out`, { x: exit.x, y: exit.y, z: exit.z }, { x: exit.tx, z: exit.tz }, 0);
+        addTunnelPortal(
+          `${road.spec.id}-tunnel-portal-out`,
+          { x: exit.x, y: exit.y, z: exit.z },
+          { x: exit.tx, z: exit.tz },
+          0
+        );
       }
     }
   }
 
   for (const road of roadNetwork.roads.values()) {
     for (const run of structureRuns(road)) {
-      if (run.kind !== "viaduct" && run.kind !== "bridge") {
+      if (run.kind !== 'viaduct' && run.kind !== 'bridge') {
         continue;
       }
       const thickness = deckThickness(road, run.kind);
       const stations = stationsBetween(road.samples, run.s0, run.s1);
-      if (road.spec.class === "highway" || road.spec.class === "ramp") {
+      if (road.spec.class === 'highway' || road.spec.class === 'ramp') {
         for (const sign of [-1, 1]) {
-          const parapet = volumeFromStations(stations, sign * (road.halfWidth - 0.5), sign * road.halfWidth, 1.05, 1.05, false);
+          const parapet = volumeFromStations(
+            stations,
+            sign * (road.halfWidth - 0.5),
+            sign * road.halfWidth,
+            1.05,
+            1.05,
+            false
+          );
           barrierGeometries.push(parapet.top, parapet.side);
         }
       } else {
         for (const sign of [-1, 1]) {
-          const kerb = volumeFromStations(stations, sign * (road.halfWidth + road.cls.sidewalkWidth), sign * (road.halfWidth + road.cls.sidewalkWidth + 0.3), 1.15, 1.15, false);
+          const kerb = volumeFromStations(
+            stations,
+            sign * (road.halfWidth + road.cls.sidewalkWidth),
+            sign * (road.halfWidth + road.cls.sidewalkWidth + 0.3),
+            1.15,
+            1.15,
+            false
+          );
           barrierGeometries.push(kerb.top, kerb.side);
         }
       }
-      const spacing = road.spec.class === "highway" ? 32 : 26;
-      const isRingBridge = road.spec.id === RING_ROAD_ID && run.kind === "bridge";
+      const spacing = road.spec.class === 'highway' ? 32 : 26;
+      const isRingBridge = road.spec.id === RING_ROAD_ID && run.kind === 'bridge';
       for (let s = run.s0 + spacing * 0.5; s < run.s1 - 6; s += spacing) {
         const station = sampleAtStation(road.samples, s);
         if (isRingBridge) {
@@ -1166,7 +1453,10 @@ function buildStructures() {
         if (otherRoadClearance(station.x, station.z, road.spec.id) < 9) {
           continue;
         }
-        const groundY = Math.min(fullTerrainSurfaceYAt({ x: station.x, z: station.z }), station.y - 4);
+        const groundY = Math.min(
+          fullTerrainSurfaceYAt({ x: station.x, z: station.z }),
+          station.y - 4
+        );
         const baseY = Math.min(groundY, SEA_Y + 1.5) - 1.5;
         const topY = station.y - thickness;
         const height = topY - baseY;
@@ -1174,7 +1464,7 @@ function buildStructures() {
           continue;
         }
         const angle = Math.atan2(station.tx, station.tz);
-        if (road.spec.class === "highway") {
+        if (road.spec.class === 'highway') {
           const column = new THREE.BoxGeometry(2.6, height - 1.5, 3.0);
           column.rotateY(angle);
           column.translate(station.x, baseY + (height - 1.5) * 0.5, station.z);
@@ -1182,7 +1472,7 @@ function buildStructures() {
           head.rotateY(angle);
           head.translate(station.x, topY - 0.75, station.z);
           pierGeometries.push(column, head);
-        } else if (road.spec.class === "ramp") {
+        } else if (road.spec.class === 'ramp') {
           const column = new THREE.CylinderGeometry(1.0, 1.1, height, 12);
           column.translate(station.x, baseY + height * 0.5, station.z);
           pierGeometries.push(column);
@@ -1202,11 +1492,16 @@ function buildStructures() {
   }
 
   for (const road of roadNetwork.roads.values()) {
-    if (road.spec.class !== "highway" && road.spec.class !== "ramp" && road.spec.class !== "mountain" && road.spec.class !== "rural") {
+    if (
+      road.spec.class !== 'highway' &&
+      road.spec.class !== 'ramp' &&
+      road.spec.class !== 'mountain' &&
+      road.spec.class !== 'rural'
+    ) {
       continue;
     }
     for (const run of structureRuns(road)) {
-      if (run.kind !== "ground") {
+      if (run.kind !== 'ground') {
         continue;
       }
       const stations = stationsBetween(road.samples, run.s0, run.s1);
@@ -1218,7 +1513,11 @@ function buildStructures() {
           const station = sampleAtStation(road.samples, s);
           const right = perpRight({ x: station.tx, z: station.tz });
           const post = new THREE.BoxGeometry(0.14, 0.78, 0.14);
-          post.translate(station.x + right.x * offset, station.y + 0.39, station.z + right.z * offset);
+          post.translate(
+            station.x + right.x * offset,
+            station.y + 0.39,
+            station.z + right.z * offset
+          );
           guardrailGeometries.push(post);
         }
       }
@@ -1244,7 +1543,13 @@ function ringControlStations(ring: BuiltRoad) {
   return stations;
 }
 
-function addInstances(name: string, geometry: THREE.BufferGeometry, material: THREE.Material | THREE.Material[], placements: Placement[], castShadow = true) {
+function addInstances(
+  name: string,
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material | THREE.Material[],
+  placements: Placement[],
+  castShadow = true
+) {
   if (placements.length === 0) {
     return;
   }
@@ -1310,27 +1615,59 @@ function buildLamps() {
       const station = sampleAtStation(road.samples, s);
       const right = perpRight({ x: station.tx, z: station.tz });
       const heading = Math.atan2(station.tx, station.tz);
-      if (road.spec.class === "highway") {
+      if (road.spec.class === 'highway') {
         if (station.y - fullTerrainSurfaceYAt({ x: station.x, z: station.z }) > 60) {
           continue;
         }
-        highwayPlacements.push({ x: station.x, y: station.y + 0.9, z: station.z, rotationY: heading + Math.PI / 2 });
+        highwayPlacements.push({
+          x: station.x,
+          y: station.y + 0.9,
+          z: station.z,
+          rotationY: heading + Math.PI / 2,
+        });
         roadSideSlots.lamps.push({ x: station.x, y: station.y, z: station.z });
         continue;
       }
       const offset = side * (road.halfWidth + Math.max(road.cls.sidewalkWidth * 0.5, 0.6));
       const x = station.x + right.x * offset;
       const z = station.z + right.z * offset;
-      urbanPlacements.push({ x, y: station.y + 0.15, z, rotationY: heading + (side > 0 ? Math.PI / 2 : -Math.PI / 2) + Math.PI });
+      urbanPlacements.push({
+        x,
+        y: station.y + 0.15,
+        z,
+        rotationY: heading + (side > 0 ? Math.PI / 2 : -Math.PI / 2) + Math.PI,
+      });
       roadSideSlots.lamps.push({ x, y: station.y, z });
       side *= -1;
     }
   }
   urbanPlacements.push(...destinationLampPlacements);
-  addInstances("street-lamp-poles", createLampGeometry(8.5, 2.4, false), lampPoleMaterial, urbanPlacements);
-  addInstances("street-lamp-heads", createLampHeadGeometry(2.4, false, 8.5), lampHeadMaterial, urbanPlacements, false);
-  addInstances("highway-lamp-poles", createLampGeometry(12, 3.2, true), lampPoleMaterial, highwayPlacements);
-  addInstances("highway-lamp-heads", createLampHeadGeometry(3.2, true, 12), lampHeadMaterial, highwayPlacements, false);
+  addInstances(
+    'street-lamp-poles',
+    createLampGeometry(8.5, 2.4, false),
+    lampPoleMaterial,
+    urbanPlacements
+  );
+  addInstances(
+    'street-lamp-heads',
+    createLampHeadGeometry(2.4, false, 8.5),
+    lampHeadMaterial,
+    urbanPlacements,
+    false
+  );
+  addInstances(
+    'highway-lamp-poles',
+    createLampGeometry(12, 3.2, true),
+    lampPoleMaterial,
+    highwayPlacements
+  );
+  addInstances(
+    'highway-lamp-heads',
+    createLampHeadGeometry(3.2, true, 12),
+    lampHeadMaterial,
+    highwayPlacements,
+    false
+  );
 }
 
 function approachRight(end: RoadEnd) {
@@ -1347,7 +1684,7 @@ function buildTrafficSignals() {
   const darkLenses: Placement[] = [];
 
   for (const junction of roadNetwork.junctions.values()) {
-    if (junction.control !== "signal") {
+    if (junction.control !== 'signal') {
       continue;
     }
     for (const end of junction.ends) {
@@ -1355,7 +1692,7 @@ function buildTrafficSignals() {
       if (!road) {
         continue;
       }
-      const incomingOffsets = road.laneOffsets[end.atStart ? "backward" : "forward"];
+      const incomingOffsets = road.laneOffsets[end.atStart ? 'backward' : 'forward'];
       if (incomingOffsets.length === 0) {
         continue;
       }
@@ -1364,25 +1701,34 @@ function buildTrafficSignals() {
       const poleX = end.cornerA.x + right.x * 1.1 + back.x * 1.2;
       const poleZ = end.cornerA.z + right.z * 1.1 + back.z * 1.2;
       const facing = Math.atan2(end.dir.x, end.dir.z);
-      const armLength = incomingOffsets[incomingOffsets.length - 1] + road.cls.laneWidth * 0.5 + 1.1 + (end.halfWidth - (incomingOffsets[incomingOffsets.length - 1] + road.cls.laneWidth * 0.5));
+      const armLength =
+        incomingOffsets[incomingOffsets.length - 1] +
+        road.cls.laneWidth * 0.5 +
+        1.1 +
+        (end.halfWidth - (incomingOffsets[incomingOffsets.length - 1] + road.cls.laneWidth * 0.5));
       poles.push({ x: poleX, y: end.cornerA.y, z: poleZ, rotationY: facing });
       arms.push({ x: poleX, y: end.cornerA.y, z: poleZ, rotationY: facing, scaleX: armLength });
       const axisEastWest = Math.abs(end.dir.x) > Math.abs(end.dir.z);
-      const lit = axisEastWest ? "red" : "green";
+      const lit = axisEastWest ? 'red' : 'green';
       for (const offset of incomingOffsets) {
         const distanceFromKerb = end.halfWidth - offset;
         const headX = poleX - right.x * distanceFromKerb;
         const headZ = poleZ - right.z * distanceFromKerb;
         heads.push({ x: headX, y: end.cornerA.y, z: headZ, rotationY: facing });
         const lensSet = [
-          { color: "red", height: 6.2 },
-          { color: "yellow", height: 5.85 },
-          { color: "green", height: 5.5 },
+          { color: 'red', height: 6.2 },
+          { color: 'yellow', height: 5.85 },
+          { color: 'green', height: 5.5 },
         ];
         for (const lens of lensSet) {
-          const placement = { x: headX + back.x * 0.22, y: end.cornerA.y + lens.height, z: headZ + back.z * 0.22, rotationY: facing };
+          const placement = {
+            x: headX + back.x * 0.22,
+            y: end.cornerA.y + lens.height,
+            z: headZ + back.z * 0.22,
+            rotationY: facing,
+          };
           if (lens.color === lit) {
-            (lit === "red" ? redLenses : greenLenses).push(placement);
+            (lit === 'red' ? redLenses : greenLenses).push(placement);
           } else {
             darkLenses.push(placement);
           }
@@ -1393,19 +1739,19 @@ function buildTrafficSignals() {
 
   const pole = new THREE.CylinderGeometry(0.14, 0.18, 7.2, 8);
   pole.translate(0, 3.6, 0);
-  addInstances("signal-poles", pole, signalHeadMaterial, poles);
+  addInstances('signal-poles', pole, signalHeadMaterial, poles);
   const arm = new THREE.CylinderGeometry(0.09, 0.11, 1, 6);
   arm.rotateZ(Math.PI / 2);
   arm.translate(-0.5, 6.85, 0);
-  addInstances("signal-arms", arm, signalHeadMaterial, arms);
+  addInstances('signal-arms', arm, signalHeadMaterial, arms);
   const head = new THREE.BoxGeometry(0.5, 1.3, 0.4);
   head.translate(0, 5.85, 0);
-  addInstances("signal-heads", head, signalHeadMaterial, heads);
+  addInstances('signal-heads', head, signalHeadMaterial, heads);
   const lens = new THREE.CylinderGeometry(0.17, 0.17, 0.08, 12);
   lens.rotateX(Math.PI / 2);
-  addInstances("signal-lenses-red", lens, signalLensRedMaterial, redLenses, false);
-  addInstances("signal-lenses-green", lens, signalLensGreenMaterial, greenLenses, false);
-  addInstances("signal-lenses-dark", lens, signalLensDarkMaterial, darkLenses, false);
+  addInstances('signal-lenses-red', lens, signalLensRedMaterial, redLenses, false);
+  addInstances('signal-lenses-green', lens, signalLensGreenMaterial, greenLenses, false);
+  addInstances('signal-lenses-dark', lens, signalLensDarkMaterial, darkLenses, false);
 }
 
 function buildSigns() {
@@ -1427,17 +1773,23 @@ function buildSigns() {
   };
 
   for (const junction of roadNetwork.junctions.values()) {
-    if (junction.control !== "stop" || junction.ends.length < 3) {
+    if (junction.control !== 'stop' || junction.ends.length < 3) {
       continue;
     }
-    const maxRank = Math.max(...junction.ends.map((end) => CLASS_RANK[roadNetwork.roads.get(end.roadId)?.spec.class ?? "local"]));
-    const allEqual = junction.ends.every((end) => CLASS_RANK[roadNetwork.roads.get(end.roadId)?.spec.class ?? "local"] === maxRank);
+    const maxRank = Math.max(
+      ...junction.ends.map(
+        (end) => CLASS_RANK[roadNetwork.roads.get(end.roadId)?.spec.class ?? 'local']
+      )
+    );
+    const allEqual = junction.ends.every(
+      (end) => CLASS_RANK[roadNetwork.roads.get(end.roadId)?.spec.class ?? 'local'] === maxRank
+    );
     for (const end of junction.ends) {
       const road = roadNetwork.roads.get(end.roadId);
       if (!road) {
         continue;
       }
-      const incoming = road.laneOffsets[end.atStart ? "backward" : "forward"];
+      const incoming = road.laneOffsets[end.atStart ? 'backward' : 'forward'];
       if (incoming.length === 0) {
         continue;
       }
@@ -1453,7 +1805,7 @@ function buildSigns() {
       if (!road) {
         continue;
       }
-      const incoming = road.laneOffsets[end.atStart ? "backward" : "forward"];
+      const incoming = road.laneOffsets[end.atStart ? 'backward' : 'forward'];
       if (incoming.length === 0) {
         continue;
       }
@@ -1467,8 +1819,8 @@ function buildSigns() {
       if (!road || road.length < 90) {
         continue;
       }
-      const outgoing = road.laneOffsets[end.atStart ? "forward" : "backward"];
-      const incoming = road.laneOffsets[end.atStart ? "backward" : "forward"];
+      const outgoing = road.laneOffsets[end.atStart ? 'forward' : 'backward'];
+      const incoming = road.laneOffsets[end.atStart ? 'backward' : 'forward'];
       if (outgoing.length === 0 && incoming.length > 0) {
         const right = perpRight(end.dir);
         const x = end.endCenter.x + right.x * (end.halfWidth + 0.8) + end.dir.x * 6;
@@ -1478,11 +1830,16 @@ function buildSigns() {
         poles.push({ x, y: end.endCenter.y, z, rotationY: facing });
         continue;
       }
-      if (outgoing.length === 0 || road.spec.class === "highway" || road.spec.class === "ramp") {
+      if (outgoing.length === 0 || road.spec.class === 'highway' || road.spec.class === 'ramp') {
         continue;
       }
-      const station = sampleAtStation(road.samples, end.atStart ? road.startTrim + 28 : road.length - road.endTrim - 28);
-      const travel = end.atStart ? { x: station.tx, z: station.tz } : { x: -station.tx, z: -station.tz };
+      const station = sampleAtStation(
+        road.samples,
+        end.atStart ? road.startTrim + 28 : road.length - road.endTrim - 28
+      );
+      const travel = end.atStart
+        ? { x: station.tx, z: station.tz }
+        : { x: -station.tx, z: -station.tz };
       const right = perpRight(travel);
       const offset = road.halfWidth + Math.max(road.cls.sidewalkWidth * 0.55, 0.9);
       const x = station.x + right.x * offset;
@@ -1498,7 +1855,7 @@ function buildSigns() {
     if (road.spec.speedKph === undefined || road.spec.speedKph >= road.cls.speedKph) {
       continue;
     }
-    for (const direction of ["forward", "backward"] as const) {
+    for (const direction of ['forward', 'backward'] as const) {
       if (road.laneOffsets[direction].length === 0) {
         continue;
       }
@@ -1506,11 +1863,22 @@ function buildSigns() {
         [8, school],
         [14, speed30],
       ] as const) {
-        const station = sampleAtStation(road.samples, direction === "forward" ? road.startTrim + back : road.length - road.endTrim - back);
-        const travel = direction === "forward" ? { x: station.tx, z: station.tz } : { x: -station.tx, z: -station.tz };
+        const station = sampleAtStation(
+          road.samples,
+          direction === 'forward' ? road.startTrim + back : road.length - road.endTrim - back
+        );
+        const travel =
+          direction === 'forward'
+            ? { x: station.tx, z: station.tz }
+            : { x: -station.tx, z: -station.tz };
         const right = perpRight(travel);
         const offset = road.halfWidth + Math.max(road.cls.sidewalkWidth * 0.55, 0.9);
-        const placement = { x: station.x + right.x * offset, y: station.y, z: station.z + right.z * offset, rotationY: Math.atan2(-travel.x, -travel.z) };
+        const placement = {
+          x: station.x + right.x * offset,
+          y: station.y,
+          z: station.z + right.z * offset,
+          rotationY: Math.atan2(-travel.x, -travel.z),
+        };
         list.push(placement);
         poles.push(placement);
       }
@@ -1519,15 +1887,15 @@ function buildSigns() {
 
   const pole = new THREE.CylinderGeometry(0.05, 0.06, 2.6, 6);
   pole.translate(0, 1.3, 0);
-  addInstances("sign-poles", pole, signPoleMaterial, poles, false);
+  addInstances('sign-poles', pole, signPoleMaterial, poles, false);
   const face = new THREE.PlaneGeometry(0.8, 0.8);
   face.translate(0, 2.55, 0.05);
-  addInstances("signs-stop", face, signMaterials.stop, stopSigns, false);
-  addInstances("signs-yield", face, signMaterials.yield, yieldSigns, false);
-  addInstances("signs-speed-30", face, signMaterials.speed30, speed30, false);
-  addInstances("signs-speed-50", face, signMaterials.speed50, speed50, false);
-  addInstances("signs-no-entry", face, signMaterials.noentry, noEntry, false);
-  addInstances("signs-school", face, signMaterials.school, school, false);
+  addInstances('signs-stop', face, signMaterials.stop, stopSigns, false);
+  addInstances('signs-yield', face, signMaterials.yield, yieldSigns, false);
+  addInstances('signs-speed-30', face, signMaterials.speed30, speed30, false);
+  addInstances('signs-speed-50', face, signMaterials.speed50, speed50, false);
+  addInstances('signs-no-entry', face, signMaterials.noentry, noEntry, false);
+  addInstances('signs-school', face, signMaterials.school, school, false);
 }
 
 export function addRoadNetworkMeshes() {
@@ -1539,24 +1907,48 @@ export function addRoadNetworkMeshes() {
   buildStructures();
   buildTollGantries();
 
-  addMergedMesh("road-surfaces", asphaltTops, highwayAsphaltMaterial, { renderOrder: 9 });
-  addMergedMesh("road-surface-sides", asphaltSides, highwaySideMaterial, { renderOrder: 9, castShadow: true });
-  addMergedMesh("road-concrete-aprons", concreteTops, roadStructureConcreteMaterial, { renderOrder: 9 });
-  addMergedMesh("sidewalks", sidewalkTops, sidewalkMaterial, { renderOrder: 10 });
-  addMergedMesh("kerbs", kerbSides, kerbMaterial, { renderOrder: 10 });
-  addMergedMesh("planted-medians", medianTops, medianGrassMaterial, { renderOrder: 10 });
-  addMergedMesh("roundabout-islands", grassTops, grassMaterial, { renderOrder: 10, castShadow: true });
-  addMergedMesh("bus-lanes", busLaneGeometries, busLaneMaterial, { renderOrder: 10.5 });
-  addMergedMesh("cycle-tracks", cycleTrackGeometries, cycleTrackMaterial, { renderOrder: 10.6 });
-  addMergedMesh("road-markings-white", whiteMarkings, roadMarkingWhiteMaterial, { renderOrder: 11 });
-  addMergedMesh("road-markings-yellow", yellowMarkings, roadMarkingYellowMaterial, { renderOrder: 11 });
-  addMergedMesh("road-barriers", barrierGeometries, roadStructureConcreteMaterial, { renderOrder: 10, castShadow: true });
-  addMergedMesh("road-guardrails", guardrailGeometries, guardrailMaterial, { renderOrder: 10, castShadow: true });
-  addMergedMesh("road-piers", pierGeometries, pierConcreteMaterial, { renderOrder: 8, castShadow: true });
-  addMergedMesh("road-embankments", embankmentGeometries, embankmentMaterial, { renderOrder: 8 });
-  addMergedMesh("yard-fences", fenceGeometries, fenceMeshMaterial, { renderOrder: 12 });
-  addMergedMesh("shelter-glass", glassGeometries, shelterGlassMaterial, { renderOrder: 12 });
-  addMergedMesh("barrier-arms", barrierArmGeometries, barrierArmMaterial, { renderOrder: 10, castShadow: true });
+  addMergedMesh('road-surfaces', asphaltTops, highwayAsphaltMaterial, { renderOrder: 9 });
+  addMergedMesh('road-surface-sides', asphaltSides, highwaySideMaterial, {
+    renderOrder: 9,
+    castShadow: true,
+  });
+  addMergedMesh('road-concrete-aprons', concreteTops, roadStructureConcreteMaterial, {
+    renderOrder: 9,
+  });
+  addMergedMesh('sidewalks', sidewalkTops, sidewalkMaterial, { renderOrder: 10 });
+  addMergedMesh('kerbs', kerbSides, kerbMaterial, { renderOrder: 10 });
+  addMergedMesh('planted-medians', medianTops, medianGrassMaterial, { renderOrder: 10 });
+  addMergedMesh('roundabout-islands', grassTops, grassMaterial, {
+    renderOrder: 10,
+    castShadow: true,
+  });
+  addMergedMesh('bus-lanes', busLaneGeometries, busLaneMaterial, { renderOrder: 10.5 });
+  addMergedMesh('cycle-tracks', cycleTrackGeometries, cycleTrackMaterial, { renderOrder: 10.6 });
+  addMergedMesh('road-markings-white', whiteMarkings, roadMarkingWhiteMaterial, {
+    renderOrder: 11,
+  });
+  addMergedMesh('road-markings-yellow', yellowMarkings, roadMarkingYellowMaterial, {
+    renderOrder: 11,
+  });
+  addMergedMesh('road-barriers', barrierGeometries, roadStructureConcreteMaterial, {
+    renderOrder: 10,
+    castShadow: true,
+  });
+  addMergedMesh('road-guardrails', guardrailGeometries, guardrailMaterial, {
+    renderOrder: 10,
+    castShadow: true,
+  });
+  addMergedMesh('road-piers', pierGeometries, pierConcreteMaterial, {
+    renderOrder: 8,
+    castShadow: true,
+  });
+  addMergedMesh('road-embankments', embankmentGeometries, embankmentMaterial, { renderOrder: 8 });
+  addMergedMesh('yard-fences', fenceGeometries, fenceMeshMaterial, { renderOrder: 12 });
+  addMergedMesh('shelter-glass', glassGeometries, shelterGlassMaterial, { renderOrder: 12 });
+  addMergedMesh('barrier-arms', barrierArmGeometries, barrierArmMaterial, {
+    renderOrder: 10,
+    castShadow: true,
+  });
 
   buildLamps();
   buildTrafficSignals();
@@ -1569,7 +1961,14 @@ function addLaneOverlay() {
   const positions: number[] = [];
   const colors: number[] = [];
   const color = new THREE.Color();
-  const arrowPlacements: Array<{ x: number; y: number; z: number; tx: number; tz: number; kind: Lane["kind"] }> = [];
+  const arrowPlacements: Array<{
+    x: number;
+    y: number;
+    z: number;
+    tx: number;
+    tz: number;
+    kind: Lane['kind'];
+  }> = [];
 
   for (const lane of roadNetwork.lanes.values()) {
     color.setHex(LANE_OVERLAY_COLORS[lane.kind]);
@@ -1580,28 +1979,40 @@ function addLaneOverlay() {
       colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
     }
     const middle = Math.floor(lane.points.length / 2);
-    const spacing = lane.kind === "road" ? 40 : Number.POSITIVE_INFINITY;
+    const spacing = lane.kind === 'road' ? 40 : Number.POSITIVE_INFINITY;
     let travelled = 0;
     for (let index = 1; index < lane.points.length; index += 1) {
       const p = lane.points[index - 1];
       const q = lane.points[index];
       const segment = Math.hypot(q.x - p.x, q.z - p.z);
       travelled += segment;
-      if (travelled >= spacing || (index === middle && lane.kind !== "road")) {
+      if (travelled >= spacing || (index === middle && lane.kind !== 'road')) {
         travelled = 0;
-        arrowPlacements.push({ x: q.x, y: q.y + 0.9, z: q.z, tx: (q.x - p.x) / (segment || 1), tz: (q.z - p.z) / (segment || 1), kind: lane.kind });
+        arrowPlacements.push({
+          x: q.x,
+          y: q.y + 0.9,
+          z: q.z,
+          tx: (q.x - p.x) / (segment || 1),
+          tz: (q.z - p.z) / (segment || 1),
+          kind: lane.kind,
+        });
       }
     }
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   const lines = new THREE.LineSegments(
     geometry,
-    new THREE.LineBasicMaterial({ vertexColors: true, depthTest: false, transparent: true, opacity: 0.95 }),
+    new THREE.LineBasicMaterial({
+      vertexColors: true,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.95,
+    })
   );
-  lines.name = "lane-overlay-lines";
+  lines.name = 'lane-overlay-lines';
   lines.renderOrder = 40;
   laneOverlayGroup.add(lines);
 
@@ -1610,7 +2021,7 @@ function addLaneOverlay() {
   const arrows = new THREE.InstancedMesh(
     arrowGeometry,
     new THREE.MeshBasicMaterial({ depthTest: false, transparent: true, opacity: 0.95 }),
-    arrowPlacements.length,
+    arrowPlacements.length
   );
   const matrix = new THREE.Matrix4();
   const position = new THREE.Vector3();
@@ -1627,13 +2038,13 @@ function addLaneOverlay() {
     arrows.setColorAt(index, color.setHex(LANE_OVERLAY_COLORS[placement.kind]));
   });
   arrows.instanceMatrix.needsUpdate = true;
-  arrows.name = "lane-overlay-arrows";
+  arrows.name = 'lane-overlay-arrows';
   arrows.renderOrder = 41;
   laneOverlayGroup.add(arrows);
 }
 
 export function clearRouteHighlight() {
-  const existing = routeHighlightGroup.getObjectByName("route-highlight-strip");
+  const existing = routeHighlightGroup.getObjectByName('route-highlight-strip');
   if (existing) {
     routeHighlightGroup.remove(existing);
   }
@@ -1648,9 +2059,15 @@ export function addRouteHighlight(points: Vec3[]) {
   const geometry = stripFromStations(stations, -1.3, 1.3, 1.2);
   const mesh = new THREE.Mesh(
     geometry,
-    new THREE.MeshBasicMaterial({ color: 0xff2fb0, depthTest: false, transparent: true, opacity: 0.92, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({
+      color: 0xff2fb0,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.92,
+      side: THREE.DoubleSide,
+    })
   );
-  mesh.name = "route-highlight-strip";
+  mesh.name = 'route-highlight-strip';
   mesh.renderOrder = 42;
   routeHighlightGroup.add(mesh);
 }

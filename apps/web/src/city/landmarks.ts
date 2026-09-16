@@ -1,25 +1,58 @@
-import * as THREE from "three";
-import { groundSurfaceYAt } from "../natural/terrain";
-import { cityElements } from "../render/context";
-import { highwayAsphaltMaterial, roadMarkingWhiteMaterial, sidewalkMaterial, sharedSeaWaterMaterial, lampPoleMaterial, gravelVergeMaterial, craneWhiteMaterial, roadMarkingYellowMaterial, shelterGlassMaterial, beachSandMaterial, fieldMaterials, steelDarkMaterial, truckCabMaterials, warehouseWallMaterial, barrierArmMaterial, craneBlueMaterial } from "../render/materials";
-import { fullTerrainSurfaceYAt } from "../natural/terrain";
-import { boxBetween, mergeAll } from "../roads/geometry";
-import { SPECIAL_BLOCKS, type SpecialBlock } from "./districts";
-import { BuildingBatch } from "./buildings";
-import { createRandom } from "./random";
-import { addTree } from "./vegetation";
-import { roadSideSlots } from "../roads/render";
-import { corridorClearance, pavementClearance } from "../world/occupancy";
+import * as THREE from 'three';
+import { groundSurfaceYAt } from '../natural/terrain';
+import { cityElements } from '../render/context';
+import {
+  highwayAsphaltMaterial,
+  roadMarkingWhiteMaterial,
+  sidewalkMaterial,
+  sharedSeaWaterMaterial,
+  lampPoleMaterial,
+  gravelVergeMaterial,
+  craneWhiteMaterial,
+  roadMarkingYellowMaterial,
+  shelterGlassMaterial,
+  beachSandMaterial,
+  fieldMaterials,
+  steelDarkMaterial,
+  truckCabMaterials,
+  warehouseWallMaterial,
+  barrierArmMaterial,
+  craneBlueMaterial,
+} from '../render/materials';
+import { fullTerrainSurfaceYAt } from '../natural/terrain';
+import { boxBetween, mergeAll } from '../roads/geometry';
+import { SPECIAL_BLOCKS, type SpecialBlock } from './districts';
+import { BuildingBatch } from './buildings';
+import { createRandom } from './random';
+import { addTree } from './vegetation';
+import { roadSideSlots } from '../roads/render';
+import { corridorClearance, pavementClearance } from '../world/occupancy';
 
 const plasterMaterial = new THREE.MeshStandardMaterial({ color: 0xe6dfcf, roughness: 0.8 });
 const stoneMaterial = new THREE.MeshStandardMaterial({ color: 0xd9d3c4, roughness: 0.85 });
-const domeMaterial = new THREE.MeshStandardMaterial({ color: 0x7f9a8c, roughness: 0.45, metalness: 0.35 });
+const domeMaterial = new THREE.MeshStandardMaterial({
+  color: 0x7f9a8c,
+  roughness: 0.45,
+  metalness: 0.35,
+});
 const pitchMaterial = new THREE.MeshStandardMaterial({ color: 0x4f9b3f, roughness: 0.95 });
 const fieldMaterial = new THREE.MeshStandardMaterial({ color: 0x5da34a, roughness: 0.95 });
-const stadiumMaterial = new THREE.MeshStandardMaterial({ color: 0xcfd2d6, roughness: 0.7, metalness: 0.15 });
-const stadiumRoofMaterial = new THREE.MeshStandardMaterial({ color: 0xe9ecef, roughness: 0.5, metalness: 0.3 });
+const stadiumMaterial = new THREE.MeshStandardMaterial({
+  color: 0xcfd2d6,
+  roughness: 0.7,
+  metalness: 0.15,
+});
+const stadiumRoofMaterial = new THREE.MeshStandardMaterial({
+  color: 0xe9ecef,
+  roughness: 0.5,
+  metalness: 0.3,
+});
 const benchMaterial = new THREE.MeshStandardMaterial({ color: 0x7a5a3b, roughness: 0.9 });
-const spireMaterial = new THREE.MeshStandardMaterial({ color: 0x5c6670, roughness: 0.6, metalness: 0.3 });
+const spireMaterial = new THREE.MeshStandardMaterial({
+  color: 0x5c6670,
+  roughness: 0.6,
+  metalness: 0.3,
+});
 
 const benchPlacements: Array<{ x: number; y: number; z: number; rotationY: number }> = [];
 
@@ -27,7 +60,12 @@ function clearOfRoads(x: number, z: number, radius: number) {
   return corridorClearance(x, z, radius + 30) >= radius + 1;
 }
 
-function addMesh(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, castShadow = true) {
+function addMesh(
+  name: string,
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material,
+  castShadow = true
+) {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
   mesh.castShadow = castShadow;
@@ -36,19 +74,37 @@ function addMesh(name: string, geometry: THREE.BufferGeometry, material: THREE.M
   return mesh;
 }
 
-function box(width: number, height: number, depth: number, x: number, y: number, z: number, rotationY = 0) {
+function box(
+  width: number,
+  height: number,
+  depth: number,
+  x: number,
+  y: number,
+  z: number,
+  rotationY = 0
+) {
   const geometry = new THREE.BoxGeometry(width, height, depth);
   geometry.rotateY(rotationY);
   geometry.translate(x, y + height * 0.5, z);
   return geometry;
 }
 
-function slab(block: SpecialBlock, material: THREE.Material, lift: number, thickness: number, inset = 0) {
+function slab(
+  block: SpecialBlock,
+  material: THREE.Material,
+  lift: number,
+  thickness: number,
+  inset = 0
+) {
   const width = block.maxX - block.minX - inset * 2;
   const depth = block.maxZ - block.minZ - inset * 2;
   const y = groundSurfaceYAt((block.minX + block.maxX) * 0.5, (block.minZ + block.maxZ) * 0.5);
   const geometry = new THREE.BoxGeometry(width, thickness, depth);
-  geometry.translate((block.minX + block.maxX) * 0.5, y + lift - thickness * 0.5, (block.minZ + block.maxZ) * 0.5);
+  geometry.translate(
+    (block.minX + block.maxX) * 0.5,
+    y + lift - thickness * 0.5,
+    (block.minZ + block.maxZ) * 0.5
+  );
   return { geometry: addMesh(`${block.id}-surface`, geometry, material, false), y };
 }
 
@@ -82,7 +138,7 @@ function commitBenches() {
     mesh.setMatrixAt(index, matrix);
   });
   mesh.instanceMatrix.needsUpdate = true;
-  mesh.name = "benches";
+  mesh.name = 'benches';
   mesh.castShadow = true;
   cityElements.add(mesh);
 }
@@ -103,8 +159,18 @@ function parkingLines(block: SpecialBlock, y: number, lift: number) {
       line2.translate(centerX + x, y + lift + 0.03, rowZ + 9);
       parts.push(line2);
       if (x + 2.6 <= width * 0.5 - 4) {
-        roadSideSlots.parkingBays.push({ x: centerX + x + 1.3, y: y + lift, z: rowZ + 2.5, heading: 0 });
-        roadSideSlots.parkingBays.push({ x: centerX + x + 1.3, y: y + lift, z: rowZ + 9, heading: Math.PI });
+        roadSideSlots.parkingBays.push({
+          x: centerX + x + 1.3,
+          y: y + lift,
+          z: rowZ + 2.5,
+          heading: 0,
+        });
+        roadSideSlots.parkingBays.push({
+          x: centerX + x + 1.3,
+          y: y + lift,
+          z: rowZ + 9,
+          heading: Math.PI,
+        });
       }
     }
   }
@@ -126,7 +192,11 @@ function buildPlaza(block: SpecialBlock) {
   parts.push(box(hallWidth + 4, 1.2, hallDepth + 4, cx, y + 15.14, hallZ));
   for (let index = 0; index < 8; index += 1) {
     const column = new THREE.CylinderGeometry(0.7, 0.7, 12, 10);
-    column.translate(cx - hallWidth * 0.5 + 6 + index * ((hallWidth - 12) / 7), y + 6.14, hallZ + hallDepth * 0.5 + 3);
+    column.translate(
+      cx - hallWidth * 0.5 + 6 + index * ((hallWidth - 12) / 7),
+      y + 6.14,
+      hallZ + hallDepth * 0.5 + 3
+    );
     parts.push(column);
   }
   parts.push(box(hallWidth, 1.0, 8, cx, y + 12.2, hallZ + hallDepth * 0.5 + 3));
@@ -160,11 +230,16 @@ function buildPlaza(block: SpecialBlock) {
 
   for (let index = 0; index < 8; index += 1) {
     const angle = (index / 8) * Math.PI * 2;
-    addBench(cx + Math.cos(angle) * 15, y + 0.14, fountainZ + Math.sin(angle) * 15, -angle + Math.PI * 0.5);
+    addBench(
+      cx + Math.cos(angle) * 15,
+      y + 0.14,
+      fountainZ + Math.sin(angle) * 15,
+      -angle + Math.PI * 0.5
+    );
   }
   for (const gx of [-30, -18, 18, 30]) {
     for (const gz of [8, 22, 34]) {
-      addTree("broadleaf", cx + gx, cz + gz, y + 0.14, 0.7, 12);
+      addTree('broadleaf', cx + gx, cz + gz, y + 0.14, 0.7, 12);
     }
   }
 }
@@ -218,10 +293,14 @@ function buildStadium(block: SpecialBlock) {
     base = Math.min(
       base,
       groundSurfaceYAt(cx + Math.cos(angle) * outerX, cz + Math.sin(angle) * outerZ),
-      groundSurfaceYAt(cx + Math.cos(angle) * innerX, cz + Math.sin(angle) * innerZ),
+      groundSurfaceYAt(cx + Math.cos(angle) * innerX, cz + Math.sin(angle) * innerZ)
     );
   }
-  const stands = new THREE.ExtrudeGeometry(shape, { depth: y + 17 - base + 1, bevelEnabled: false, curveSegments: 48 });
+  const stands = new THREE.ExtrudeGeometry(shape, {
+    depth: y + 17 - base + 1,
+    bevelEnabled: false,
+    curveSegments: 48,
+  });
   stands.rotateX(-Math.PI / 2);
   stands.translate(cx, base - 1, cz);
   addMesh(`${block.id}-stands`, stands, stadiumMaterial);
@@ -230,7 +309,11 @@ function buildStadium(block: SpecialBlock) {
   const roofHole = new THREE.Path();
   roofHole.absellipse(0, 0, innerX + 8, innerZ + 8, 0, Math.PI * 2, true, 0);
   roofShape.holes.push(roofHole);
-  const roof = new THREE.ExtrudeGeometry(roofShape, { depth: 1.4, bevelEnabled: false, curveSegments: 48 });
+  const roof = new THREE.ExtrudeGeometry(roofShape, {
+    depth: 1.4,
+    bevelEnabled: false,
+    curveSegments: 48,
+  });
   roof.rotateX(-Math.PI / 2);
   roof.translate(cx, y + 17, cz);
   addMesh(`${block.id}-roof`, roof, stadiumRoofMaterial);
@@ -238,16 +321,41 @@ function buildStadium(block: SpecialBlock) {
   pitch.translate(cx, y + 0.35, cz);
   addMesh(`${block.id}-pitch`, pitch, pitchMaterial, false);
   const lines = mergeAll([
-    (() => { const g = new THREE.BoxGeometry(innerX * 1.5, 0.02, 0.3); g.translate(cx, y + 0.52, cz - innerZ * 0.7); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(innerX * 1.5, 0.02, 0.3); g.translate(cx, y + 0.52, cz + innerZ * 0.7); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(0.3, 0.02, innerZ * 1.4); g.translate(cx - innerX * 0.75, y + 0.52, cz); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(0.3, 0.02, innerZ * 1.4); g.translate(cx + innerX * 0.75, y + 0.52, cz); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(0.3, 0.02, innerZ * 1.4); g.translate(cx, y + 0.52, cz); return g; })(),
+    (() => {
+      const g = new THREE.BoxGeometry(innerX * 1.5, 0.02, 0.3);
+      g.translate(cx, y + 0.52, cz - innerZ * 0.7);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(innerX * 1.5, 0.02, 0.3);
+      g.translate(cx, y + 0.52, cz + innerZ * 0.7);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(0.3, 0.02, innerZ * 1.4);
+      g.translate(cx - innerX * 0.75, y + 0.52, cz);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(0.3, 0.02, innerZ * 1.4);
+      g.translate(cx + innerX * 0.75, y + 0.52, cz);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(0.3, 0.02, innerZ * 1.4);
+      g.translate(cx, y + 0.52, cz);
+      return g;
+    })(),
   ]);
   if (lines) {
     addMesh(`${block.id}-pitch-lines`, lines, roadMarkingWhiteMaterial, false);
   }
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+  for (const [sx, sz] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ] as const) {
     const mast = new THREE.CylinderGeometry(0.5, 0.8, 34, 8);
     mast.translate(cx + sx * (outerX - 6), y + 17, cz + sz * (outerZ - 6));
     addMesh(`${block.id}-floodlight-${sx}-${sz}`, mast, lampPoleMaterial);
@@ -268,10 +376,40 @@ function buildSchool(block: SpecialBlock) {
   const cx = (block.minX + block.maxX) * 0.5;
   const y = groundSurfaceYAt(cx, block.minZ + 20);
   const color = new THREE.Color(0xe4d9c4);
-  batch.addBox({ x: cx, y, z: block.minZ + 14, width: block.maxX - block.minX - 12, height: 7.2, depth: 16, rotationY: 0, color, floorHeight: 3.4, windowWidth: 2.2, windowRatio: 0.62, seed: 21 });
-  batch.addBox({ x: block.minX + 16, y, z: block.minZ + 38, width: 20, height: 9, depth: 26, rotationY: 0, color: new THREE.Color(0xd2d6d9), floorHeight: 9, windowWidth: 3, windowRatio: 0.25, seed: 22 });
+  batch.addBox({
+    x: cx,
+    y,
+    z: block.minZ + 14,
+    width: block.maxX - block.minX - 12,
+    height: 7.2,
+    depth: 16,
+    rotationY: 0,
+    color,
+    floorHeight: 3.4,
+    windowWidth: 2.2,
+    windowRatio: 0.62,
+    seed: 21,
+  });
+  batch.addBox({
+    x: block.minX + 16,
+    y,
+    z: block.minZ + 38,
+    width: 20,
+    height: 9,
+    depth: 26,
+    rotationY: 0,
+    color: new THREE.Color(0xd2d6d9),
+    floorHeight: 9,
+    windowWidth: 3,
+    windowRatio: 0.25,
+    seed: 22,
+  });
   batch.commit(`${block.id}-buildings`);
-  const field = new THREE.BoxGeometry(block.maxX - block.minX - 30, 0.2, block.maxZ - block.minZ - 60);
+  const field = new THREE.BoxGeometry(
+    block.maxX - block.minX - 30,
+    0.2,
+    block.maxZ - block.minZ - 60
+  );
   field.translate(cx + 8, y + 0.15, block.maxZ - (block.maxZ - block.minZ - 60) * 0.5 - 6);
   addMesh(`${block.id}-field`, field, fieldMaterial, false);
   const track = new THREE.RingGeometry(16, 19.5, 40);
@@ -292,14 +430,62 @@ function buildChurch(block: SpecialBlock) {
   const half = 7.8;
   const length = 31;
   const positions = new Float32Array([
-    cx - half, y + 9, cz + 4 - length / 2, cx + half, y + 9, cz + 4 - length / 2, cx, y + 9 + ridge, cz + 4 - length / 2,
-    cx + half, y + 9, cz + 4 + length / 2, cx - half, y + 9, cz + 4 + length / 2, cx, y + 9 + ridge, cz + 4 + length / 2,
-    cx - half, y + 9, cz + 4 - length / 2, cx, y + 9 + ridge, cz + 4 - length / 2, cx, y + 9 + ridge, cz + 4 + length / 2,
-    cx - half, y + 9, cz + 4 - length / 2, cx, y + 9 + ridge, cz + 4 + length / 2, cx - half, y + 9, cz + 4 + length / 2,
-    cx + half, y + 9, cz + 4 - length / 2, cx + half, y + 9, cz + 4 + length / 2, cx, y + 9 + ridge, cz + 4 + length / 2,
-    cx + half, y + 9, cz + 4 - length / 2, cx, y + 9 + ridge, cz + 4 + length / 2, cx, y + 9 + ridge, cz + 4 - length / 2,
+    cx - half,
+    y + 9,
+    cz + 4 - length / 2,
+    cx + half,
+    y + 9,
+    cz + 4 - length / 2,
+    cx,
+    y + 9 + ridge,
+    cz + 4 - length / 2,
+    cx + half,
+    y + 9,
+    cz + 4 + length / 2,
+    cx - half,
+    y + 9,
+    cz + 4 + length / 2,
+    cx,
+    y + 9 + ridge,
+    cz + 4 + length / 2,
+    cx - half,
+    y + 9,
+    cz + 4 - length / 2,
+    cx,
+    y + 9 + ridge,
+    cz + 4 - length / 2,
+    cx,
+    y + 9 + ridge,
+    cz + 4 + length / 2,
+    cx - half,
+    y + 9,
+    cz + 4 - length / 2,
+    cx,
+    y + 9 + ridge,
+    cz + 4 + length / 2,
+    cx - half,
+    y + 9,
+    cz + 4 + length / 2,
+    cx + half,
+    y + 9,
+    cz + 4 - length / 2,
+    cx + half,
+    y + 9,
+    cz + 4 + length / 2,
+    cx,
+    y + 9 + ridge,
+    cz + 4 + length / 2,
+    cx + half,
+    y + 9,
+    cz + 4 - length / 2,
+    cx,
+    y + 9 + ridge,
+    cz + 4 + length / 2,
+    cx,
+    y + 9 + ridge,
+    cz + 4 - length / 2,
   ]);
-  roof.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  roof.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   roof.computeVertexNormals();
   addMesh(`${block.id}-roof`, roof, spireMaterial);
   const tower = box(6.5, 22, 6.5, cx, y, cz - 15);
@@ -308,8 +494,8 @@ function buildChurch(block: SpecialBlock) {
   spire.rotateY(Math.PI / 4);
   spire.translate(cx, y + 27, cz - 15);
   addMesh(`${block.id}-spire`, spire, spireMaterial);
-  addTree("broadleaf", block.minX + 8, block.maxZ - 8, y, 0.9, 31);
-  addTree("broadleaf", block.maxX - 8, block.maxZ - 8, y, 0.8, 32);
+  addTree('broadleaf', block.minX + 8, block.maxZ - 8, y, 0.9, 31);
+  addTree('broadleaf', block.maxX - 8, block.maxZ - 8, y, 0.8, 32);
 }
 
 function buildStation(block: SpecialBlock) {
@@ -319,9 +505,57 @@ function buildStation(block: SpecialBlock) {
   const eastX = block.maxX - 12;
   const cx = (westX + eastX) * 0.5;
   const cz = -906;
-  batch.addBox({ x: cx, y, z: cz, width: eastX - westX, height: 8.4, depth: 54, rotationY: 0, color: new THREE.Color(0xd8cdb8), floorHeight: 4.2, windowWidth: 2.6, windowRatio: 0.55, seed: 41 }, "north-station");
-  batch.addBox({ x: cx, y: y + 8.4, z: cz, width: (eastX - westX) * 0.5, height: 5.2, depth: 22, rotationY: 0, color: new THREE.Color(0xe8e0cf), floorHeight: 5.2, windowWidth: 3.2, windowRatio: 0.7, seed: 42 }, "north-station");
-  batch.addBox({ x: eastX - 4, y, z: cz + 22, width: 6, height: 19, depth: 6, rotationY: 0, color: new THREE.Color(0xcdbfa4), floorHeight: 19, windowWidth: 1.4, windowRatio: 0.15, seed: 43 }, "north-station");
+  batch.addBox(
+    {
+      x: cx,
+      y,
+      z: cz,
+      width: eastX - westX,
+      height: 8.4,
+      depth: 54,
+      rotationY: 0,
+      color: new THREE.Color(0xd8cdb8),
+      floorHeight: 4.2,
+      windowWidth: 2.6,
+      windowRatio: 0.55,
+      seed: 41,
+    },
+    'north-station'
+  );
+  batch.addBox(
+    {
+      x: cx,
+      y: y + 8.4,
+      z: cz,
+      width: (eastX - westX) * 0.5,
+      height: 5.2,
+      depth: 22,
+      rotationY: 0,
+      color: new THREE.Color(0xe8e0cf),
+      floorHeight: 5.2,
+      windowWidth: 3.2,
+      windowRatio: 0.7,
+      seed: 42,
+    },
+    'north-station'
+  );
+  batch.addBox(
+    {
+      x: eastX - 4,
+      y,
+      z: cz + 22,
+      width: 6,
+      height: 19,
+      depth: 6,
+      rotationY: 0,
+      color: new THREE.Color(0xcdbfa4),
+      floorHeight: 19,
+      windowWidth: 1.4,
+      windowRatio: 0.15,
+      seed: 43,
+    },
+    'north-station'
+  );
   batch.commit(`${block.id}-buildings`);
   const clockFace = new THREE.CylinderGeometry(1.4, 1.4, 0.2, 24);
   clockFace.rotateX(Math.PI / 2);
@@ -331,7 +565,12 @@ function buildStation(block: SpecialBlock) {
   concourse.translate((westX + 531.5) * 0.5, y + 0.7, cz);
   addMesh(`${block.id}-concourse`, concourse, sidewalkMaterial, false);
   let reach = 12;
-  while (reach > 3 && Array.from({ length: 13 }, (_, index) => -15 + index * 2.5).some((dz) => pavementClearance(eastX + reach + 0.3, cz + dz, 30) < 0.6)) {
+  while (
+    reach > 3 &&
+    Array.from({ length: 13 }, (_, index) => -15 + index * 2.5).some(
+      (dz) => pavementClearance(eastX + reach + 0.3, cz + dz, 30) < 0.6
+    )
+  ) {
     reach -= 0.5;
   }
   const canopyCenterX = eastX - 2 + (reach + 2) * 0.5;
@@ -353,10 +592,71 @@ function buildHospital(block: SpecialBlock) {
   const cx = (block.minX + block.maxX) * 0.5;
   const y = groundSurfaceYAt(cx, -1190);
   const main = { x: cx, z: -1190, width: block.maxX - block.minX - 8, depth: 48 };
-  batch.addBox({ ...main, y, height: 21.6, rotationY: 0, color: new THREE.Color(0xe6e9ec), floorHeight: 3.6, windowWidth: 2.4, windowRatio: 0.62, seed: 51 }, "hospital");
-  batch.addBox({ x: cx, y: y + 21.6, z: -1190, width: main.width * 0.35, height: 3.4, depth: 14, rotationY: 0, color: new THREE.Color(0xd5dadf), floorHeight: 3.4, windowWidth: 2, windowRatio: 0.2, seed: 52 }, "hospital");
-  batch.addBox({ x: cx - 6, y, z: -1245, width: main.width - 16, height: 11, depth: 34, rotationY: 0, color: new THREE.Color(0xdfe3e6), floorHeight: 3.6, windowWidth: 2.2, windowRatio: 0.55, seed: 53 }, "hospital");
-  batch.addBox({ x: cx - 6, y, z: -1135, width: main.width - 16, height: 11, depth: 34, rotationY: 0, color: new THREE.Color(0xdfe3e6), floorHeight: 3.6, windowWidth: 2.2, windowRatio: 0.55, seed: 54 }, "hospital");
+  batch.addBox(
+    {
+      ...main,
+      y,
+      height: 21.6,
+      rotationY: 0,
+      color: new THREE.Color(0xe6e9ec),
+      floorHeight: 3.6,
+      windowWidth: 2.4,
+      windowRatio: 0.62,
+      seed: 51,
+    },
+    'hospital'
+  );
+  batch.addBox(
+    {
+      x: cx,
+      y: y + 21.6,
+      z: -1190,
+      width: main.width * 0.35,
+      height: 3.4,
+      depth: 14,
+      rotationY: 0,
+      color: new THREE.Color(0xd5dadf),
+      floorHeight: 3.4,
+      windowWidth: 2,
+      windowRatio: 0.2,
+      seed: 52,
+    },
+    'hospital'
+  );
+  batch.addBox(
+    {
+      x: cx - 6,
+      y,
+      z: -1245,
+      width: main.width - 16,
+      height: 11,
+      depth: 34,
+      rotationY: 0,
+      color: new THREE.Color(0xdfe3e6),
+      floorHeight: 3.6,
+      windowWidth: 2.2,
+      windowRatio: 0.55,
+      seed: 53,
+    },
+    'hospital'
+  );
+  batch.addBox(
+    {
+      x: cx - 6,
+      y,
+      z: -1135,
+      width: main.width - 16,
+      height: 11,
+      depth: 34,
+      rotationY: 0,
+      color: new THREE.Color(0xdfe3e6),
+      floorHeight: 3.6,
+      windowWidth: 2.2,
+      windowRatio: 0.55,
+      seed: 54,
+    },
+    'hospital'
+  );
   batch.commit(`${block.id}-buildings`);
   const link1 = new THREE.BoxGeometry(6, 4, 12);
   link1.translate(cx - 6, y + 2, -1222);
@@ -368,7 +668,10 @@ function buildHospital(block: SpecialBlock) {
   const bay = new THREE.BoxGeometry(16, 0.3, 16);
   bay.translate(bayX, y + 4.4, -1136);
   addMesh(`${block.id}-ambulance-canopy`, bay, craneWhiteMaterial);
-  for (const [dx, dz] of [[7, -7], [7, 7]]) {
+  for (const [dx, dz] of [
+    [7, -7],
+    [7, 7],
+  ]) {
     const post = new THREE.CylinderGeometry(0.2, 0.2, 4.4, 10);
     post.translate(bayX + dx, y + 2.2, -1136 + dz);
     addMesh(`${block.id}-bay-post-${dx}-${dz}`, post, lampPoleMaterial);
@@ -381,16 +684,36 @@ function buildHospital(block: SpecialBlock) {
   ring.translate(cx, y + 0.33, block.minZ + 20);
   addMesh(`${block.id}-helipad-ring`, ring, roadMarkingWhiteMaterial, false);
   const h = mergeAll([
-    (() => { const g = new THREE.BoxGeometry(1.2, 0.02, 8); g.translate(cx - 3, y + 0.33, block.minZ + 20); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(1.2, 0.02, 8); g.translate(cx + 3, y + 0.33, block.minZ + 20); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(5, 0.02, 1.2); g.translate(cx, y + 0.33, block.minZ + 20); return g; })(),
+    (() => {
+      const g = new THREE.BoxGeometry(1.2, 0.02, 8);
+      g.translate(cx - 3, y + 0.33, block.minZ + 20);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(1.2, 0.02, 8);
+      g.translate(cx + 3, y + 0.33, block.minZ + 20);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(5, 0.02, 1.2);
+      g.translate(cx, y + 0.33, block.minZ + 20);
+      return g;
+    })(),
   ]);
   if (h) {
     addMesh(`${block.id}-helipad-h`, h, roadMarkingWhiteMaterial, false);
   }
   const cross = mergeAll([
-    (() => { const g = new THREE.BoxGeometry(6, 0.2, 2); g.translate(cx, y + 22.6, -1190); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(2, 0.2, 6); g.translate(cx, y + 22.6, -1190); return g; })(),
+    (() => {
+      const g = new THREE.BoxGeometry(6, 0.2, 2);
+      g.translate(cx, y + 22.6, -1190);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(2, 0.2, 6);
+      g.translate(cx, y + 22.6, -1190);
+      return g;
+    })(),
   ]);
   if (cross) {
     addMesh(`${block.id}-roof-cross`, cross, roadMarkingYellowMaterial, false);
@@ -414,8 +737,15 @@ function buildGreen(block: SpecialBlock) {
     addBench(cx - 3, y + 0.1, cz + dz, Math.PI * 0.5);
     addBench(cx + 3, y + 0.1, cz + dz, -Math.PI * 0.5);
   }
-  for (const [dx, dz] of [[-10, -28], [10, -28], [-10, 28], [10, 28], [-12, 0], [12, 0]]) {
-    addTree("broadleaf", cx + dx, cz + dz, y, 0.85, 71);
+  for (const [dx, dz] of [
+    [-10, -28],
+    [10, -28],
+    [-10, 28],
+    [10, 28],
+    [-12, 0],
+    [12, 0],
+  ]) {
+    addTree('broadleaf', cx + dx, cz + dz, y, 0.85, 71);
   }
 }
 
@@ -449,7 +779,23 @@ function buildServices(block: SpecialBlock) {
     addMesh(`${block.id}-pumps`, pumps, steelDarkMaterial);
   }
   const batch = new BuildingBatch();
-  batch.addBox({ x: cx, y, z: block.minZ + 52, width: 26, height: 4.6, depth: 14, rotationY: 0, color: new THREE.Color(0xe7e3d8), floorHeight: 4.6, windowWidth: 3.2, windowRatio: 0.72, seed: 61 }, "services-shop");
+  batch.addBox(
+    {
+      x: cx,
+      y,
+      z: block.minZ + 52,
+      width: 26,
+      height: 4.6,
+      depth: 14,
+      rotationY: 0,
+      color: new THREE.Color(0xe7e3d8),
+      floorHeight: 4.6,
+      windowWidth: 3.2,
+      windowRatio: 0.72,
+      seed: 61,
+    },
+    'services-shop'
+  );
   batch.commit(`${block.id}-buildings`);
   const lines: THREE.BufferGeometry[] = [];
   for (let z = block.minZ + 70; z < block.maxZ - 6; z += 5.4) {
@@ -466,16 +812,27 @@ function buildServices(block: SpecialBlock) {
   const truck = new THREE.BoxGeometry(2.5, 3.6, 16);
   truck.translate(cx, y + 1.9, block.maxZ - 14);
   addMesh(`${block.id}-parked-truck`, truck, truckCabMaterials[2]);
-  for (const [dx, dz] of [[-16, 8], [16, 8], [-16, 100], [16, 100]]) {
+  for (const [dx, dz] of [
+    [-16, 8],
+    [16, 8],
+    [-16, 100],
+    [16, 100],
+  ]) {
     const mast = new THREE.CylinderGeometry(0.16, 0.24, 10, 8);
     mast.translate(cx + dx, y + 5, block.minZ + dz);
     addMesh(`${block.id}-mast-${dx}-${dz}`, mast, lampPoleMaterial);
   }
-  addTree("broadleaf", block.minX + 4, block.minZ + 6, y, 0.8, 63);
-  addTree("broadleaf", block.maxX - 4, block.minZ + 6, y, 0.8, 64);
+  addTree('broadleaf', block.minX + 4, block.minZ + 6, y, 0.8, 63);
+  addTree('broadleaf', block.maxX - 4, block.minZ + 6, y, 0.8, 64);
 }
 
-function groundPatch(block: SpecialBlock, material: THREE.Material, name: string, lift: number, inset = 0) {
+function groundPatch(
+  block: SpecialBlock,
+  material: THREE.Material,
+  name: string,
+  lift: number,
+  inset = 0
+) {
   const positions: number[] = [];
   const uvs: number[] = [];
   const indices: number[] = [];
@@ -497,15 +854,19 @@ function groundPatch(block: SpecialBlock, material: THREE.Material, name: string
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
       const a = row * stride + column;
-      if ([a, a + 1, a + stride, a + stride + 1].some((corner) => corridorClearance(positions[corner * 3], positions[corner * 3 + 2], 30) < 1)) {
+      if (
+        [a, a + 1, a + stride, a + stride + 1].some(
+          (corner) => corridorClearance(positions[corner * 3], positions[corner * 3 + 2], 30) < 1
+        )
+      ) {
         continue;
       }
       indices.push(a, a + stride, a + 1, a + 1, a + stride, a + stride + 1);
     }
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   addMesh(name, geometry, material, false);
@@ -517,8 +878,33 @@ function buildGolf(block: SpecialBlock) {
   const cx = (block.minX + block.maxX) * 0.5;
   const y = groundSurfaceYAt(cx, block.minZ + 12);
   const club = new BuildingBatch();
-  club.addBox({ x: cx, y, z: block.minZ + 12, width: 36, height: 7.4, depth: 16, rotationY: 0, color: new THREE.Color(0xf1ece0), floorHeight: 3.7, windowWidth: 2.6, windowRatio: 0.6, seed: 71 }, "golf-club");
-  club.addRoof({ x: cx, y: y + 7.4, z: block.minZ + 12, width: 38, height: 3.2, depth: 18, rotationY: 0, color: new THREE.Color(0x6b4a3a) });
+  club.addBox(
+    {
+      x: cx,
+      y,
+      z: block.minZ + 12,
+      width: 36,
+      height: 7.4,
+      depth: 16,
+      rotationY: 0,
+      color: new THREE.Color(0xf1ece0),
+      floorHeight: 3.7,
+      windowWidth: 2.6,
+      windowRatio: 0.6,
+      seed: 71,
+    },
+    'golf-club'
+  );
+  club.addRoof({
+    x: cx,
+    y: y + 7.4,
+    z: block.minZ + 12,
+    width: 38,
+    height: 3.2,
+    depth: 18,
+    rotationY: 0,
+    color: new THREE.Color(0x6b4a3a),
+  });
   club.commit(`${block.id}-clubhouse`);
   const bunkers: THREE.BufferGeometry[] = [];
   const greens: THREE.BufferGeometry[] = [];
@@ -576,7 +962,14 @@ function buildGolf(block: SpecialBlock) {
     if (!clearOfRoads(tx, tz, 5)) {
       continue;
     }
-    addTree(random() > 0.5 ? "broadleaf" : "conifer", tx, tz, groundSurfaceYAt(tx, tz), 0.8 + random() * 0.6, 72);
+    addTree(
+      random() > 0.5 ? 'broadleaf' : 'conifer',
+      tx,
+      tz,
+      groundSurfaceYAt(tx, tz),
+      0.8 + random() * 0.6,
+      72
+    );
   }
   const px = block.minX + 30;
   const pz = block.maxZ - 30;
@@ -595,9 +988,50 @@ function buildCampsite(block: SpecialBlock) {
   const random = createRandom(4400);
   const y = groundSurfaceYAt(block.minX + 20, block.minZ + 14);
   const reception = new BuildingBatch();
-  reception.addBox({ x: block.minX + 20, y, z: block.minZ + 10, width: 14, height: 3.6, depth: 8, rotationY: 0, color: new THREE.Color(0xd7c9a8), floorHeight: 3.6, windowWidth: 2.2, windowRatio: 0.5, seed: 81 }, "camp-reception");
-  reception.addRoof({ x: block.minX + 20, y: y + 3.6, z: block.minZ + 10, width: 15.2, height: 2.2, depth: 9.2, rotationY: 0, color: new THREE.Color(0x5b5f66) });
-  reception.addBox({ x: block.minX + 44, y, z: block.minZ + 10, width: 10, height: 3.2, depth: 7, rotationY: 0, color: new THREE.Color(0xe3ded2), floorHeight: 3.2, windowWidth: 1.4, windowRatio: 0.2, seed: 82 }, "camp-washroom");
+  reception.addBox(
+    {
+      x: block.minX + 20,
+      y,
+      z: block.minZ + 10,
+      width: 14,
+      height: 3.6,
+      depth: 8,
+      rotationY: 0,
+      color: new THREE.Color(0xd7c9a8),
+      floorHeight: 3.6,
+      windowWidth: 2.2,
+      windowRatio: 0.5,
+      seed: 81,
+    },
+    'camp-reception'
+  );
+  reception.addRoof({
+    x: block.minX + 20,
+    y: y + 3.6,
+    z: block.minZ + 10,
+    width: 15.2,
+    height: 2.2,
+    depth: 9.2,
+    rotationY: 0,
+    color: new THREE.Color(0x5b5f66),
+  });
+  reception.addBox(
+    {
+      x: block.minX + 44,
+      y,
+      z: block.minZ + 10,
+      width: 10,
+      height: 3.2,
+      depth: 7,
+      rotationY: 0,
+      color: new THREE.Color(0xe3ded2),
+      floorHeight: 3.2,
+      windowWidth: 1.4,
+      windowRatio: 0.2,
+      seed: 82,
+    },
+    'camp-washroom'
+  );
   reception.commit(`${block.id}-buildings`);
   const tracks: THREE.BufferGeometry[] = [];
   for (let z = block.minZ + 30; z < block.maxZ - 10; z += 34) {
@@ -668,7 +1102,7 @@ function buildCampsite(block: SpecialBlock) {
     if (!clearOfRoads(tx, tz, 5)) {
       continue;
     }
-    addTree("broadleaf", tx, tz, groundSurfaceYAt(tx, tz), 0.7 + random() * 0.5, 83);
+    addTree('broadleaf', tx, tz, groundSurfaceYAt(tx, tz), 0.7 + random() * 0.5, 83);
   }
 }
 
@@ -748,8 +1182,33 @@ function buildSawmill(block: SpecialBlock) {
   const cz = (block.minZ + block.maxZ) * 0.5;
   const y = groundSurfaceYAt(cx, cz);
   const batch = new BuildingBatch();
-  batch.addBox({ x: cx - 12, y, z: cz + 20, width: 40, height: 8, depth: 24, rotationY: 0, color: new THREE.Color(0x8c7a5a), floorHeight: 8, windowWidth: 4, windowRatio: 0.2, seed: 101 }, "sawmill");
-  batch.addRoof({ x: cx - 12, y: y + 8, z: cz + 20, width: 42, height: 4, depth: 26, rotationY: 0, color: new THREE.Color(0x4f5257) });
+  batch.addBox(
+    {
+      x: cx - 12,
+      y,
+      z: cz + 20,
+      width: 40,
+      height: 8,
+      depth: 24,
+      rotationY: 0,
+      color: new THREE.Color(0x8c7a5a),
+      floorHeight: 8,
+      windowWidth: 4,
+      windowRatio: 0.2,
+      seed: 101,
+    },
+    'sawmill'
+  );
+  batch.addRoof({
+    x: cx - 12,
+    y: y + 8,
+    z: cz + 20,
+    width: 42,
+    height: 4,
+    depth: 26,
+    rotationY: 0,
+    color: new THREE.Color(0x4f5257),
+  });
   batch.commit(`${block.id}-buildings`);
   const logs: THREE.BufferGeometry[] = [];
   const random = createRandom(311);
@@ -761,7 +1220,11 @@ function buildSawmill(block: SpecialBlock) {
       for (let col = 0; col < 5 - Math.floor(row / 2); col += 1) {
         const log = new THREE.CylinderGeometry(0.42, 0.42, 9 + random() * 3, 8);
         log.rotateX(Math.PI / 2);
-        log.translate(sx + col * 0.9 + row * 0.45, y + 0.42 + row * 0.8, sz + (random() - 0.5) * 0.6);
+        log.translate(
+          sx + col * 0.9 + row * 0.45,
+          y + 0.42 + row * 0.8,
+          sz + (random() - 0.5) * 0.6
+        );
         logs.push(log);
       }
     }
@@ -774,7 +1237,7 @@ function buildSawmill(block: SpecialBlock) {
   chimney.translate(cx + 6, y + 7, cz + 30);
   addMesh(`${block.id}-chimney`, chimney, stoneMaterial);
   for (let index = 0; index < 4; index += 1) {
-    addTree("pine", block.minX + 3, block.minZ + 10 + index * 26, y, 1.1, 51);
+    addTree('pine', block.minX + 3, block.minZ + 10 + index * 26, y, 1.1, 51);
   }
 }
 
@@ -783,11 +1246,61 @@ function buildManor(block: SpecialBlock) {
   const cz = (block.minZ + block.maxZ) * 0.5;
   const y = groundSurfaceYAt(cx, cz);
   const batch = new BuildingBatch();
-  batch.addBox({ x: cx, y, z: cz, width: 34, height: 9.6, depth: 16, rotationY: 0, color: new THREE.Color(0xd9c9a3), floorHeight: 4.8, windowWidth: 2.4, windowRatio: 0.5, seed: 111 }, "manor");
-  batch.addRoof({ x: cx, y: y + 9.6, z: cz, width: 36, height: 5, depth: 18, rotationY: 0, color: new THREE.Color(0x4e4a48) });
+  batch.addBox(
+    {
+      x: cx,
+      y,
+      z: cz,
+      width: 34,
+      height: 9.6,
+      depth: 16,
+      rotationY: 0,
+      color: new THREE.Color(0xd9c9a3),
+      floorHeight: 4.8,
+      windowWidth: 2.4,
+      windowRatio: 0.5,
+      seed: 111,
+    },
+    'manor'
+  );
+  batch.addRoof({
+    x: cx,
+    y: y + 9.6,
+    z: cz,
+    width: 36,
+    height: 5,
+    depth: 18,
+    rotationY: 0,
+    color: new THREE.Color(0x4e4a48),
+  });
   for (const dx of [-15, 15]) {
-    batch.addBox({ x: cx + dx, y, z: cz + 14, width: 8, height: 6.4, depth: 12, rotationY: 0, color: new THREE.Color(0xd2c29c), floorHeight: 3.2, windowWidth: 2.0, windowRatio: 0.45, seed: 112 }, "manor");
-    batch.addRoof({ x: cx + dx, y: y + 6.4, z: cz + 14, width: 9.4, height: 3.2, depth: 13.4, rotationY: 0, color: new THREE.Color(0x4e4a48) });
+    batch.addBox(
+      {
+        x: cx + dx,
+        y,
+        z: cz + 14,
+        width: 8,
+        height: 6.4,
+        depth: 12,
+        rotationY: 0,
+        color: new THREE.Color(0xd2c29c),
+        floorHeight: 3.2,
+        windowWidth: 2.0,
+        windowRatio: 0.45,
+        seed: 112,
+      },
+      'manor'
+    );
+    batch.addRoof({
+      x: cx + dx,
+      y: y + 6.4,
+      z: cz + 14,
+      width: 9.4,
+      height: 3.2,
+      depth: 13.4,
+      rotationY: 0,
+      color: new THREE.Color(0x4e4a48),
+    });
   }
   batch.commit(`${block.id}-buildings`);
   const wall: THREE.BufferGeometry[] = [];
@@ -812,7 +1325,14 @@ function buildManor(block: SpecialBlock) {
   cityElements.add(pondMesh);
   const random = createRandom(113);
   for (let index = 0; index < 14; index += 1) {
-    addTree("broadleaf", block.minX + 6 + random() * (width - 12), block.minZ + 6 + random() * (depth - 12), y, 0.9 + random() * 0.6, 53);
+    addTree(
+      'broadleaf',
+      block.minX + 6 + random() * (width - 12),
+      block.minZ + 6 + random() * (depth - 12),
+      y,
+      0.9 + random() * 0.6,
+      53
+    );
   }
 }
 
@@ -837,7 +1357,23 @@ function buildCoop(block: SpecialBlock) {
     addMesh(`${block.id}-silos`, merged, craneWhiteMaterial);
   }
   const batch = new BuildingBatch();
-  batch.addBox({ x: cx, y, z: cz + 16, width: block.maxX - block.minX - 10, height: 7, depth: 18, rotationY: 0, color: new THREE.Color(0xb9bfc4), floorHeight: 7, windowWidth: 4, windowRatio: 0.18, seed: 121 }, "coop");
+  batch.addBox(
+    {
+      x: cx,
+      y,
+      z: cz + 16,
+      width: block.maxX - block.minX - 10,
+      height: 7,
+      depth: 18,
+      rotationY: 0,
+      color: new THREE.Color(0xb9bfc4),
+      floorHeight: 7,
+      windowWidth: 4,
+      windowRatio: 0.18,
+      seed: 121,
+    },
+    'coop'
+  );
   batch.commit(`${block.id}-buildings`);
   const apron = new THREE.BoxGeometry(block.maxX - block.minX, 0.2, block.maxZ - block.minZ);
   apron.translate(cx, y + 0.08, cz);
@@ -903,7 +1439,11 @@ function buildGarage(block: SpecialBlock) {
       for (let ix = 0; ix < 5; ix += 1) {
         for (let iz = 0; iz < 5; iz += 1) {
           const column = new THREE.BoxGeometry(0.5, 3.1, 0.5);
-          column.translate(block.minX + 3 + ix * (width / 4), y + level * 3.1 + 1.55, block.minZ + 3 + iz * (depth / 4));
+          column.translate(
+            block.minX + 3 + ix * (width / 4),
+            y + level * 3.1 + 1.55,
+            block.minZ + 3 + iz * (depth / 4)
+          );
           columns.push(column);
         }
       }
@@ -951,41 +1491,41 @@ function roadStructureConcreteMaterialRef() {
 
 export function buildSpecialBlocks() {
   for (const block of SPECIAL_BLOCKS) {
-    if (block.kind === "plaza") {
+    if (block.kind === 'plaza') {
       buildPlaza(block);
-    } else if (block.kind === "park") {
+    } else if (block.kind === 'park') {
       buildPark(block);
-    } else if (block.kind === "stadium") {
+    } else if (block.kind === 'stadium') {
       buildStadium(block);
-    } else if (block.kind === "parking") {
+    } else if (block.kind === 'parking') {
       buildParking(block);
-    } else if (block.kind === "school") {
+    } else if (block.kind === 'school') {
       buildSchool(block);
-    } else if (block.kind === "church") {
+    } else if (block.kind === 'church') {
       buildChurch(block);
-    } else if (block.kind === "station") {
+    } else if (block.kind === 'station') {
       buildStation(block);
-    } else if (block.kind === "hospital") {
+    } else if (block.kind === 'hospital') {
       buildHospital(block);
-    } else if (block.kind === "green") {
+    } else if (block.kind === 'green') {
       buildGreen(block);
-    } else if (block.kind === "services") {
+    } else if (block.kind === 'services') {
       buildServices(block);
-    } else if (block.kind === "golf") {
+    } else if (block.kind === 'golf') {
       buildGolf(block);
-    } else if (block.kind === "campsite") {
+    } else if (block.kind === 'campsite') {
       buildCampsite(block);
-    } else if (block.kind === "chairlift") {
+    } else if (block.kind === 'chairlift') {
       buildChairlift(block);
-    } else if (block.kind === "sawmill") {
+    } else if (block.kind === 'sawmill') {
       buildSawmill(block);
-    } else if (block.kind === "manor") {
+    } else if (block.kind === 'manor') {
       buildManor(block);
-    } else if (block.kind === "coop") {
+    } else if (block.kind === 'coop') {
       buildCoop(block);
-    } else if (block.kind === "windfarm") {
+    } else if (block.kind === 'windfarm') {
       buildWindfarm(block);
-    } else if (block.kind === "garage") {
+    } else if (block.kind === 'garage') {
       buildGarage(block);
     }
   }

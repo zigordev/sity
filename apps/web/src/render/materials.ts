@@ -1,11 +1,48 @@
-import * as THREE from "three";
-import { ATTRACTION_BLUE_COLOR, ATTRACTION_RED_COLOR, ATTRACTION_YELLOW_COLOR, BEACH_SAND_COLOR, CONCRETE_PORT_COLOR, DOCK_COLOR, GRASS_COLOR, HIGHWAY_ASPHALT_COLOR, HIGHWAY_MEDIAN_COLOR, HIGHWAY_SHOULDER_COLOR, MICRO_TERRAIN_OPACITY, MOUNTAIN_HIGH_COLOR, MOUNTAIN_LOW_COLOR, MOUNTAIN_MID_COLOR, PRIVATE_BOAT_COLOR, ROAD_MARKING_WHITE_COLOR, ROAD_MARKING_YELLOW_COLOR, SEA_SHADER_WATER_COLOR, SHIP_CABIN_COLOR, SHIP_HULL_COLOR, SNOW_COLOR, SNOW_SHADOW_COLOR, WET_SAND_COLOR, WOOD_PIER_COLOR } from "../config/constants";
-import { sunLight } from "./context";
-import { asphaltTexture, concreteTexture, corrugatedTexture, darkWearTexture, drySandTexture, grassTexture, metalTexture, terrainCutTexture, waterNormalTexture, wetSandTexture, woodTexture } from "./textures";
+import * as THREE from 'three';
+import {
+  ATTRACTION_BLUE_COLOR,
+  ATTRACTION_RED_COLOR,
+  ATTRACTION_YELLOW_COLOR,
+  BEACH_SAND_COLOR,
+  CONCRETE_PORT_COLOR,
+  DOCK_COLOR,
+  GRASS_COLOR,
+  HIGHWAY_ASPHALT_COLOR,
+  HIGHWAY_MEDIAN_COLOR,
+  HIGHWAY_SHOULDER_COLOR,
+  MICRO_TERRAIN_OPACITY,
+  MOUNTAIN_HIGH_COLOR,
+  MOUNTAIN_LOW_COLOR,
+  MOUNTAIN_MID_COLOR,
+  PRIVATE_BOAT_COLOR,
+  ROAD_MARKING_WHITE_COLOR,
+  ROAD_MARKING_YELLOW_COLOR,
+  SEA_SHADER_WATER_COLOR,
+  SHIP_CABIN_COLOR,
+  SHIP_HULL_COLOR,
+  SNOW_COLOR,
+  SNOW_SHADOW_COLOR,
+  WET_SAND_COLOR,
+  WOOD_PIER_COLOR,
+} from '../config/constants';
+import { sunLight } from './context';
+import {
+  asphaltTexture,
+  concreteTexture,
+  corrugatedTexture,
+  darkWearTexture,
+  drySandTexture,
+  grassTexture,
+  metalTexture,
+  terrainCutTexture,
+  waterNormalTexture,
+  wetSandTexture,
+  woodTexture,
+} from './textures';
 
 export function createSharedSeaWaterMaterial() {
   return new THREE.ShaderMaterial({
-    name: "sity-shared-sea-water-shader",
+    name: 'sity-shared-sea-water-shader',
     uniforms: THREE.UniformsUtils.merge([
       THREE.UniformsLib.fog,
       {
@@ -398,7 +435,9 @@ export const contactShadowMaterial = new THREE.MeshBasicMaterial({
   side: THREE.DoubleSide,
 });
 
-export const cargoContainerMaterials = [0xb04a38, 0x2f5f93, 0xd9a43a, 0x5f7a4a, 0x9aa0a6, 0x7a3f6a].map(
+export const cargoContainerMaterials = [
+  0xb04a38, 0x2f5f93, 0xd9a43a, 0x5f7a4a, 0x9aa0a6, 0x7a3f6a,
+].map(
   (color) =>
     new THREE.MeshStandardMaterial({
       color,
@@ -407,7 +446,7 @@ export const cargoContainerMaterials = [0xb04a38, 0x2f5f93, 0xd9a43a, 0x5f7a4a, 
       bumpScale: 0.04,
       roughness: 0.7,
       metalness: 0.25,
-    }),
+    })
 );
 
 export const craneWhiteMaterial = new THREE.MeshStandardMaterial({
@@ -429,7 +468,7 @@ export const steelDarkMaterial = new THREE.MeshStandardMaterial({
 });
 
 export const truckCabMaterials = [0xc9442f, 0x2f6fb5, 0xe5e2d8, 0x2f8f5a].map(
-  (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.3 }),
+  (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.3 })
 );
 
 export const truckChassisMaterial = new THREE.MeshStandardMaterial({
@@ -555,23 +594,17 @@ export let terrainSplatShaderInstalled = false;
 
 export let mountainSurfaceShaderInstalled = false;
 
-
-
-
 export function installTerrainSplatShader(material: THREE.MeshStandardMaterial) {
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSityWorldPosition;')
       .replace(
-        "#include <common>",
-        "#include <common>\nvarying vec3 vSityWorldPosition;",
-      )
-      .replace(
-        "#include <begin_vertex>",
-        "#include <begin_vertex>\nvSityWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;",
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvSityWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;'
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
-        "#include <common>",
+        '#include <common>',
         `#include <common>
 varying vec3 vSityWorldPosition;
 float sityTerrainNoise(vec2 p) {
@@ -586,10 +619,10 @@ float sityTerrainValueNoise(vec2 p) {
   float c = sityTerrainNoise(i + vec2(0.0, 1.0));
   float d = sityTerrainNoise(i + vec2(1.0, 1.0));
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}`,
+}`
       )
       .replace(
-        "#include <map_fragment>",
+        '#include <map_fragment>',
         `#include <map_fragment>
 float sityMacro = sityTerrainValueNoise(vSityWorldPosition.xz * 0.0045);
 float sityFine = sityTerrainValueNoise(vSityWorldPosition.xz * 0.026);
@@ -600,7 +633,7 @@ vec3 sityMeadow = vec3(0.39, 0.58, 0.30);
 vec3 sitySoil = vec3(0.47, 0.43, 0.31);
 diffuseColor.rgb = mix(diffuseColor.rgb, sityMeadow, 0.18);
 diffuseColor.rgb = mix(diffuseColor.rgb, sityDryGrass, sityPatch * 0.22);
-diffuseColor.rgb = mix(diffuseColor.rgb, sitySoil, sityCoastalDryness * sityPatch * 0.16);`,
+diffuseColor.rgb = mix(diffuseColor.rgb, sitySoil, sityCoastalDryness * sityPatch * 0.16);`
       );
   };
   material.needsUpdate = true;
@@ -610,17 +643,14 @@ diffuseColor.rgb = mix(diffuseColor.rgb, sitySoil, sityCoastalDryness * sityPatc
 export function installMountainSurfaceShader(material: THREE.MeshStandardMaterial) {
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSityMountainWorldPosition;')
       .replace(
-        "#include <common>",
-        "#include <common>\nvarying vec3 vSityMountainWorldPosition;",
-      )
-      .replace(
-        "#include <begin_vertex>",
-        "#include <begin_vertex>\nvSityMountainWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;",
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nvSityMountainWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;'
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
-        "#include <common>",
+        '#include <common>',
         `#include <common>
 varying vec3 vSityMountainWorldPosition;
 float sityMountainNoise(vec2 p) {
@@ -635,16 +665,16 @@ float sityMountainValueNoise(vec2 p) {
   float c = sityMountainNoise(i + vec2(0.0, 1.0));
   float d = sityMountainNoise(i + vec2(1.0, 1.0));
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}`,
+}`
       )
       .replace(
-        "#include <color_fragment>",
+        '#include <color_fragment>',
         `#include <color_fragment>
 float sityElevationBand = fract(vSityMountainWorldPosition.y * 0.013 + sityMountainValueNoise(vSityMountainWorldPosition.xz * 0.014) * 0.34);
 float sityStrata = smoothstep(0.48, 0.64, sityElevationBand) * (1.0 - smoothstep(0.72, 0.94, sityElevationBand));
 float sityVerticalStain = smoothstep(0.62, 0.94, sityMountainValueNoise(vec2(vSityMountainWorldPosition.x * 0.018, vSityMountainWorldPosition.y * 0.028)));
 diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.78, 0.76, 0.71), sityStrata * 0.17);
-diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.34, 0.32, 0.28), sityVerticalStain * 0.08);`,
+diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.34, 0.32, 0.28), sityVerticalStain * 0.08);`
       );
   };
   material.needsUpdate = true;
@@ -810,12 +840,12 @@ export const fieldMaterials = [0x8a7a4e, 0xa9b46a, 0x7f9a4c, 0xc2b064].map(
       map: grassTexture,
       roughness: 0.95,
       metalness: 0,
-    }),
+    })
 );
 
-export const carPaintMaterials = [0xe4e3df, 0x2b2f33, 0x8d9296, 0xa8342a, 0x2c4f8a, 0x4d6a3b, 0xd6b24a].map(
-  (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.32, metalness: 0.45 }),
-);
+export const carPaintMaterials = [
+  0xe4e3df, 0x2b2f33, 0x8d9296, 0xa8342a, 0x2c4f8a, 0x4d6a3b, 0xd6b24a,
+].map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.32, metalness: 0.45 }));
 
 export const carGlassMaterial = new THREE.MeshStandardMaterial({
   color: 0x2a3138,
@@ -875,19 +905,21 @@ export const gravelVergeMaterial = new THREE.MeshStandardMaterial({
   metalness: 0.0,
 });
 
-export function createSignTexture(kind: "stop" | "yield" | "speed30" | "speed50" | "noentry" | "school") {
+export function createSignTexture(
+  kind: 'stop' | 'yield' | 'speed30' | 'speed50' | 'noentry' | 'school'
+) {
   const size = 128;
-  const canvas = document.createElement("canvas");
+  const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
-  const context = canvas.getContext("2d");
+  const context = canvas.getContext('2d');
   if (!context) {
     return new THREE.Texture();
   }
   context.clearRect(0, 0, size, size);
   const center = size / 2;
-  if (kind === "stop") {
-    context.fillStyle = "#c8232c";
+  if (kind === 'stop') {
+    context.fillStyle = '#c8232c';
     context.beginPath();
     for (let index = 0; index < 8; index += 1) {
       const angle = Math.PI / 8 + (index * Math.PI) / 4;
@@ -901,52 +933,52 @@ export function createSignTexture(kind: "stop" | "yield" | "speed30" | "speed50"
     }
     context.closePath();
     context.fill();
-    context.strokeStyle = "#ffffff";
+    context.strokeStyle = '#ffffff';
     context.lineWidth = 5;
     context.stroke();
-    context.fillStyle = "#ffffff";
-    context.font = "bold 40px Arial";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText("STOP", center, center + 2);
-  } else if (kind === "yield") {
-    context.fillStyle = "#c8232c";
+    context.fillStyle = '#ffffff';
+    context.font = 'bold 40px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('STOP', center, center + 2);
+  } else if (kind === 'yield') {
+    context.fillStyle = '#c8232c';
     context.beginPath();
     context.moveTo(6, 14);
     context.lineTo(size - 6, 14);
     context.lineTo(center, size - 8);
     context.closePath();
     context.fill();
-    context.fillStyle = "#ffffff";
+    context.fillStyle = '#ffffff';
     context.beginPath();
     context.moveTo(24, 24);
     context.lineTo(size - 24, 24);
     context.lineTo(center, size - 30);
     context.closePath();
     context.fill();
-  } else if (kind === "noentry") {
-    context.fillStyle = "#c8232c";
+  } else if (kind === 'noentry') {
+    context.fillStyle = '#c8232c';
     context.beginPath();
     context.arc(center, center, 60, 0, Math.PI * 2);
     context.fill();
-    context.fillStyle = "#ffffff";
+    context.fillStyle = '#ffffff';
     context.fillRect(24, center - 12, size - 48, 24);
-  } else if (kind === "school") {
-    context.fillStyle = "#c8232c";
+  } else if (kind === 'school') {
+    context.fillStyle = '#c8232c';
     context.beginPath();
     context.moveTo(center, 6);
     context.lineTo(size - 4, size - 10);
     context.lineTo(4, size - 10);
     context.closePath();
     context.fill();
-    context.fillStyle = "#ffffff";
+    context.fillStyle = '#ffffff';
     context.beginPath();
     context.moveTo(center, 24);
     context.lineTo(size - 22, size - 20);
     context.lineTo(22, size - 20);
     context.closePath();
     context.fill();
-    context.fillStyle = "#111111";
+    context.fillStyle = '#111111';
     for (const [cx, scale] of [
       [center - 12, 1],
       [center + 10, 0.8],
@@ -959,20 +991,20 @@ export function createSignTexture(kind: "stop" | "yield" | "speed30" | "speed50"
       context.fillRect(cx + 2 * scale, 88 * scale + 70 - 70 * scale, 3, 14 * scale);
     }
   } else {
-    context.fillStyle = "#ffffff";
+    context.fillStyle = '#ffffff';
     context.beginPath();
     context.arc(center, center, 60, 0, Math.PI * 2);
     context.fill();
-    context.strokeStyle = "#c8232c";
+    context.strokeStyle = '#c8232c';
     context.lineWidth = 12;
     context.beginPath();
     context.arc(center, center, 54, 0, Math.PI * 2);
     context.stroke();
-    context.fillStyle = "#111111";
-    context.font = "bold 52px Arial";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(kind === "speed30" ? "30" : "50", center, center + 3);
+    context.fillStyle = '#111111';
+    context.font = 'bold 52px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(kind === 'speed30' ? '30' : '50', center, center + 3);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -981,12 +1013,48 @@ export function createSignTexture(kind: "stop" | "yield" | "speed30" | "speed50"
 }
 
 export const signMaterials = {
-  stop: new THREE.MeshStandardMaterial({ map: createSignTexture("stop"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
-  yield: new THREE.MeshStandardMaterial({ map: createSignTexture("yield"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
-  speed30: new THREE.MeshStandardMaterial({ map: createSignTexture("speed30"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
-  speed50: new THREE.MeshStandardMaterial({ map: createSignTexture("speed50"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
-  noentry: new THREE.MeshStandardMaterial({ map: createSignTexture("noentry"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
-  school: new THREE.MeshStandardMaterial({ map: createSignTexture("school"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 }),
+  stop: new THREE.MeshStandardMaterial({
+    map: createSignTexture('stop'),
+    transparent: true,
+    alphaTest: 0.5,
+    side: THREE.DoubleSide,
+    roughness: 0.6,
+  }),
+  yield: new THREE.MeshStandardMaterial({
+    map: createSignTexture('yield'),
+    transparent: true,
+    alphaTest: 0.5,
+    side: THREE.DoubleSide,
+    roughness: 0.6,
+  }),
+  speed30: new THREE.MeshStandardMaterial({
+    map: createSignTexture('speed30'),
+    transparent: true,
+    alphaTest: 0.5,
+    side: THREE.DoubleSide,
+    roughness: 0.6,
+  }),
+  speed50: new THREE.MeshStandardMaterial({
+    map: createSignTexture('speed50'),
+    transparent: true,
+    alphaTest: 0.5,
+    side: THREE.DoubleSide,
+    roughness: 0.6,
+  }),
+  noentry: new THREE.MeshStandardMaterial({
+    map: createSignTexture('noentry'),
+    transparent: true,
+    alphaTest: 0.5,
+    side: THREE.DoubleSide,
+    roughness: 0.6,
+  }),
+  school: new THREE.MeshStandardMaterial({
+    map: createSignTexture('school'),
+    transparent: true,
+    alphaTest: 0.5,
+    side: THREE.DoubleSide,
+    roughness: 0.6,
+  }),
 };
 
 export const talusRockMaterial = new THREE.MeshStandardMaterial({

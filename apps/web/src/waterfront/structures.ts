@@ -1,12 +1,47 @@
-import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import * as THREE from "three";
-import { queueImportedModelReplacement } from "../assets/pipeline";
-import { ATTRACTION_PIER_BEAM_COUNT, ATTRACTION_PIER_DEPTH_M, ATTRACTION_PIER_LAND_OVERLAP_M, ATTRACTION_PIER_LENGTH_M, ATTRACTION_PIER_RAIL_POST_COUNT, ATTRACTION_PIER_SUPPORT_COLUMNS, ATTRACTION_PIER_SUPPORT_ROWS, CARGO_PORT_DEPTH_M, CARGO_PORT_LENGTH_M, CARGO_SHIP_HULL_LENGTH_M, PIER_DECK_THICKNESS_M, PLATFORM_SURFACE_Y, PRIVATE_MARINA_BERTH_COUNT, QUAY_FENDER_COUNT, SEA_Y } from "../config/constants";
-import { addBoxInstances, addContactShadowPlane, addCylinderInstances, addTopAlignedBox, createLocalMesh } from "../geometry/helpers";
-import { XYZPlacement, XZPlacement } from "../geometry/types";
-import { artificialElements } from "../render/context";
-import { bridgeSteelMaterial, cargoContainerMaterials, concretePortMaterial, concreteSeamMaterial, dockMaterial, privateBoatMaterial, roadDrainMaterial, rubberFenderMaterial, safetySignMaterial, shipCabinMaterial, shipHullMaterial, woodPierMaterial } from "../render/materials";
-import { mainBoundaryMaxX } from "../world/frame";
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import * as THREE from 'three';
+import { queueImportedModelReplacement } from '../assets/pipeline';
+import {
+  ATTRACTION_PIER_BEAM_COUNT,
+  ATTRACTION_PIER_DEPTH_M,
+  ATTRACTION_PIER_LAND_OVERLAP_M,
+  ATTRACTION_PIER_LENGTH_M,
+  ATTRACTION_PIER_RAIL_POST_COUNT,
+  ATTRACTION_PIER_SUPPORT_COLUMNS,
+  ATTRACTION_PIER_SUPPORT_ROWS,
+  CARGO_PORT_DEPTH_M,
+  CARGO_PORT_LENGTH_M,
+  CARGO_SHIP_HULL_LENGTH_M,
+  PIER_DECK_THICKNESS_M,
+  PLATFORM_SURFACE_Y,
+  PRIVATE_MARINA_BERTH_COUNT,
+  QUAY_FENDER_COUNT,
+  SEA_Y,
+} from '../config/constants';
+import {
+  addBoxInstances,
+  addContactShadowPlane,
+  addCylinderInstances,
+  addTopAlignedBox,
+  createLocalMesh,
+} from '../geometry/helpers';
+import { XYZPlacement, XZPlacement } from '../geometry/types';
+import { artificialElements } from '../render/context';
+import {
+  bridgeSteelMaterial,
+  cargoContainerMaterials,
+  concretePortMaterial,
+  concreteSeamMaterial,
+  dockMaterial,
+  privateBoatMaterial,
+  roadDrainMaterial,
+  rubberFenderMaterial,
+  safetySignMaterial,
+  shipCabinMaterial,
+  shipHullMaterial,
+  woodPierMaterial,
+} from '../render/materials';
+import { mainBoundaryMaxX } from '../world/frame';
 
 export function addCargoShip(name: string, x: number, z: number) {
   const lod = new THREE.LOD();
@@ -17,7 +52,7 @@ export function addCargoShip(name: string, x: number, z: number) {
     shipHullMaterial,
     0,
     10,
-    0,
+    0
   );
   const deckContainers: XYZPlacement[] = [];
   const railPlacements: XYZPlacement[] = [];
@@ -30,8 +65,8 @@ export function addCargoShip(name: string, x: number, z: number) {
       shipHullMaterial,
       0,
       10,
-      0,
-    ),
+      0
+    )
   );
   const bow = createLocalMesh(
     `${name}-tapered-bow`,
@@ -39,7 +74,7 @@ export function addCargoShip(name: string, x: number, z: number) {
     shipHullMaterial,
     CARGO_SHIP_HULL_LENGTH_M * 0.5 + 10,
     10,
-    0,
+    0
   );
   bow.rotation.z = -Math.PI / 2;
   bow.rotation.y = Math.PI * 0.25;
@@ -51,7 +86,7 @@ export function addCargoShip(name: string, x: number, z: number) {
       shipCabinMaterial,
       -38,
       27,
-      0,
+      0
     ),
     createLocalMesh(
       `${name}-bridge-window-band`,
@@ -59,7 +94,7 @@ export function addCargoShip(name: string, x: number, z: number) {
       safetySignMaterial,
       -36,
       30,
-      0,
+      0
     ),
     createLocalMesh(
       `${name}-foredeck-cover`,
@@ -67,8 +102,8 @@ export function addCargoShip(name: string, x: number, z: number) {
       concretePortMaterial,
       34,
       20.1,
-      0,
-    ),
+      0
+    )
   );
 
   for (let index = 0; index < 8; index += 1) {
@@ -85,15 +120,12 @@ export function addCargoShip(name: string, x: number, z: number) {
     7,
     cargoContainerMaterials[0],
     deckContainers,
-    highDetail,
+    highDetail
   );
 
   for (let index = 0; index < 12; index += 1) {
     const localX = THREE.MathUtils.lerp(-68, 72, index / 11);
-    railPlacements.push(
-      { x: localX, y: 21.8, z: -18.3 },
-      { x: localX, y: 21.8, z: 18.3 },
-    );
+    railPlacements.push({ x: localX, y: 21.8, z: -18.3 }, { x: localX, y: 21.8, z: 18.3 });
   }
   addBoxInstances(
     `${name}-side-rail-posts`,
@@ -102,7 +134,7 @@ export function addCargoShip(name: string, x: number, z: number) {
     0.8,
     bridgeSteelMaterial,
     railPlacements,
-    highDetail,
+    highDetail
   );
   highDetail.add(
     createLocalMesh(
@@ -111,7 +143,7 @@ export function addCargoShip(name: string, x: number, z: number) {
       bridgeSteelMaterial,
       2,
       24,
-      -18.3,
+      -18.3
     ),
     createLocalMesh(
       `${name}-starboard-side-rail`,
@@ -119,7 +151,7 @@ export function addCargoShip(name: string, x: number, z: number) {
       bridgeSteelMaterial,
       2,
       24,
-      18.3,
+      18.3
     ),
     createLocalMesh(
       `${name}-mast`,
@@ -127,7 +159,7 @@ export function addCargoShip(name: string, x: number, z: number) {
       bridgeSteelMaterial,
       -58,
       43,
-      0,
+      0
     ),
     createLocalMesh(
       `${name}-radar-bar`,
@@ -135,8 +167,8 @@ export function addCargoShip(name: string, x: number, z: number) {
       bridgeSteelMaterial,
       -58,
       53.5,
-      0,
-    ),
+      0
+    )
   );
 
   lod.name = name;
@@ -144,7 +176,7 @@ export function addCargoShip(name: string, x: number, z: number) {
   lod.addLevel(highDetail, 0);
   lod.addLevel(lowDetail, 2_800);
   artificialElements.add(lod);
-  queueImportedModelReplacement("cargoShip", name, x, z, lod);
+  queueImportedModelReplacement('cargoShip', name, x, z, lod);
 }
 
 export function addPrivateBoat(name: string, x: number, z: number) {
@@ -156,7 +188,7 @@ export function addPrivateBoat(name: string, x: number, z: number) {
     privateBoatMaterial,
     0,
     5,
-    0,
+    0
   );
 
   highDetail.name = `${name}-high-detail-model`;
@@ -166,7 +198,7 @@ export function addPrivateBoat(name: string, x: number, z: number) {
     privateBoatMaterial,
     24,
     5,
-    0,
+    0
   );
   bow.rotation.z = -Math.PI / 2;
   bow.rotation.y = Math.PI * 0.25;
@@ -177,7 +209,7 @@ export function addPrivateBoat(name: string, x: number, z: number) {
       privateBoatMaterial,
       0,
       5,
-      0,
+      0
     ),
     bow,
     createLocalMesh(
@@ -186,7 +218,7 @@ export function addPrivateBoat(name: string, x: number, z: number) {
       shipCabinMaterial,
       -5,
       11,
-      0,
+      0
     ),
     createLocalMesh(
       `${name}-windshield`,
@@ -194,7 +226,7 @@ export function addPrivateBoat(name: string, x: number, z: number) {
       safetySignMaterial,
       1,
       14.8,
-      0,
+      0
     ),
     createLocalMesh(
       `${name}-stern-outboard`,
@@ -202,8 +234,8 @@ export function addPrivateBoat(name: string, x: number, z: number) {
       rubberFenderMaterial,
       -24.5,
       5,
-      0,
-    ),
+      0
+    )
   );
 
   lod.name = name;
@@ -211,7 +243,7 @@ export function addPrivateBoat(name: string, x: number, z: number) {
   lod.addLevel(highDetail, 0);
   lod.addLevel(lowDetail, 1_400);
   artificialElements.add(lod);
-  queueImportedModelReplacement("privateBoat", name, x, z, lod);
+  queueImportedModelReplacement('privateBoat', name, x, z, lod);
 }
 
 export function addAttractionPierSupportPiles(pierCenterZ: number) {
@@ -221,26 +253,26 @@ export function addAttractionPierSupportPiles(pierCenterZ: number) {
     const x = THREE.MathUtils.lerp(
       mainBoundaryMaxX + 28,
       mainBoundaryMaxX + ATTRACTION_PIER_LENGTH_M - 95,
-      column / (ATTRACTION_PIER_SUPPORT_COLUMNS - 1),
+      column / (ATTRACTION_PIER_SUPPORT_COLUMNS - 1)
     );
 
     for (let row = 0; row < ATTRACTION_PIER_SUPPORT_ROWS; row += 1) {
       const z = THREE.MathUtils.lerp(
         pierCenterZ - ATTRACTION_PIER_DEPTH_M * 0.36,
         pierCenterZ + ATTRACTION_PIER_DEPTH_M * 0.36,
-        row / (ATTRACTION_PIER_SUPPORT_ROWS - 1),
+        row / (ATTRACTION_PIER_SUPPORT_ROWS - 1)
       );
       placements.push({ x, z });
     }
   }
 
   addCylinderInstances(
-    "attraction-pier-support-piles",
+    'attraction-pier-support-piles',
     3.4,
     PLATFORM_SURFACE_Y - SEA_Y + 3,
     woodPierMaterial,
     PLATFORM_SURFACE_Y + 0.1,
-    placements,
+    placements
   );
 }
 
@@ -257,25 +289,25 @@ export function addPrivateMarinaSupportPiles(marinaCenterZ: number) {
     const berthZ = marinaCenterZ - 45 + index * 30;
     berthPlacements.push(
       { x: mainBoundaryMaxX + 123, z: berthZ - 4 },
-      { x: mainBoundaryMaxX + 123, z: berthZ + 4 },
+      { x: mainBoundaryMaxX + 123, z: berthZ + 4 }
     );
   }
 
   addCylinderInstances(
-    "private-marina-walkway-piles",
+    'private-marina-walkway-piles',
     2.4,
     PLATFORM_SURFACE_Y - SEA_Y + 3,
     dockMaterial,
     PLATFORM_SURFACE_Y + 0.1,
-    walkwayPlacements,
+    walkwayPlacements
   );
   addCylinderInstances(
-    "private-marina-berth-piles",
+    'private-marina-berth-piles',
     2.1,
     PLATFORM_SURFACE_Y - SEA_Y + 3,
     dockMaterial,
     PLATFORM_SURFACE_Y + 0.1,
-    berthPlacements,
+    berthPlacements
   );
 }
 
@@ -293,12 +325,9 @@ export function addPierStructuralDetail(pierCenterX: number, pierCenterZ: number
     const x = THREE.MathUtils.lerp(
       pierWestEdge + 18,
       pierEastEdge - 18,
-      index / (ATTRACTION_PIER_RAIL_POST_COUNT / 2 - 1),
+      index / (ATTRACTION_PIER_RAIL_POST_COUNT / 2 - 1)
     );
-    sidePostPlacements.push(
-      { x, z: pierNorthEdge - 5 },
-      { x, z: pierSouthEdge + 5 },
-    );
+    sidePostPlacements.push({ x, z: pierNorthEdge - 5 }, { x, z: pierSouthEdge + 5 });
   }
 
   for (let index = 0; index < 8; index += 1) {
@@ -307,18 +336,18 @@ export function addPierStructuralDetail(pierCenterX: number, pierCenterZ: number
   }
 
   addCylinderInstances(
-    "attraction-pier-railing-posts",
+    'attraction-pier-railing-posts',
     1.1,
     7.2,
     dockMaterial,
     PLATFORM_SURFACE_Y + 7.2,
     [...sidePostPlacements, ...endPostPlacements],
-    artificialElements,
+    artificialElements
   );
 
   for (const z of [pierNorthEdge - 5, pierSouthEdge + 5]) {
     addTopAlignedBox(
-      `attraction-pier-long-railing-${z > pierCenterZ ? "north" : "south"}`,
+      `attraction-pier-long-railing-${z > pierCenterZ ? 'north' : 'south'}`,
       ATTRACTION_PIER_LENGTH_M - 28,
       1.3,
       2.4,
@@ -327,11 +356,11 @@ export function addPierStructuralDetail(pierCenterX: number, pierCenterZ: number
       PLATFORM_SURFACE_Y + 6.8,
       z,
       12,
-      artificialElements,
+      artificialElements
     );
   }
   addTopAlignedBox(
-    "attraction-pier-seaward-end-railing",
+    'attraction-pier-seaward-end-railing',
     2.4,
     1.3,
     ATTRACTION_PIER_DEPTH_M - 30,
@@ -340,11 +369,15 @@ export function addPierStructuralDetail(pierCenterX: number, pierCenterZ: number
     PLATFORM_SURFACE_Y + 6.8,
     pierCenterZ,
     12,
-    artificialElements,
+    artificialElements
   );
 
   for (let index = 0; index < ATTRACTION_PIER_BEAM_COUNT; index += 1) {
-    const x = THREE.MathUtils.lerp(pierWestEdge + 18, pierEastEdge - 18, index / (ATTRACTION_PIER_BEAM_COUNT - 1));
+    const x = THREE.MathUtils.lerp(
+      pierWestEdge + 18,
+      pierEastEdge - 18,
+      index / (ATTRACTION_PIER_BEAM_COUNT - 1)
+    );
     crossBeamPlacements.push({
       x,
       y: PLATFORM_SURFACE_Y - PIER_DECK_THICKNESS_M - 0.8,
@@ -365,30 +398,30 @@ export function addPierStructuralDetail(pierCenterX: number, pierCenterZ: number
   }
 
   addBoxInstances(
-    "attraction-pier-cross-beams",
+    'attraction-pier-cross-beams',
     4.8,
     3.2,
     ATTRACTION_PIER_DEPTH_M - 20,
     woodPierMaterial,
     crossBeamPlacements,
-    artificialElements,
+    artificialElements
   );
   addBoxInstances(
-    "attraction-pier-longitudinal-beams",
+    'attraction-pier-longitudinal-beams',
     ATTRACTION_PIER_LENGTH_M - 34,
     2.8,
     4.2,
     woodPierMaterial,
     longBeamPlacements,
-    artificialElements,
+    artificialElements
   );
   addContactShadowPlane(
-    "attraction-pier-water-contact-shadow",
+    'attraction-pier-water-contact-shadow',
     ATTRACTION_PIER_LENGTH_M - ATTRACTION_PIER_LAND_OVERLAP_M + 40,
     ATTRACTION_PIER_DEPTH_M + 20,
     pierCenterX + ATTRACTION_PIER_LAND_OVERLAP_M * 0.22,
     SEA_Y + 0.065,
-    pierCenterZ,
+    pierCenterZ
   );
 }
 
@@ -401,37 +434,42 @@ export function addPrivateMarinaHardware(marinaCenterZ: number) {
       { x: mainBoundaryMaxX + 34, y: PLATFORM_SURFACE_Y + 1.7, z: berthZ - 4.4 },
       { x: mainBoundaryMaxX + 76, y: PLATFORM_SURFACE_Y + 1.7, z: berthZ - 4.4 },
       { x: mainBoundaryMaxX + 116, y: PLATFORM_SURFACE_Y + 1.7, z: berthZ + 4.4 },
-      { x: mainBoundaryMaxX + 146, y: PLATFORM_SURFACE_Y + 1.7, z: berthZ + 4.4 },
+      { x: mainBoundaryMaxX + 146, y: PLATFORM_SURFACE_Y + 1.7, z: berthZ + 4.4 }
     );
   }
 
-  for (const z of [marinaCenterZ - 62, marinaCenterZ - 22, marinaCenterZ + 22, marinaCenterZ + 62]) {
+  for (const z of [
+    marinaCenterZ - 62,
+    marinaCenterZ - 22,
+    marinaCenterZ + 22,
+    marinaCenterZ + 62,
+  ]) {
     cleatPlacements.push({ x: mainBoundaryMaxX + 7, y: PLATFORM_SURFACE_Y + 1.7, z });
   }
 
   addBoxInstances(
-    "private-marina-mooring-cleats",
+    'private-marina-mooring-cleats',
     5.2,
     0.9,
     1.8,
     bridgeSteelMaterial,
     cleatPlacements,
-    artificialElements,
+    artificialElements
   );
   addContactShadowPlane(
-    "private-marina-water-contact-shadow",
+    'private-marina-water-contact-shadow',
     160,
     150,
     mainBoundaryMaxX + 70,
     SEA_Y + 0.07,
-    marinaCenterZ,
+    marinaCenterZ
   );
 }
 
 export function addCargoPortSurfaceDetail(
   cargoPortCenterX: number,
   cargoPortCenterZ: number,
-  cargoPortEastEdge: number,
+  cargoPortEastEdge: number
 ) {
   const seamPlacements: XYZPlacement[] = [];
   const drainPlacements: XYZPlacement[] = [];
@@ -442,7 +480,7 @@ export function addCargoPortSurfaceDetail(
       x: THREE.MathUtils.lerp(
         cargoPortCenterX - CARGO_PORT_LENGTH_M * 0.38,
         cargoPortCenterX + CARGO_PORT_LENGTH_M * 0.32,
-        index / 5,
+        index / 5
       ),
       y: PLATFORM_SURFACE_Y + 0.18,
       z: cargoPortCenterZ,
@@ -456,35 +494,35 @@ export function addCargoPortSurfaceDetail(
       z: THREE.MathUtils.lerp(
         cargoPortCenterZ - CARGO_PORT_DEPTH_M * 0.39,
         cargoPortCenterZ + CARGO_PORT_DEPTH_M * 0.39,
-        index / 5,
+        index / 5
       ),
     });
   }
 
   addBoxInstances(
-    "cargo-port-longitudinal-concrete-seams",
+    'cargo-port-longitudinal-concrete-seams',
     1.2,
     0.08,
     CARGO_PORT_DEPTH_M - 24,
     concreteSeamMaterial,
     seamPlacements.slice(0, 6),
-    artificialElements,
+    artificialElements
   );
   addBoxInstances(
-    "cargo-port-cross-concrete-seams",
+    'cargo-port-cross-concrete-seams',
     CARGO_PORT_LENGTH_M - 36,
     0.08,
     1.2,
     concreteSeamMaterial,
     seamPlacements.slice(6),
-    artificialElements,
+    artificialElements
   );
 
   for (let index = 0; index < QUAY_FENDER_COUNT; index += 1) {
     const z = THREE.MathUtils.lerp(
       cargoPortCenterZ - CARGO_PORT_DEPTH_M * 0.42,
       cargoPortCenterZ + CARGO_PORT_DEPTH_M * 0.42,
-      index / (QUAY_FENDER_COUNT - 1),
+      index / (QUAY_FENDER_COUNT - 1)
     );
     fenderPlacements.push({
       x: cargoPortEastEdge + 1.4,
@@ -493,13 +531,13 @@ export function addCargoPortSurfaceDetail(
     });
   }
   addBoxInstances(
-    "cargo-port-rubber-quay-fenders",
+    'cargo-port-rubber-quay-fenders',
     4.6,
     12,
     11,
     rubberFenderMaterial,
     fenderPlacements,
-    artificialElements,
+    artificialElements
   );
 
   for (let index = 0; index < 8; index += 1) {
@@ -510,20 +548,20 @@ export function addCargoPortSurfaceDetail(
     });
   }
   addBoxInstances(
-    "cargo-port-slot-drains",
+    'cargo-port-slot-drains',
     18,
     0.12,
     2.4,
     roadDrainMaterial,
     drainPlacements,
-    artificialElements,
+    artificialElements
   );
   addContactShadowPlane(
-    "cargo-port-quay-contact-shadow",
+    'cargo-port-quay-contact-shadow',
     CARGO_PORT_LENGTH_M + 85,
     CARGO_PORT_DEPTH_M + 32,
     cargoPortCenterX + 24,
     SEA_Y + 0.07,
-    cargoPortCenterZ,
+    cargoPortCenterZ
   );
 }

@@ -1,5 +1,5 @@
-import * as THREE from "three";
-import { ROAD_CLASSES, roadTotalWidth, type RoadClass, type RoadClassSpec } from "./classes";
+import * as THREE from 'three';
+import { ROAD_CLASSES, roadTotalWidth, type RoadClass, type RoadClassSpec } from './classes';
 
 export interface Vec2 {
   x: number;
@@ -10,13 +10,15 @@ export interface Vec3 extends Vec2 {
   y: number;
 }
 
-export type JunctionControl = "signal" | "stop" | "yield" | "priority" | "crossing" | "toll" | "none";
-export type LaneDirection = "forward" | "backward";
-export type LaneKind = "road" | "connector" | "ring" | "ramp";
-export type TurnKind = "straight" | "left" | "right" | "uturn" | "merge" | "diverge" | "circulate" | "enter" | "exit";
-export type StructureKind = "ground" | "viaduct" | "bridge" | "tunnel";
+export type JunctionControl =
+  'signal' | 'stop' | 'yield' | 'priority' | 'crossing' | 'toll' | 'none';
+export type LaneDirection = 'forward' | 'backward';
+export type LaneKind = 'road' | 'connector' | 'ring' | 'ramp';
+export type TurnKind =
+  'straight' | 'left' | 'right' | 'uturn' | 'merge' | 'diverge' | 'circulate' | 'enter' | 'exit';
+export type StructureKind = 'ground' | 'viaduct' | 'bridge' | 'tunnel';
 
-export type DestinationKind = "parking" | "yard" | "forecourt" | "viewpoint" | "culdesac";
+export type DestinationKind = 'parking' | 'yard' | 'forecourt' | 'viewpoint' | 'culdesac';
 
 export interface DestinationSpec {
   kind: DestinationKind;
@@ -39,20 +41,20 @@ export interface NodeSpec {
 }
 
 export interface StructureSpec {
-  kind: "tunnel" | "bridge";
+  kind: 'tunnel' | 'bridge';
   fromControl: number;
   toControl: number;
 }
 
 export interface PocketSpec {
-  end: "from" | "to";
-  turn: "left";
+  end: 'from' | 'to';
+  turn: 'left';
   length: number;
 }
 
 export interface PocketRange {
   direction: LaneDirection;
-  turn: "left" | "right";
+  turn: 'left' | 'right';
   s0: number;
   s1: number;
   offset: number;
@@ -69,7 +71,7 @@ export interface RoadSpec {
   to?: string;
   via?: Array<Vec2 & { y?: number }>;
   closed?: boolean;
-  elevation?: "terrain" | "control";
+  elevation?: 'terrain' | 'control';
   cuts?: string[];
   structures?: StructureSpec[];
   tension?: number;
@@ -97,13 +99,13 @@ export interface RoadSample extends Vec3 {
   structure: StructureKind;
 }
 
-export type LaneAccess = "all" | "bus";
+export type LaneAccess = 'all' | 'bus';
 
 export interface Lane {
   id: string;
   kind: LaneKind;
   access: LaneAccess;
-  pocket?: "left" | "right";
+  pocket?: 'left' | 'right';
   roadId?: string;
   nodeId?: string;
   direction?: LaneDirection;
@@ -180,7 +182,7 @@ export interface BuiltRoad {
   endTrim: number;
   cutStations: Array<{ nodeId: string; s: number }>;
   laneOffsets: { forward: number[]; backward: number[] };
-  markingGaps: Array<{ s0: number; s1: number; side: "left" | "right" }>;
+  markingGaps: Array<{ s0: number; s1: number; side: 'left' | 'right' }>;
   pocketRanges: PocketRange[];
 }
 
@@ -228,7 +230,7 @@ function polylineLength(points: Vec3[]) {
     total += Math.hypot(
       points[index].x - points[index - 1].x,
       points[index].y - points[index - 1].y,
-      points[index].z - points[index - 1].z,
+      points[index].z - points[index - 1].z
     );
   }
   return total;
@@ -288,13 +290,23 @@ function limitGrade(values: number[], spacing: number, maxGrade: number) {
   return result;
 }
 
-export function sampleAtStation(samples: RoadSample[], s: number): Vec3 & { tx: number; tz: number; structure: StructureKind } {
+export function sampleAtStation(
+  samples: RoadSample[],
+  s: number
+): Vec3 & { tx: number; tz: number; structure: StructureKind } {
   if (samples.length === 0) {
-    throw new Error("Cannot sample an empty road.");
+    throw new Error('Cannot sample an empty road.');
   }
   if (s <= samples[0].s) {
     const first = samples[0];
-    return { x: first.x, y: first.y, z: first.z, tx: first.tx, tz: first.tz, structure: first.structure };
+    return {
+      x: first.x,
+      y: first.y,
+      z: first.z,
+      tx: first.tx,
+      tz: first.tz,
+      structure: first.structure,
+    };
   }
   const last = samples[samples.length - 1];
   if (s >= last.s) {
@@ -336,7 +348,12 @@ export function sliceSamples(samples: RoadSample[], s0: number, s1: number): Vec
   return points;
 }
 
-export function offsetSamples(samples: RoadSample[], s0: number, s1: number, offset: number): Vec3[] {
+export function offsetSamples(
+  samples: RoadSample[],
+  s0: number,
+  s1: number,
+  offset: number
+): Vec3[] {
   const start = sampleAtStation(samples, s0);
   const end = sampleAtStation(samples, s1);
   const points: Vec3[] = [];
@@ -364,7 +381,10 @@ export class NetworkBuilder {
   private readonly terrainY: (x: number, z: number) => number;
   private readonly roadLift: number;
 
-  constructor(private readonly spec: NetworkSpec, options: BuildOptions) {
+  constructor(
+    private readonly spec: NetworkSpec,
+    options: BuildOptions
+  ) {
     this.terrainY = options.terrainY;
     this.roadLift = options.roadLift ?? 0.05;
   }
@@ -372,7 +392,12 @@ export class NetworkBuilder {
   build(): RoadNetwork {
     for (const node of this.spec.nodes) {
       const y = node.y ?? this.terrainY(node.x, node.z) + this.roadLift;
-      this.nodes.set(node.id, { spec: node, position: { x: node.x, y, z: node.z }, roadIds: [], isCut: false });
+      this.nodes.set(node.id, {
+        spec: node,
+        position: { x: node.x, y, z: node.z },
+        roadIds: [],
+        isCut: false,
+      });
     }
 
     const { plain, attached } = this.orderRoads();
@@ -432,9 +457,10 @@ export class NetworkBuilder {
     const offsets = road.laneOffsets[direction];
     const laneOffset = offsets[offsets.length - 1];
     const base = sampleAtStation(road.samples, cut.s);
-    const travel = direction === "forward" ? { x: base.tx, z: base.tz } : { x: -base.tx, z: -base.tz };
+    const travel =
+      direction === 'forward' ? { x: base.tx, z: base.tz } : { x: -base.tx, z: -base.tz };
     const right = perpRight(travel);
-    const signedOffset = direction === "forward" ? laneOffset : -laneOffset;
+    const signedOffset = direction === 'forward' ? laneOffset : -laneOffset;
     const rightOfCenter = perpRight({ x: base.tx, z: base.tz });
     return {
       point: {
@@ -452,12 +478,16 @@ export class NetworkBuilder {
   private buildRoadCenterline(spec: RoadSpec) {
     const cls = ROAD_CLASSES[spec.class];
     const controls: Array<Vec2 & { y?: number }> = [];
-    let elevationMode = spec.elevation ?? "terrain";
+    let elevationMode = spec.elevation ?? 'terrain';
 
     const attachLength = spec.attachLength ?? 80;
     const attachMid = attachLength * 0.425;
     if (spec.attachFrom) {
-      const frame = this.outerLaneFrame(spec.attachFrom.roadId, spec.attachFrom.direction, spec.from ?? "");
+      const frame = this.outerLaneFrame(
+        spec.attachFrom.roadId,
+        spec.attachFrom.direction,
+        spec.from ?? ''
+      );
       controls.push({ x: frame.point.x, z: frame.point.z, y: frame.point.y });
       controls.push({
         x: frame.point.x + frame.travel.x * attachMid + frame.right.x * (frame.laneWidth * 0.55),
@@ -468,7 +498,7 @@ export class NetworkBuilder {
         x: frame.point.x + frame.travel.x * attachLength + frame.right.x * (frame.laneWidth * 1.9),
         z: frame.point.z + frame.travel.z * attachLength + frame.right.z * (frame.laneWidth * 1.9),
       });
-      elevationMode = "control";
+      elevationMode = 'control';
     } else if (spec.from) {
       const from = this.nodeOf(spec.from);
       controls.push({ x: from.position.x, z: from.position.z, y: from.position.y });
@@ -479,7 +509,11 @@ export class NetworkBuilder {
     }
 
     if (spec.attachTo) {
-      const frame = this.outerLaneFrame(spec.attachTo.roadId, spec.attachTo.direction, spec.to ?? "");
+      const frame = this.outerLaneFrame(
+        spec.attachTo.roadId,
+        spec.attachTo.direction,
+        spec.to ?? ''
+      );
       controls.push({
         x: frame.point.x - frame.travel.x * attachLength + frame.right.x * (frame.laneWidth * 1.9),
         z: frame.point.z - frame.travel.z * attachLength + frame.right.z * (frame.laneWidth * 1.9),
@@ -490,7 +524,7 @@ export class NetworkBuilder {
         y: frame.point.y - 0.15,
       });
       controls.push({ x: frame.point.x, z: frame.point.z, y: frame.point.y });
-      elevationMode = "control";
+      elevationMode = 'control';
     } else if (spec.to) {
       const to = this.nodeOf(spec.to);
       controls.push({ x: to.position.x, z: to.position.z, y: to.position.y });
@@ -501,8 +535,8 @@ export class NetworkBuilder {
     const curve = new THREE.CatmullRomCurve3(
       controls.map((point) => new THREE.Vector3(point.x, 0, point.z)),
       closed,
-      "centripetal",
-      spec.tension ?? 0.35,
+      'centripetal',
+      spec.tension ?? 0.35
     );
     const approxLength = curve.getLength();
     const sampleCount = Math.max(8, Math.ceil(approxLength / spacing));
@@ -527,7 +561,7 @@ export class NetworkBuilder {
         tx: 0,
         tz: 0,
         terrainY: this.terrainY(point.x, point.z),
-        structure: "ground",
+        structure: 'ground',
       });
     }
     const totalLength = closed
@@ -536,13 +570,15 @@ export class NetworkBuilder {
 
     for (let index = 0; index < samples.length; index += 1) {
       const previous = samples[index === 0 ? (closed ? samples.length - 1 : 0) : index - 1];
-      const next = samples[index === samples.length - 1 ? (closed ? 0 : samples.length - 1) : index + 1];
+      const next =
+        samples[index === samples.length - 1 ? (closed ? 0 : samples.length - 1) : index + 1];
       const tangent = normalize({ x: next.x - previous.x, z: next.z - previous.z });
       samples[index].tx = tangent.x;
       samples[index].tz = tangent.z;
     }
 
-    const stationOf = (controlIndex: number) => controlStations[Math.min(controlIndex, controlStations.length - 1)];
+    const stationOf = (controlIndex: number) =>
+      controlStations[Math.min(controlIndex, controlStations.length - 1)];
     for (const structure of spec.structures ?? []) {
       const s0 = stationOf(structure.fromControl);
       const s1 = stationOf(structure.toControl);
@@ -553,25 +589,33 @@ export class NetworkBuilder {
       }
     }
 
-    if (elevationMode === "control") {
-      const knownIndices = controls.map((point, index) => (point.y !== undefined ? index : -1)).filter((index) => index >= 0);
+    if (elevationMode === 'control') {
+      const knownIndices = controls
+        .map((point, index) => (point.y !== undefined ? index : -1))
+        .filter((index) => index >= 0);
       const knownStations = knownIndices.map((index) => controlStations[index]);
       const knownValues = knownIndices.map((index) => controls[index].y as number);
       if (knownValues.length === 0) {
         throw new Error(`Road "${spec.id}" uses control elevation without any known heights.`);
       }
       const spline = new THREE.CatmullRomCurve3(
-        knownIndices.map((index) => new THREE.Vector3(controlStations[index], controls[index].y as number, 0)),
+        knownIndices.map(
+          (index) => new THREE.Vector3(controlStations[index], controls[index].y as number, 0)
+        ),
         false,
-        "catmullrom",
-        0.5,
+        'catmullrom',
+        0.5
       );
       const profile = samples.map((sample) => {
         if (knownValues.length === 1) {
           return knownValues[0];
         }
-        const s = closed ? sample.s : Math.min(Math.max(sample.s, knownStations[0]), knownStations[knownStations.length - 1]);
-        const t = (s - knownStations[0]) / Math.max(knownStations[knownStations.length - 1] - knownStations[0], 0.0001);
+        const s = closed
+          ? sample.s
+          : Math.min(Math.max(sample.s, knownStations[0]), knownStations[knownStations.length - 1]);
+        const t =
+          (s - knownStations[0]) /
+          Math.max(knownStations[knownStations.length - 1] - knownStations[0], 0.0001);
         if (closed) {
           return this.closedProfile(sample.s, knownStations, knownValues, totalLength);
         }
@@ -580,9 +624,11 @@ export class NetworkBuilder {
       samples.forEach((sample, index) => {
         sample.y = profile[index];
       });
-      const tunnelStations = samples.filter((sample) => sample.structure === "tunnel").map((sample) => sample.s);
+      const tunnelStations = samples
+        .filter((sample) => sample.structure === 'tunnel')
+        .map((sample) => sample.s);
       for (const sample of samples) {
-        if (sample.structure !== "ground") {
+        if (sample.structure !== 'ground') {
           continue;
         }
         const nearTunnel = tunnelStations.some((station) => {
@@ -618,8 +664,8 @@ export class NetworkBuilder {
     }
 
     for (const sample of samples) {
-      if (sample.structure === "ground" && sample.y - sample.terrainY > 2.4) {
-        sample.structure = "viaduct";
+      if (sample.structure === 'ground' && sample.y - sample.terrainY > 2.4) {
+        sample.structure = 'viaduct';
       }
     }
 
@@ -629,11 +675,21 @@ export class NetworkBuilder {
     const median = forward > 0 && backward > 0 ? cls.medianWidth : 0;
     const innerShoulder = median > 0 ? cls.innerShoulder : 0;
     const laneOffsets = {
-      forward: Array.from({ length: forward }, (_, index) =>
-        median * 0.5 + innerShoulder + cls.laneWidth * (index + 0.5) + (backward === 0 ? -(forward * cls.laneWidth) * 0.5 : 0),
+      forward: Array.from(
+        { length: forward },
+        (_, index) =>
+          median * 0.5 +
+          innerShoulder +
+          cls.laneWidth * (index + 0.5) +
+          (backward === 0 ? -(forward * cls.laneWidth) * 0.5 : 0)
       ),
-      backward: Array.from({ length: backward }, (_, index) =>
-        median * 0.5 + innerShoulder + cls.laneWidth * (index + 0.5) + (forward === 0 ? -(backward * cls.laneWidth) * 0.5 : 0),
+      backward: Array.from(
+        { length: backward },
+        (_, index) =>
+          median * 0.5 +
+          innerShoulder +
+          cls.laneWidth * (index + 0.5) +
+          (forward === 0 ? -(backward * cls.laneWidth) * 0.5 : 0)
       ),
     };
 
@@ -713,7 +769,7 @@ export class NetworkBuilder {
       node.isCut = true;
       node.roadIds.push(spec.id);
       road.cutStations.push({ nodeId, s: sample.s });
-      road.markingGaps.push({ s0: sample.s - 70, s1: sample.s + 70, side: "right" });
+      road.markingGaps.push({ s0: sample.s - 70, s1: sample.s + 70, side: 'right' });
     }
     road.cutStations.sort((a, b) => a.s - b.s);
   }
@@ -724,21 +780,30 @@ export class NetworkBuilder {
       return;
     }
     for (const pocket of spec.pockets) {
-      const nodeId = pocket.end === "to" ? spec.to : spec.from;
+      const nodeId = pocket.end === 'to' ? spec.to : spec.from;
       if (!nodeId) {
         continue;
       }
       const node = this.nodes.get(nodeId);
-      if (!node || node.isCut || node.spec.roundabout || node.spec.edge || node.spec.destination || this.roadEndsAt(nodeId).length < 3) {
+      if (
+        !node ||
+        node.isCut ||
+        node.spec.roundabout ||
+        node.spec.edge ||
+        node.spec.destination ||
+        this.roadEndsAt(nodeId).length < 3
+      ) {
         continue;
       }
-      const direction: LaneDirection = pocket.end === "to" ? "forward" : "backward";
+      const direction: LaneDirection = pocket.end === 'to' ? 'forward' : 'backward';
       const offsets = road.laneOffsets[direction];
-      if (offsets.length === 0 || !this.hasLeftTurn(road, nodeId, pocket.end === "from")) {
+      if (offsets.length === 0 || !this.hasLeftTurn(road, nodeId, pocket.end === 'from')) {
         continue;
       }
       if (road.median < road.cls.laneWidth) {
-        throw new Error(`Road "${spec.id}" needs a median of at least one lane width for a left pocket.`);
+        throw new Error(
+          `Road "${spec.id}" needs a median of at least one lane width for a left pocket.`
+        );
       }
       const offset = road.median * 0.5 - road.cls.laneWidth * 0.5;
       const usable = road.length - road.startTrim - road.endTrim;
@@ -746,7 +811,8 @@ export class NetworkBuilder {
       if (length < 12) {
         continue;
       }
-      const splitS = pocket.end === "to" ? road.length - road.endTrim - length : road.startTrim + length;
+      const splitS =
+        pocket.end === 'to' ? road.length - road.endTrim - length : road.startTrim + length;
       const splitId = `${spec.id}:pocket:${pocket.end}:${pocket.turn}`;
       const sample = sampleAtStation(road.samples, splitS);
       this.nodes.set(splitId, {
@@ -757,8 +823,8 @@ export class NetworkBuilder {
       });
       road.cutStations.push({ nodeId: splitId, s: splitS });
       road.cutStations.sort((a, b) => a.s - b.s);
-      const s0 = pocket.end === "to" ? splitS : road.startTrim;
-      const s1 = pocket.end === "to" ? road.length - road.endTrim : splitS;
+      const s0 = pocket.end === 'to' ? splitS : road.startTrim;
+      const s1 = pocket.end === 'to' ? road.length - road.endTrim : splitS;
       road.pocketRanges.push({ direction, turn: pocket.turn, s0, s1, offset, nodeId: splitId });
     }
   }
@@ -771,7 +837,9 @@ export class NetworkBuilder {
         return false;
       }
       const departs = end.atStart ? end.road.spec.forward > 0 : end.road.spec.backward > 0;
-      return departs && this.classifyTurn(heading, this.endDirection(end.road, end.atStart)) === "left";
+      return (
+        departs && this.classifyTurn(heading, this.endDirection(end.road, end.atStart)) === 'left'
+      );
     });
   }
 
@@ -790,7 +858,9 @@ export class NetworkBuilder {
 
   private endDirection(road: BuiltRoad, atStart: boolean): Vec2 {
     const samples = road.samples;
-    const reference = atStart ? sampleAtStation(samples, Math.min(18, road.length * 0.3)) : sampleAtStation(samples, Math.max(road.length - 18, road.length * 0.7));
+    const reference = atStart
+      ? sampleAtStation(samples, Math.min(18, road.length * 0.3))
+      : sampleAtStation(samples, Math.max(road.length - 18, road.length * 0.7));
     const anchor = atStart ? samples[0] : samples[samples.length - 1];
     const dir = normalize({ x: reference.x - anchor.x, z: reference.z - anchor.z });
     return dir;
@@ -827,12 +897,19 @@ export class NetworkBuilder {
           const dot = dirs[index].x * dirs[otherIndex].x + dirs[index].z * dirs[otherIndex].z;
           const angle = Math.acos(Math.min(1, Math.max(-1, dot)));
           const tangentHalf = Math.tan(Math.max(angle * 0.5, 0.2));
-          const needed = other.road.halfWidth / tangentHalf + Math.max(end.road.cls.cornerRadius, other.road.cls.cornerRadius) * 0.9;
+          const needed =
+            other.road.halfWidth / tangentHalf +
+            Math.max(end.road.cls.cornerRadius, other.road.cls.cornerRadius) * 0.9;
           trim = Math.max(trim, needed);
         });
         if (ends.length === 1) {
           const destination = node.spec.destination;
-          trim = destination && destination.kind !== "culdesac" ? 6 : node.spec.turnaround ? end.road.cls.cornerRadius * 1.4 : 0;
+          trim =
+            destination && destination.kind !== 'culdesac'
+              ? 6
+              : node.spec.turnaround
+                ? end.road.cls.cornerRadius * 1.4
+                : 0;
         }
         trim = Math.min(trim, Math.max(end.road.length * 0.42, 1));
         if (end.atStart) {
@@ -865,14 +942,14 @@ export class NetworkBuilder {
     }
 
     const pieces = { forward: [] as Lane[][], backward: [] as Lane[][] };
-    const laneKind: LaneKind = spec.class === "ramp" ? "ramp" : "road";
+    const laneKind: LaneKind = spec.class === 'ramp' ? 'ramp' : 'road';
     const pieceCount = closed ? stations.length : stations.length - 1;
 
-    for (const direction of ["forward", "backward"] as const) {
+    for (const direction of ['forward', 'backward'] as const) {
       const offsets = road.laneOffsets[direction];
       const perLane: Lane[][] = offsets.map(() => []);
       offsets.forEach((offset, laneIndex) => {
-        const signedOffset = direction === "forward" ? offset : -offset;
+        const signedOffset = direction === 'forward' ? offset : -offset;
         for (let pieceIndex = 0; pieceIndex < pieceCount; pieceIndex += 1) {
           const start = stations[pieceIndex];
           const end = stations[(pieceIndex + 1) % stations.length];
@@ -883,21 +960,29 @@ export class NetworkBuilder {
             points.push({ ...first });
           } else if (closed && end.s <= start.s) {
             points = [
-              ...offsetSamples(road.samples, start.s, road.samples[road.samples.length - 1].s, signedOffset),
+              ...offsetSamples(
+                road.samples,
+                start.s,
+                road.samples[road.samples.length - 1].s,
+                signedOffset
+              ),
               ...offsetSamples(road.samples, 0, end.s, signedOffset).slice(1),
             ];
           } else {
             points = offsetSamples(road.samples, start.s, end.s, signedOffset);
           }
-          if (direction === "backward") {
+          if (direction === 'backward') {
             points = points.slice().reverse();
           }
-          const fromNode = direction === "forward" ? start.nodeId : end.nodeId;
-          const toNode = direction === "forward" ? end.nodeId : start.nodeId;
+          const fromNode = direction === 'forward' ? start.nodeId : end.nodeId;
+          const toNode = direction === 'forward' ? end.nodeId : start.nodeId;
           const lane: Lane = {
-            id: `${spec.id}:${direction}:${laneIndex}${pieceCount > 1 ? `:${pieceIndex}` : ""}`,
+            id: `${spec.id}:${direction}:${laneIndex}${pieceCount > 1 ? `:${pieceIndex}` : ''}`,
             kind: laneKind,
-            access: spec.busLane && offsets.length > 1 && laneIndex === offsets.length - 1 ? "bus" : "all",
+            access:
+              spec.busLane && offsets.length > 1 && laneIndex === offsets.length - 1
+                ? 'bus'
+                : 'all',
             roadId: spec.id,
             direction,
             laneIndex,
@@ -927,20 +1012,23 @@ export class NetworkBuilder {
       pieces[direction] = perLane;
     }
     for (const range of road.pocketRanges) {
-      const signedOffset = range.direction === "forward" ? range.offset : -range.offset;
+      const signedOffset = range.direction === 'forward' ? range.offset : -range.offset;
       let points = offsetSamples(road.samples, range.s0, range.s1, signedOffset);
-      if (range.direction === "backward") {
+      if (range.direction === 'backward') {
         points = points.slice().reverse();
       }
-      const endNodeId = range.direction === "forward" ? spec.to ?? `${spec.id}:end` : spec.from ?? `${spec.id}:start`;
+      const endNodeId =
+        range.direction === 'forward'
+          ? (spec.to ?? `${spec.id}:end`)
+          : (spec.from ?? `${spec.id}:start`);
       const lane: Lane = {
         id: `${spec.id}:${range.direction}:pocket-${range.turn}`,
         kind: laneKind,
-        access: "all",
+        access: 'all',
         pocket: range.turn,
         roadId: spec.id,
         direction: range.direction,
-        laneIndex: range.turn === "left" ? -1 : road.laneOffsets[range.direction].length,
+        laneIndex: range.turn === 'left' ? -1 : road.laneOffsets[range.direction].length,
         fromNode: range.nodeId,
         toNode: endNodeId,
         points,
@@ -952,8 +1040,11 @@ export class NetworkBuilder {
         adjacent: [],
       };
       this.lanes.set(lane.id, lane);
-      const neighbourIndex = range.turn === "left" ? 0 : road.laneOffsets[range.direction].length - 1;
-      const neighbour = pieces[range.direction][neighbourIndex]?.find((piece) => piece.fromNode === range.nodeId);
+      const neighbourIndex =
+        range.turn === 'left' ? 0 : road.laneOffsets[range.direction].length - 1;
+      const neighbour = pieces[range.direction][neighbourIndex]?.find(
+        (piece) => piece.fromNode === range.nodeId
+      );
       if (neighbour) {
         lane.adjacent.push(neighbour.id);
         neighbour.adjacent.push(lane.id);
@@ -963,7 +1054,7 @@ export class NetworkBuilder {
     this.roadLanePieces.set(spec.id, pieces);
 
     if (closed && stations.length === 1) {
-      for (const direction of ["forward", "backward"] as const) {
+      for (const direction of ['forward', 'backward'] as const) {
         for (const laneList of pieces[direction]) {
           for (const lane of laneList) {
             lane.next.push(lane.id);
@@ -974,11 +1065,15 @@ export class NetworkBuilder {
   }
 
   private lanesEndingAt(nodeId: string) {
-    return [...this.lanes.values()].filter((lane) => lane.toNode === nodeId && lane.kind !== "connector");
+    return [...this.lanes.values()].filter(
+      (lane) => lane.toNode === nodeId && lane.kind !== 'connector'
+    );
   }
 
   private lanesStartingAt(nodeId: string) {
-    return [...this.lanes.values()].filter((lane) => lane.fromNode === nodeId && lane.kind !== "connector");
+    return [...this.lanes.values()].filter(
+      (lane) => lane.fromNode === nodeId && lane.kind !== 'connector'
+    );
   }
 
   private link(from: Lane, to: Lane) {
@@ -1008,8 +1103,8 @@ export class NetworkBuilder {
     const points = cubicBezier(p0, p1, p2, p3, CONNECTOR_SAMPLES);
     const lane: Lane = {
       id: `${nodeId}|${from.id}>${to.id}`,
-      kind: "connector",
-      access: from.access === "bus" && to.access === "bus" ? "bus" : "all",
+      kind: 'connector',
+      access: from.access === 'bus' && to.access === 'bus' ? 'bus' : 'all',
       nodeId,
       turn,
       fromNode: nodeId,
@@ -1017,7 +1112,10 @@ export class NetworkBuilder {
       points,
       length: polylineLength(points),
       width: Math.min(from.width, to.width),
-      speedKph: turn === "straight" || turn === "merge" || turn === "diverge" ? Math.min(from.speedKph, to.speedKph) : 25,
+      speedKph:
+        turn === 'straight' || turn === 'merge' || turn === 'diverge'
+          ? Math.min(from.speedKph, to.speedKph)
+          : 25,
       next: [to.id],
       prev: [from.id],
       adjacent: [],
@@ -1052,7 +1150,7 @@ export class NetworkBuilder {
       if (node.spec.turnaround || node.spec.destination) {
         for (const lane of incoming) {
           for (const target of outgoing) {
-            this.addConnector(nodeId, lane, target, "uturn", 0.9);
+            this.addConnector(nodeId, lane, target, 'uturn', 0.9);
           }
         }
       }
@@ -1065,18 +1163,23 @@ export class NetworkBuilder {
           if (target.roadId === lane.roadId) {
             continue;
           }
-          const outRoad = this.roads.get(target.roadId ?? "");
-          const outCount = outRoad ? outRoad.laneOffsets[target.direction ?? "forward"].length : 1;
-          const inRoad = this.roads.get(lane.roadId ?? "");
-          const inCount = inRoad ? inRoad.laneOffsets[lane.direction ?? "forward"].length : 1;
+          const outRoad = this.roads.get(target.roadId ?? '');
+          const outCount = outRoad ? outRoad.laneOffsets[target.direction ?? 'forward'].length : 1;
+          const inRoad = this.roads.get(lane.roadId ?? '');
+          const inCount = inRoad ? inRoad.laneOffsets[lane.direction ?? 'forward'].length : 1;
           const laneIndex = lane.laneIndex ?? 0;
           const targetIndex = Math.min(
             outCount - 1,
-            inCount === outCount ? laneIndex : Math.round((laneIndex / Math.max(inCount - 1, 1)) * (outCount - 1)),
+            inCount === outCount
+              ? laneIndex
+              : Math.round((laneIndex / Math.max(inCount - 1, 1)) * (outCount - 1))
           );
           const overflowMerge = inCount > outCount && laneIndex >= outCount;
-          if ((target.laneIndex ?? 0) === targetIndex || (overflowMerge && (target.laneIndex ?? 0) === outCount - 1)) {
-            this.addConnector(nodeId, lane, target, "straight", 0.3);
+          if (
+            (target.laneIndex ?? 0) === targetIndex ||
+            (overflowMerge && (target.laneIndex ?? 0) === outCount - 1)
+          ) {
+            this.addConnector(nodeId, lane, target, 'straight', 0.3);
           }
         }
       }
@@ -1085,48 +1188,62 @@ export class NetworkBuilder {
 
     for (const lane of incoming) {
       const arrivalHeading = this.laneEndHeading(lane);
-      const inRoad = this.roads.get(lane.roadId ?? "");
-      const inCount = inRoad ? inRoad.laneOffsets[lane.direction ?? "forward"].length : 1;
+      const inRoad = this.roads.get(lane.roadId ?? '');
+      const inCount = inRoad ? inRoad.laneOffsets[lane.direction ?? 'forward'].length : 1;
       const laneIndex = lane.laneIndex ?? 0;
       const candidates = outgoing
         .filter((target) => target.roadId !== lane.roadId && !target.pocket)
-        .map((target) => ({ target, turn: this.classifyTurn(arrivalHeading, this.laneStartHeading(target)) }));
-      const hasStraight = candidates.some((candidate) => candidate.turn === "straight");
-      const hasLeft = candidates.some((candidate) => candidate.turn === "left");
-      const hasRight = candidates.some((candidate) => candidate.turn === "right");
+        .map((target) => ({
+          target,
+          turn: this.classifyTurn(arrivalHeading, this.laneStartHeading(target)),
+        }));
+      const hasStraight = candidates.some((candidate) => candidate.turn === 'straight');
+      const hasLeft = candidates.some((candidate) => candidate.turn === 'left');
+      const hasRight = candidates.some((candidate) => candidate.turn === 'right');
       const pocketTurns = new Set(
-        incoming.filter((other) => other.roadId === lane.roadId && other.direction === lane.direction && other.pocket).map((other) => other.pocket),
+        incoming
+          .filter(
+            (other) =>
+              other.roadId === lane.roadId && other.direction === lane.direction && other.pocket
+          )
+          .map((other) => other.pocket)
       );
 
       let allowed: TurnKind[];
       if (lane.pocket) {
         allowed = [lane.pocket];
       } else if (inCount === 1) {
-        allowed = ["straight", "left", "right"].filter((turn) => !pocketTurns.has(turn as "left" | "right")) as TurnKind[];
+        allowed = ['straight', 'left', 'right'].filter(
+          (turn) => !pocketTurns.has(turn as 'left' | 'right')
+        ) as TurnKind[];
         if (allowed.length === 0) {
-          allowed = ["straight"];
+          allowed = ['straight'];
         }
       } else if (laneIndex === 0) {
-        allowed = hasStraight ? ["straight"] : [];
+        allowed = hasStraight ? ['straight'] : [];
         if (hasLeft) {
-          allowed.push("left");
+          allowed.push('left');
         }
         if (allowed.length === 0) {
-          allowed.push("right");
+          allowed.push('right');
         }
       } else if (laneIndex === inCount - 1) {
-        allowed = hasStraight ? ["straight"] : [];
+        allowed = hasStraight ? ['straight'] : [];
         if (hasRight) {
-          allowed.push("right");
+          allowed.push('right');
         }
         if (allowed.length === 0) {
-          allowed.push("left");
+          allowed.push('left');
         }
       } else {
-        allowed = hasStraight ? ["straight"] : hasRight ? ["right"] : ["left"];
+        allowed = hasStraight ? ['straight'] : hasRight ? ['right'] : ['left'];
       }
       if (!lane.pocket) {
-        const filtered = allowed.filter((turn) => !(turn === "left" && pocketTurns.has("left")) && !(turn === "right" && pocketTurns.has("right")));
+        const filtered = allowed.filter(
+          (turn) =>
+            !(turn === 'left' && pocketTurns.has('left')) &&
+            !(turn === 'right' && pocketTurns.has('right'))
+        );
         if (filtered.length > 0) {
           allowed = filtered;
         }
@@ -1136,22 +1253,30 @@ export class NetworkBuilder {
         if (!allowed.includes(candidate.turn)) {
           continue;
         }
-        const outRoad = this.roads.get(candidate.target.roadId ?? "");
-        const outCount = outRoad ? outRoad.laneOffsets[candidate.target.direction ?? "forward"].length : 1;
+        const outRoad = this.roads.get(candidate.target.roadId ?? '');
+        const outCount = outRoad
+          ? outRoad.laneOffsets[candidate.target.direction ?? 'forward'].length
+          : 1;
         const outIndex = candidate.target.laneIndex ?? 0;
         let targetIndex: number;
-        if (candidate.turn === "straight") {
+        if (candidate.turn === 'straight') {
           targetIndex = Math.min(Math.max(laneIndex, 0), outCount - 1);
-        } else if (candidate.turn === "right") {
+        } else if (candidate.turn === 'right') {
           targetIndex = outCount - 1;
         } else {
           targetIndex = 0;
         }
-        const fanOut = inCount === 1 && outCount > 1 && candidate.turn === "straight";
+        const fanOut = inCount === 1 && outCount > 1 && candidate.turn === 'straight';
         if (outIndex !== targetIndex && !fanOut) {
           continue;
         }
-        this.addConnector(nodeId, lane, candidate.target, candidate.turn, candidate.turn === "straight" ? 0.3 : 0.42);
+        this.addConnector(
+          nodeId,
+          lane,
+          candidate.target,
+          candidate.turn,
+          candidate.turn === 'straight' ? 0.3 : 0.42
+        );
       }
     }
   }
@@ -1167,7 +1292,7 @@ export class NetworkBuilder {
       if (!pieces) {
         continue;
       }
-      for (const direction of ["forward", "backward"] as const) {
+      for (const direction of ['forward', 'backward'] as const) {
         for (const laneList of pieces[direction]) {
           const ending = laneList.find((lane) => lane.toNode === nodeId);
           const starting = laneList.find((lane) => lane.fromNode === nodeId);
@@ -1181,10 +1306,13 @@ export class NetworkBuilder {
             continue;
           }
           const pocketLane = this.lanes.get(`${hostId}:${direction}:pocket-${range.turn}`);
-          const neighbourIndex = range.turn === "left" ? 0 : (host?.laneOffsets[direction].length ?? 1) - 1;
-          const neighbourEnding = pieces[direction][neighbourIndex]?.find((lane) => lane.toNode === nodeId);
+          const neighbourIndex =
+            range.turn === 'left' ? 0 : (host?.laneOffsets[direction].length ?? 1) - 1;
+          const neighbourEnding = pieces[direction][neighbourIndex]?.find(
+            (lane) => lane.toNode === nodeId
+          );
           if (pocketLane && neighbourEnding) {
-            this.addConnector(nodeId, neighbourEnding, pocketLane, "diverge", 0.3);
+            this.addConnector(nodeId, neighbourEnding, pocketLane, 'diverge', 0.3);
           }
         }
       }
@@ -1200,7 +1328,7 @@ export class NetworkBuilder {
         const outer = hostLanes[hostLanes.length - 1]?.find((lane) => lane.toNode === nodeId);
         const rampLane = rampPieces.forward[0]?.[0];
         if (outer && rampLane) {
-          this.addConnector(nodeId, outer, rampLane, "diverge", 0.3);
+          this.addConnector(nodeId, outer, rampLane, 'diverge', 0.3);
         }
       }
       if (road.spec.attachTo && road.spec.to === nodeId) {
@@ -1214,7 +1342,7 @@ export class NetworkBuilder {
         const rampLanes = rampPieces.forward[0];
         const rampLane = rampLanes?.[rampLanes.length - 1];
         if (outer && rampLane) {
-          this.addConnector(nodeId, rampLane, outer, "merge", 0.3);
+          this.addConnector(nodeId, rampLane, outer, 'merge', 0.3);
         }
       }
     }
@@ -1237,15 +1365,18 @@ export class NetworkBuilder {
     const dot = hIn.x * hOut.x + hIn.z * hOut.z;
     const cross = hIn.x * hOut.z - hIn.z * hOut.x;
     if (dot < -0.75) {
-      return "uturn";
+      return 'uturn';
     }
     if (dot > 0.8) {
-      return "straight";
+      return 'straight';
     }
-    return cross > 0 ? "right" : "left";
+    return cross > 0 ? 'right' : 'left';
   }
 
-  private buildJunctionGeometry(node: BuiltNode, ends: Array<{ road: BuiltRoad; atStart: boolean }>) {
+  private buildJunctionGeometry(
+    node: BuiltNode,
+    ends: Array<{ road: BuiltRoad; atStart: boolean }>
+  ) {
     const center = node.position;
     const roadEnds: RoadEnd[] = ends.map((end) => {
       const road = end.road;
@@ -1273,7 +1404,7 @@ export class NetworkBuilder {
     const corners: JunctionCorner[] = [];
     let destination: BuiltDestination | undefined;
     const destinationSpec = node.spec.destination;
-    if (roadEnds.length === 1 && destinationSpec && destinationSpec.kind !== "culdesac") {
+    if (roadEnds.length === 1 && destinationSpec && destinationSpec.kind !== 'culdesac') {
       const end = roadEnds[0];
       const axis = { x: -end.dir.x, z: -end.dir.z };
       const right = perpRight(end.dir);
@@ -1284,16 +1415,26 @@ export class NetworkBuilder {
         y: origin.y,
         z: origin.z + axis.z * along + right.z * across,
       });
-      pad.push(end.cornerA, end.cornerB, at(4, half), at(destinationSpec.depth, half), at(destinationSpec.depth, -half), at(4, -half));
+      pad.push(
+        end.cornerA,
+        end.cornerB,
+        at(4, half),
+        at(destinationSpec.depth, half),
+        at(destinationSpec.depth, -half),
+        at(4, -half)
+      );
       destination = { spec: destinationSpec, origin, axis, right, entryHalfWidth: end.halfWidth };
     } else if (roadEnds.length === 1) {
       const end = roadEnds[0];
-      const radius = destinationSpec ? Math.max(end.halfWidth + 3, 10) : Math.max(end.halfWidth + 2, end.cornerRadius * 1.1);
+      const radius = destinationSpec
+        ? Math.max(end.halfWidth + 3, 10)
+        : Math.max(end.halfWidth + 2, end.cornerRadius * 1.1);
       const backward = { x: -end.dir.x, z: -end.dir.z };
       const segments = 14;
       pad.push(end.cornerA);
       for (let index = 0; index <= segments; index += 1) {
-        const angle = Math.atan2(backward.z, backward.x) + Math.PI * 0.5 - (index / segments) * Math.PI;
+        const angle =
+          Math.atan2(backward.z, backward.x) + Math.PI * 0.5 - (index / segments) * Math.PI;
         pad.push({
           x: center.x + Math.cos(angle) * radius,
           y: center.y,
@@ -1302,7 +1443,13 @@ export class NetworkBuilder {
       }
       pad.push(end.cornerB);
       if (destinationSpec) {
-        destination = { spec: destinationSpec, origin: end.endCenter, axis: backward, right: perpRight(end.dir), entryHalfWidth: end.halfWidth };
+        destination = {
+          spec: destinationSpec,
+          origin: end.endCenter,
+          axis: backward,
+          right: perpRight(end.dir),
+          entryHalfWidth: end.halfWidth,
+        };
       }
     } else {
       for (let index = 0; index < roadEnds.length; index += 1) {
@@ -1319,7 +1466,7 @@ export class NetworkBuilder {
     this.junctions.set(node.spec.id, {
       nodeId: node.spec.id,
       center,
-      control: node.spec.control ?? (ends.length >= 3 ? "priority" : "none"),
+      control: node.spec.control ?? (ends.length >= 3 ? 'priority' : 'none'),
       ends: roadEnds,
       pad,
       corners,
@@ -1383,14 +1530,22 @@ export class NetworkBuilder {
         trim: end.atStart ? road.startTrim : road.endTrim,
         cornerRadius: road.cls.cornerRadius,
         endCenter: { x: base.x, y: base.y, z: base.z },
-        cornerA: { x: base.x - right.x * road.halfWidth, y: base.y, z: base.z - right.z * road.halfWidth },
-        cornerB: { x: base.x + right.x * road.halfWidth, y: base.y, z: base.z + right.z * road.halfWidth },
+        cornerA: {
+          x: base.x - right.x * road.halfWidth,
+          y: base.y,
+          z: base.z - right.z * road.halfWidth,
+        },
+        cornerB: {
+          x: base.x + right.x * road.halfWidth,
+          y: base.y,
+          z: base.z + right.z * road.halfWidth,
+        },
       };
     });
 
-    type RingEvent = { angle: number; kind: "entry" | "exit"; end: RoadEnd };
+    type RingEvent = { angle: number; kind: 'entry' | 'exit'; end: RoadEnd };
     const events: RingEvent[] = [];
-    const approaches: BuiltRoundabout["approaches"] = [];
+    const approaches: BuiltRoundabout['approaches'] = [];
     for (const end of roadEnds) {
       const road = this.roads.get(end.roadId);
       if (!road) {
@@ -1399,8 +1554,8 @@ export class NetworkBuilder {
       const delta = Math.asin(Math.min(0.9, (road.cls.laneWidth * 0.5 + 1.6) / radius));
       const entryAngle = end.angle - delta;
       const exitAngle = end.angle + delta;
-      events.push({ angle: entryAngle, kind: "entry", end });
-      events.push({ angle: exitAngle, kind: "exit", end });
+      events.push({ angle: entryAngle, kind: 'entry', end });
+      events.push({ angle: exitAngle, kind: 'exit', end });
       const padPoints: Vec3[] = [end.cornerA, end.cornerB];
       const arcSteps = 6;
       for (let index = 0; index <= arcSteps; index += 1) {
@@ -1448,10 +1603,10 @@ export class NetworkBuilder {
       }
       const lane: Lane = {
         id: `${nodeId}:ring:${index}`,
-        kind: "ring",
-        access: "all",
+        kind: 'ring',
+        access: 'all',
         nodeId,
-        turn: "circulate",
+        turn: 'circulate',
         fromNode: nodeId,
         toNode: nodeId,
         points,
@@ -1473,15 +1628,19 @@ export class NetworkBuilder {
       const event = sorted[index];
       const segmentStartingHere = ringLanes[index];
       const segmentEndingHere = ringLanes[(index - 1 + ringLanes.length) % ringLanes.length];
-      const incoming = this.lanesEndingAt(nodeId).filter((lane) => lane.roadId === event.end.roadId);
-      const outgoing = this.lanesStartingAt(nodeId).filter((lane) => lane.roadId === event.end.roadId);
-      if (event.kind === "entry") {
+      const incoming = this.lanesEndingAt(nodeId).filter(
+        (lane) => lane.roadId === event.end.roadId
+      );
+      const outgoing = this.lanesStartingAt(nodeId).filter(
+        (lane) => lane.roadId === event.end.roadId
+      );
+      if (event.kind === 'entry') {
         for (const lane of incoming) {
-          this.addConnector(nodeId, lane, segmentStartingHere, "enter", 0.45);
+          this.addConnector(nodeId, lane, segmentStartingHere, 'enter', 0.45);
         }
       } else {
         for (const lane of outgoing) {
-          this.addConnector(nodeId, segmentEndingHere, lane, "exit", 0.45);
+          this.addConnector(nodeId, segmentEndingHere, lane, 'exit', 0.45);
         }
       }
     }
