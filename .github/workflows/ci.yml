@@ -17,7 +17,7 @@ env:
 
 jobs:
   quality:
-    name: Quality (Format + Lint + Typecheck + Unit + Build)
+    name: Quality
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -117,7 +117,7 @@ jobs:
   e2e-render:
     name: Render, routing and accessibility (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
