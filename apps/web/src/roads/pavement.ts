@@ -1,13 +1,20 @@
-import * as THREE from "three";
-import { roadNetwork } from "./build";
-import { perpRight, sampleAtStation, type BuiltRoad, type Vec3 } from "./network";
-import { deckThickness } from "./render";
+import * as THREE from 'three';
+import { roadNetwork } from './build';
+import { perpRight, sampleAtStation, type BuiltRoad, type Vec3 } from './network';
+import { deckThickness } from './render';
 
 export const PAVEMENT_FLOOR_DROP_M = 0.12;
 const BUCKET_M = 24;
 const DISC_SEGMENTS = 48;
 
-export type PavementTriangleVisitor = (a: Vec3, b: Vec3, c: Vec3, lift: number, floor: number, owner: string) => void;
+export type PavementTriangleVisitor = (
+  a: Vec3,
+  b: Vec3,
+  c: Vec3,
+  lift: number,
+  floor: number,
+  owner: string
+) => void;
 
 type Triangle2 = [number, number, number, number, number, number];
 
@@ -20,13 +27,18 @@ interface FloorTriangle {
   floor: number;
 }
 
-function visitPolygon(polygon: Vec3[], lift: number, owner: string, visit: PavementTriangleVisitor) {
+function visitPolygon(
+  polygon: Vec3[],
+  lift: number,
+  owner: string,
+  visit: PavementTriangleVisitor
+) {
   if (polygon.length < 3) {
     return;
   }
   const faces = THREE.ShapeUtils.triangulateShape(
     polygon.map((point) => new THREE.Vector2(point.x, point.z)),
-    [],
+    []
   );
   for (const [i, j, k] of faces) {
     const a = polygon[i];
@@ -36,9 +48,20 @@ function visitPolygon(polygon: Vec3[], lift: number, owner: string, visit: Pavem
   }
 }
 
-function visitDisc(center: Vec3, outer: number, inner: number, lift: number, owner: string, visit: PavementTriangleVisitor) {
+function visitDisc(
+  center: Vec3,
+  outer: number,
+  inner: number,
+  lift: number,
+  owner: string,
+  visit: PavementTriangleVisitor
+) {
   const floor = center.y - PAVEMENT_FLOOR_DROP_M;
-  const at = (radius: number, angle: number): Vec3 => ({ x: center.x + Math.cos(angle) * radius, y: center.y, z: center.z + Math.sin(angle) * radius });
+  const at = (radius: number, angle: number): Vec3 => ({
+    x: center.x + Math.cos(angle) * radius,
+    y: center.y,
+    z: center.z + Math.sin(angle) * radius,
+  });
   for (let index = 0; index < DISC_SEGMENTS; index += 1) {
     const a0 = (index / DISC_SEGMENTS) * Math.PI * 2;
     const a1 = ((index + 1) / DISC_SEGMENTS) * Math.PI * 2;
@@ -58,7 +81,11 @@ function visitRoad(road: BuiltRoad, visit: PavementTriangleVisitor) {
   if (s1 - s0 < 0.5) {
     return;
   }
-  const stations = [sampleAtStation(road.samples, s0), ...road.samples.filter((sample) => sample.s > s0 + 0.01 && sample.s < s1 - 0.01), sampleAtStation(road.samples, s1)];
+  const stations = [
+    sampleAtStation(road.samples, s0),
+    ...road.samples.filter((sample) => sample.s > s0 + 0.01 && sample.s < s1 - 0.01),
+    sampleAtStation(road.samples, s1),
+  ];
   if (closed) {
     stations.push(road.samples[0]);
   }
@@ -66,16 +93,21 @@ function visitRoad(road: BuiltRoad, visit: PavementTriangleVisitor) {
   const sidewalk = road.cls.sidewalkWidth;
   const bands: Array<[number, number, number]> = [[-road.halfWidth, road.halfWidth, 0]];
   if (sidewalk > 0) {
-    bands.push([road.halfWidth, road.halfWidth + sidewalk, 0.15], [-road.halfWidth - sidewalk, -road.halfWidth, 0.15]);
+    bands.push(
+      [road.halfWidth, road.halfWidth + sidewalk, 0.15],
+      [-road.halfWidth - sidewalk, -road.halfWidth, 0.15]
+    );
   }
   for (let index = 0; index < stations.length - 1; index += 1) {
     const from = stations[index];
     const to = stations[index + 1];
-    if (from.structure === "tunnel" || to.structure === "tunnel") {
+    if (from.structure === 'tunnel' || to.structure === 'tunnel') {
       continue;
     }
-    const deck = from.structure !== "ground" ? from.structure : to.structure;
-    const floor = Math.min(from.y, to.y) - (deck === "ground" ? PAVEMENT_FLOOR_DROP_M : deckThickness(road, deck) + 0.15);
+    const deck = from.structure !== 'ground' ? from.structure : to.structure;
+    const floor =
+      Math.min(from.y, to.y) -
+      (deck === 'ground' ? PAVEMENT_FLOOR_DROP_M : deckThickness(road, deck) + 0.15);
     const rightFrom = perpRight({ x: from.tx, z: from.tz });
     const rightTo = perpRight({ x: to.tx, z: to.tz });
     for (const [u0, u1, lift] of bands) {
@@ -95,7 +127,10 @@ function visitJunctions(visit: PavementTriangleVisitor) {
     visitPolygon(junction.pad, 0.004, owner, visit);
     if (junction.hasSidewalks) {
       for (const corner of junction.corners) {
-        const width = Math.max(roadNetwork.roads.get(corner.fromRoadId)?.cls.sidewalkWidth ?? 0, roadNetwork.roads.get(corner.toRoadId)?.cls.sidewalkWidth ?? 0);
+        const width = Math.max(
+          roadNetwork.roads.get(corner.fromRoadId)?.cls.sidewalkWidth ?? 0,
+          roadNetwork.roads.get(corner.toRoadId)?.cls.sidewalkWidth ?? 0
+        );
         if (width <= 0) {
           continue;
         }
@@ -103,7 +138,11 @@ function visitJunctions(visit: PavementTriangleVisitor) {
           const dx = point.x - junction.center.x;
           const dz = point.z - junction.center.z;
           const length = Math.hypot(dx, dz) || 1;
-          return { x: point.x + (dx / length) * width, y: point.y, z: point.z + (dz / length) * width };
+          return {
+            x: point.x + (dx / length) * width,
+            y: point.y,
+            z: point.z + (dz / length) * width,
+          };
         });
         visitPolygon([...corner.points, ...outward.slice().reverse()], 0.15, owner, visit);
       }
@@ -113,8 +152,12 @@ function visitJunctions(visit: PavementTriangleVisitor) {
       continue;
     }
     const { spec, origin, axis, right } = destination;
-    const at = (along: number, across: number): Vec3 => ({ x: origin.x + axis.x * along + right.x * across, y: origin.y, z: origin.z + axis.z * along + right.z * across });
-    if (spec.kind === "culdesac") {
+    const at = (along: number, across: number): Vec3 => ({
+      x: origin.x + axis.x * along + right.x * across,
+      y: origin.y,
+      z: origin.z + axis.z * along + right.z * across,
+    });
+    if (spec.kind === 'culdesac') {
       const centre = junction.center;
       visitDisc({ x: centre.x, y: origin.y, z: centre.z }, 3.6, 0, 0.42, owner, visit);
       const arc = junction.pad.slice(1, -1);
@@ -125,20 +168,45 @@ function visitJunctions(visit: PavementTriangleVisitor) {
         return { x: point.x + (dx / length) * 1.6, y: point.y, z: point.z + (dz / length) * 1.6 };
       });
       for (let index = 0; index < arc.length - 1; index += 1) {
-        visitPolygon([arc[index], arc[index + 1], outward[index + 1], outward[index]], 0.15, owner, visit);
+        visitPolygon(
+          [arc[index], arc[index + 1], outward[index + 1], outward[index]],
+          0.15,
+          owner,
+          visit
+        );
       }
       continue;
     }
     const half = spec.width * 0.5;
     const footway = 1.6;
-    visitPolygon([at(4, half + footway), at(spec.depth + footway, half + footway), at(spec.depth + footway, -half - footway), at(4, -half - footway)], 0.15, owner, visit);
-    visitPolygon([at(4, half), at(spec.depth, half), at(spec.depth, -half), at(4, -half)], 0.004, owner, visit);
-    if (spec.kind === "viewpoint") {
+    visitPolygon(
+      [
+        at(4, half + footway),
+        at(spec.depth + footway, half + footway),
+        at(spec.depth + footway, -half - footway),
+        at(4, -half - footway),
+      ],
+      0.15,
+      owner,
+      visit
+    );
+    visitPolygon(
+      [at(4, half), at(spec.depth, half), at(spec.depth, -half), at(4, -half)],
+      0.004,
+      owner,
+      visit
+    );
+    if (spec.kind === 'viewpoint') {
       const deckRadius = Math.min(half - 2, 13);
       const deck: Vec3[] = [];
       for (let index = 0; index <= 18; index += 1) {
         const angle = -Math.PI * 0.5 + (index / 18) * Math.PI;
-        deck.push(at(spec.depth - deckRadius - 1 + Math.cos(angle) * (deckRadius + 5), Math.sin(angle) * (deckRadius + 5)));
+        deck.push(
+          at(
+            spec.depth - deckRadius - 1 + Math.cos(angle) * (deckRadius + 5),
+            Math.sin(angle) * (deckRadius + 5)
+          )
+        );
       }
       visitPolygon(deck, 0.32, owner, visit);
     }
@@ -217,8 +285,16 @@ export class PavementFloor {
       };
       const id = this.triangles.length;
       this.triangles.push(triangle);
-      for (let ix = Math.floor(triangle.minX / BUCKET_M); ix <= Math.floor(triangle.maxX / BUCKET_M); ix += 1) {
-        for (let iz = Math.floor(triangle.minZ / BUCKET_M); iz <= Math.floor(triangle.maxZ / BUCKET_M); iz += 1) {
+      for (
+        let ix = Math.floor(triangle.minX / BUCKET_M);
+        ix <= Math.floor(triangle.maxX / BUCKET_M);
+        ix += 1
+      ) {
+        for (
+          let iz = Math.floor(triangle.minZ / BUCKET_M);
+          iz <= Math.floor(triangle.maxZ / BUCKET_M);
+          iz += 1
+        ) {
           const key = `${ix}:${iz}`;
           const list = this.buckets.get(key);
           if (list) {
@@ -231,7 +307,15 @@ export class PavementFloor {
     });
   }
 
-  clampGrid(minX: number, maxX: number, minZ: number, maxZ: number, columns: number, rows: number, positions: number[]) {
+  clampGrid(
+    minX: number,
+    maxX: number,
+    minZ: number,
+    maxZ: number,
+    columns: number,
+    rows: number,
+    positions: number[]
+  ) {
     const cellX = (maxX - minX) / columns;
     const cellZ = (maxZ - minZ) / rows;
     const stride = columns + 1;
@@ -275,7 +359,7 @@ export class PavementFloor {
   }
 
   clampGeometry(geometry: THREE.BufferGeometry) {
-    const position = geometry.getAttribute("position") as THREE.BufferAttribute;
+    const position = geometry.getAttribute('position') as THREE.BufferAttribute;
     const index = geometry.index;
     const count = index ? index.count : position.count;
     const stamps = new Int32Array(this.triangles.length);
@@ -283,12 +367,16 @@ export class PavementFloor {
     const points = new Float64Array(6);
     let stamp = 0;
     for (let offset = 0; offset + 2 < count; offset += 3) {
-      const ids = [0, 1, 2].map((corner) => (index ? index.getX(offset + corner) : offset + corner));
+      const ids = [0, 1, 2].map((corner) =>
+        index ? index.getX(offset + corner) : offset + corner
+      );
       for (let corner = 0; corner < 3; corner += 1) {
         points[corner * 2] = position.getX(ids[corner]);
         points[corner * 2 + 1] = position.getZ(ids[corner]);
       }
-      const area = (points[2] - points[0]) * (points[5] - points[1]) - (points[4] - points[0]) * (points[3] - points[1]);
+      const area =
+        (points[2] - points[0]) * (points[5] - points[1]) -
+        (points[4] - points[0]) * (points[3] - points[1]);
       if (Math.abs(area) < 1e-6) {
         continue;
       }
@@ -306,10 +394,19 @@ export class PavementFloor {
             }
             stamps[id] = stamp;
             const triangle = this.triangles[id];
-            if (triangle.floor >= best || triangle.maxX <= minX || triangle.minX >= maxX || triangle.maxZ <= minZ || triangle.minZ >= maxZ) {
+            if (
+              triangle.floor >= best ||
+              triangle.maxX <= minX ||
+              triangle.minX >= maxX ||
+              triangle.maxZ <= minZ ||
+              triangle.minZ >= maxZ
+            ) {
               continue;
             }
-            if (separatedByEdges(triangle.points, points) || separatedByEdges(points, triangle.points)) {
+            if (
+              separatedByEdges(triangle.points, points) ||
+              separatedByEdges(points, triangle.points)
+            ) {
               continue;
             }
             best = triangle.floor;

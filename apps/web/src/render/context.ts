@@ -1,23 +1,23 @@
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
-import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import { Sky } from "three/examples/jsm/objects/Sky.js";
-import * as THREE from "three";
-import { POSTPROCESS_AO_SCALE } from "../config/constants";
-import { mainBoundaryCenterX } from "../world/frame";
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
+import * as THREE from 'three';
+import { POSTPROCESS_AO_SCALE } from '../config/constants';
+import { mainBoundaryCenterX } from '../world/frame';
 
-export const canvas = document.querySelector<HTMLCanvasElement>("#scene");
+export const canvas = document.querySelector<HTMLCanvasElement>('#scene');
 
 if (!canvas) {
-  throw new Error("Canvas element #scene was not found.");
+  throw new Error('Canvas element #scene was not found.');
 }
 
 export const urlParams = new URLSearchParams(window.location.search);
@@ -29,8 +29,8 @@ export const animationClock = new THREE.Clock();
 export const renderer = new THREE.WebGLRenderer({
   canvas,
   antialias: true,
-  preserveDrawingBuffer: urlParams.has("verify"),
-  powerPreference: "high-performance",
+  preserveDrawingBuffer: urlParams.has('verify'),
+  powerPreference: 'high-performance',
 });
 
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -51,11 +51,11 @@ export const textureLoader = new THREE.TextureLoader();
 
 export const dracoLoader = new DRACOLoader();
 
-dracoLoader.setDecoderPath("/assets/sity/decoders/draco/gltf/");
+dracoLoader.setDecoderPath('/assets/sity/decoders/draco/gltf/');
 
 export const ktx2Loader = new KTX2Loader();
 
-ktx2Loader.setTranscoderPath("/assets/sity/decoders/basis/");
+ktx2Loader.setTranscoderPath('/assets/sity/decoders/basis/');
 
 ktx2Loader.detectSupport(renderer);
 
@@ -83,33 +83,33 @@ scene.environmentIntensity = 0.58;
 
 export const naturalElements = new THREE.Group();
 
-naturalElements.name = "natural-elements";
+naturalElements.name = 'natural-elements';
 
 scene.add(naturalElements);
 
 export const artificialElements = new THREE.Group();
 
-artificialElements.name = "artificial-elements";
+artificialElements.name = 'artificial-elements';
 
 scene.add(artificialElements);
 
 export const cityElements = new THREE.Group();
-cityElements.name = "city-elements";
+cityElements.name = 'city-elements';
 scene.add(cityElements);
 
 export const vegetationElements = new THREE.Group();
-vegetationElements.name = "vegetation-elements";
+vegetationElements.name = 'vegetation-elements';
 scene.add(vegetationElements);
 
 export const roadElements = new THREE.Group();
 
-roadElements.name = "road-elements";
+roadElements.name = 'road-elements';
 
 scene.add(roadElements);
 
 export const vehicleElements = new THREE.Group();
 
-vehicleElements.name = "vehicle-elements";
+vehicleElements.name = 'vehicle-elements';
 
 scene.add(vehicleElements);
 
@@ -117,7 +117,7 @@ export const camera = new THREE.PerspectiveCamera(
   48,
   window.innerWidth / window.innerHeight,
   2.5,
-  20_000,
+  20_000
 );
 
 camera.position.set(viewTarget.x - 400, 3_150, 4_300);
@@ -170,7 +170,7 @@ scene.add(sunLight);
 
 export const sky = new Sky();
 
-sky.name = "physical-atmosphere-sky";
+sky.name = 'physical-atmosphere-sky';
 
 sky.scale.setScalar(120_000);
 
@@ -201,7 +201,7 @@ export const ssaoPass = new SSAOPass(
   camera,
   window.innerWidth * POSTPROCESS_AO_SCALE,
   window.innerHeight * POSTPROCESS_AO_SCALE,
-  16,
+  16
 );
 
 ssaoPass.kernelRadius = 12;
@@ -216,7 +216,7 @@ export const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
   0.08,
   0.34,
-  0.82,
+  0.82
 );
 
 composer.addPass(bloomPass);
@@ -230,9 +230,9 @@ export function handleResize() {
   composer.setSize(window.innerWidth, window.innerHeight);
   ssaoPass.setSize(
     window.innerWidth * POSTPROCESS_AO_SCALE,
-    window.innerHeight * POSTPROCESS_AO_SCALE,
+    window.innerHeight * POSTPROCESS_AO_SCALE
   );
   bloomPass.setSize(window.innerWidth, window.innerHeight);
 }
 
-window.addEventListener("resize", handleResize);
+window.addEventListener('resize', handleResize);

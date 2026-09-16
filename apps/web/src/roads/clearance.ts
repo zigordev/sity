@@ -1,9 +1,19 @@
-import * as THREE from "three";
-import { artificialElements, cityElements, naturalElements, vegetationElements } from "../render/context";
-import { mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ } from "../world/frame";
-import type { Vec3 } from "./network";
-import { forEachPavementTriangle } from "./pavement";
-import { roadSideSlots } from "./render";
+import * as THREE from 'three';
+import {
+  artificialElements,
+  cityElements,
+  naturalElements,
+  vegetationElements,
+} from '../render/context';
+import {
+  mainBoundaryMaxX,
+  mainBoundaryMaxZ,
+  mainBoundaryMinX,
+  mainBoundaryMinZ,
+} from '../world/frame';
+import type { Vec3 } from './network';
+import { forEachPavementTriangle } from './pavement';
+import { roadSideSlots } from './render';
 
 const LEVEL_GAP_M = 2.5;
 const FLUSH_TOLERANCE_M = 0.05;
@@ -80,7 +90,7 @@ function createRaster(): Raster {
     high: new Map(),
     multiLevel: new Uint8Array(columns * rows),
     owner: new Uint16Array(columns * rows),
-    owners: [""],
+    owners: [''],
     ownerIds: new Map(),
     rowStart: new Int32Array(0),
     cells: new Int32Array(0),
@@ -206,7 +216,15 @@ function anyPavement(raster: Raster, minX: number, maxX: number, minZ: number, m
   return false;
 }
 
-function record(raster: Raster, state: OffenderState, index: number, rise: number, envelope: number, px: number, pz: number) {
+function record(
+  raster: Raster,
+  state: OffenderState,
+  index: number,
+  rise: number,
+  envelope: number,
+  px: number,
+  pz: number
+) {
   if (rise <= -FLUSH_TOLERANCE_M || rise > envelope) {
     return;
   }
@@ -220,12 +238,32 @@ function record(raster: Raster, state: OffenderState, index: number, rise: numbe
   }
   state.visible.add(index);
   state.maxRise = Math.max(state.maxRise, rise);
-  if (state.samples.length < MAX_SAMPLES && state.samples.every((sample) => Math.hypot(sample.x - px, sample.z - pz) > SAMPLE_SPACING_M)) {
-    state.samples.push({ x: Math.round(px), z: Math.round(pz), rise: Math.round(rise * 100) / 100, owner: raster.owners[raster.owner[index]] });
+  if (
+    state.samples.length < MAX_SAMPLES &&
+    state.samples.every((sample) => Math.hypot(sample.x - px, sample.z - pz) > SAMPLE_SPACING_M)
+  ) {
+    state.samples.push({
+      x: Math.round(px),
+      z: Math.round(pz),
+      rise: Math.round(rise * 100) / 100,
+      owner: raster.owners[raster.owner[index]],
+    });
   }
 }
 
-function scanTriangle(raster: Raster, state: OffenderState, ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number) {
+function scanTriangle(
+  raster: Raster,
+  state: OffenderState,
+  ax: number,
+  ay: number,
+  az: number,
+  bx: number,
+  by: number,
+  bz: number,
+  cx: number,
+  cy: number,
+  cz: number
+) {
   const denominator = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
   if (Math.abs(denominator) < 1e-9) {
     return;
@@ -261,7 +299,15 @@ function scanTriangle(raster: Raster, state: OffenderState, ax: number, ay: numb
       const low = raster.low[index];
       if (raster.multiLevel[index]) {
         const high = raster.high.get(index) ?? low;
-        record(raster, state, index, y - low, Math.min(OVERHEAD_ENVELOPE_M, high - low - 2), px, pz);
+        record(
+          raster,
+          state,
+          index,
+          y - low,
+          Math.min(OVERHEAD_ENVELOPE_M, high - low - 2),
+          px,
+          pz
+        );
         record(raster, state, index, y - high, OVERHEAD_ENVELOPE_M, px, pz);
       } else {
         record(raster, state, index, y - low, OVERHEAD_ENVELOPE_M, px, pz);
@@ -292,7 +338,9 @@ function furnitureTreeKeys() {
 export function auditRoadClearance(): RoadClearanceAudit {
   const started = performance.now();
   const raster = createRaster();
-  forEachPavementTriangle((a, b, c, lift, _floor, owner) => markTriangle(raster, a, b, c, lift, ownerIndex(raster, owner)));
+  forEachPavementTriangle((a, b, c, lift, _floor, owner) =>
+    markTriangle(raster, a, b, c, lift, ownerIndex(raster, owner))
+  );
   indexRaster(raster);
   const furnitureTrees = furnitureTreeKeys();
   const states = new Map<string, OffenderState>();
@@ -302,10 +350,10 @@ export function auditRoadClearance(): RoadClearanceAudit {
   const instanceMatrix = new THREE.Matrix4();
   const center = new THREE.Vector3();
   const groups: Array<[string, THREE.Object3D]> = [
-    ["natural", naturalElements],
-    ["artificial", artificialElements],
-    ["city", cityElements],
-    ["vegetation", vegetationElements],
+    ['natural', naturalElements],
+    ['artificial', artificialElements],
+    ['city', cityElements],
+    ['vegetation', vegetationElements],
   ];
   for (const [groupName, group] of groups) {
     group.updateMatrixWorld(true);
@@ -315,7 +363,7 @@ export function auditRoadClearance(): RoadClearanceAudit {
         return;
       }
       const geometry = mesh.geometry as THREE.BufferGeometry;
-      const position = geometry.getAttribute("position");
+      const position = geometry.getAttribute('position');
       if (!position) {
         return;
       }
@@ -323,23 +371,38 @@ export function auditRoadClearance(): RoadClearanceAudit {
         geometry.computeBoundingSphere();
       }
       const sphere = geometry.boundingSphere;
-      const instanced = (mesh as THREE.InstancedMesh).isInstancedMesh ? (mesh as THREE.InstancedMesh) : undefined;
+      const instanced = (mesh as THREE.InstancedMesh).isInstancedMesh
+        ? (mesh as THREE.InstancedMesh)
+        : undefined;
       const count = instanced ? instanced.count : 1;
-      const key = `${groupName}:${mesh.name || "unnamed"}`;
+      const key = `${groupName}:${mesh.name || 'unnamed'}`;
       let state = states.get(key);
       if (!state) {
-        state = { mesh: mesh.name || "unnamed", group: groupName, visible: new Set(), flush: new Set(), overhead: new Set(), maxRise: 0, samples: [] };
+        state = {
+          mesh: mesh.name || 'unnamed',
+          group: groupName,
+          visible: new Set(),
+          flush: new Set(),
+          overhead: new Set(),
+          maxRise: 0,
+          samples: [],
+        };
         states.set(key, state);
       }
       meshesScanned += 1;
       const index = geometry.index;
       const triangleCount = index ? Math.floor(index.count / 3) : Math.floor(position.count / 3);
       const world = new Float32Array(position.count * 3);
-      const isTree = mesh.name.startsWith("trees-");
+      const isTree = mesh.name.startsWith('trees-');
       for (let instance = 0; instance < count; instance += 1) {
         if (instanced) {
           instanced.getMatrixAt(instance, instanceMatrix);
-          if (isTree && furnitureTrees.has(`${instanceMatrix.elements[12].toFixed(1)}:${instanceMatrix.elements[14].toFixed(1)}`)) {
+          if (
+            isTree &&
+            furnitureTrees.has(
+              `${instanceMatrix.elements[12].toFixed(1)}:${instanceMatrix.elements[14].toFixed(1)}`
+            )
+          ) {
             continue;
           }
           matrix.multiplyMatrices(mesh.matrixWorld, instanceMatrix);
@@ -349,7 +412,15 @@ export function auditRoadClearance(): RoadClearanceAudit {
         if (sphere) {
           center.copy(sphere.center).applyMatrix4(matrix);
           const radius = sphere.radius * matrix.getMaxScaleOnAxis();
-          if (!anyPavement(raster, center.x - radius, center.x + radius, center.z - radius, center.z + radius)) {
+          if (
+            !anyPavement(
+              raster,
+              center.x - radius,
+              center.x + radius,
+              center.z - radius,
+              center.z + radius
+            )
+          ) {
             continue;
           }
         }
@@ -377,7 +448,7 @@ export function auditRoadClearance(): RoadClearanceAudit {
             world[ib * 3 + 2],
             world[ic * 3],
             world[ic * 3 + 1],
-            world[ic * 3 + 2],
+            world[ic * 3 + 2]
           );
         }
         trianglesScanned += triangleCount;
@@ -395,7 +466,12 @@ export function auditRoadClearance(): RoadClearanceAudit {
       maxRise: Math.round(state.maxRise * 100) / 100,
       samples: state.samples,
     }))
-    .sort((a, b) => b.visibleCells - a.visibleCells || b.flushCells - a.flushCells || b.overheadCells - a.overheadCells);
+    .sort(
+      (a, b) =>
+        b.visibleCells - a.visibleCells ||
+        b.flushCells - a.flushCells ||
+        b.overheadCells - a.overheadCells
+    );
   return {
     pavementCells: raster.cells.length,
     multiLevelCells: raster.high.size,

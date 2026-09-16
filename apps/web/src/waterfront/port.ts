@@ -1,7 +1,7 @@
-import * as THREE from "three";
-import { CARGO_BOLLARD_COUNT, CARGO_PORT_DEPTH_M, PLATFORM_SURFACE_Y } from "../config/constants";
-import { addCylinderInstances } from "../geometry/helpers";
-import { artificialElements } from "../render/context";
+import * as THREE from 'three';
+import { CARGO_BOLLARD_COUNT, CARGO_PORT_DEPTH_M, PLATFORM_SURFACE_Y } from '../config/constants';
+import { addCylinderInstances } from '../geometry/helpers';
+import { artificialElements } from '../render/context';
 import {
   cargoContainerMaterials,
   craneBlueMaterial,
@@ -21,9 +21,9 @@ import {
   truckCabMaterials,
   truckChassisMaterial,
   warehouseWallMaterial,
-} from "../render/materials";
-import { boxBetween, mergeAll } from "../roads/geometry";
-import { MaterialBatch } from "../geometry/batch";
+} from '../render/materials';
+import { boxBetween, mergeAll } from '../roads/geometry';
+import { MaterialBatch } from '../geometry/batch';
 
 export interface PortFrame {
   westEdge: number;
@@ -49,20 +49,39 @@ function hash(a: number, b: number) {
   return value - Math.floor(value);
 }
 
-const batch = new MaterialBatch(artificialElements, "port");
+const batch = new MaterialBatch(artificialElements, 'port');
 
-function addMerged(_name: string, parts: THREE.BufferGeometry[], material: THREE.Material, castShadow = true) {
+function addMerged(
+  _name: string,
+  parts: THREE.BufferGeometry[],
+  material: THREE.Material,
+  castShadow = true
+) {
   batch.add(material, parts, castShadow);
 }
 
-function boxAt(width: number, height: number, depth: number, x: number, bottomY: number, z: number, rotationY = 0) {
+function boxAt(
+  width: number,
+  height: number,
+  depth: number,
+  x: number,
+  bottomY: number,
+  z: number,
+  rotationY = 0
+) {
   const geometry = new THREE.BoxGeometry(width, height, depth);
   geometry.rotateY(rotationY);
   geometry.translate(x, bottomY + height * 0.5, z);
   return geometry;
 }
 
-function instanced(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, matrices: THREE.Matrix4[], castShadow = true) {
+function instanced(
+  name: string,
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material,
+  matrices: THREE.Matrix4[],
+  castShadow = true
+) {
   if (matrices.length === 0) {
     return;
   }
@@ -80,7 +99,7 @@ function containerMatrix(x: number, y: number, z: number, rotationY: number) {
   matrix.compose(
     new THREE.Vector3(x, y + CONTAINER_HEIGHT_M * 0.5, z),
     new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotationY),
-    new THREE.Vector3(1, 1, 1),
+    new THREE.Vector3(1, 1, 1)
   );
   return matrix;
 }
@@ -94,11 +113,19 @@ function yardBlockCentres(frame: PortFrame, yardEast: number) {
   return centres;
 }
 
-function addContainerYard(frame: PortFrame, yardEast: number, yardNorth: number, yardSouth: number) {
+function addContainerYard(
+  frame: PortFrame,
+  yardEast: number,
+  yardNorth: number,
+  yardSouth: number
+) {
   const byMaterial: THREE.Matrix4[][] = cargoContainerMaterials.map(() => []);
   const blockCentres = yardBlockCentres(frame, yardEast);
   const slots = Math.floor((yardNorth - yardSouth) / CONTAINER_SLOT_PITCH_M);
-  const firstSlotZ = yardSouth + ((yardNorth - yardSouth) - slots * CONTAINER_SLOT_PITCH_M) * 0.5 + CONTAINER_SLOT_PITCH_M * 0.5;
+  const firstSlotZ =
+    yardSouth +
+    (yardNorth - yardSouth - slots * CONTAINER_SLOT_PITCH_M) * 0.5 +
+    CONTAINER_SLOT_PITCH_M * 0.5;
   blockCentres.forEach((centreX, blockIndex) => {
     for (let row = 0; row < YARD_ROWS_PER_BLOCK; row += 1) {
       const x = centreX + (row - (YARD_ROWS_PER_BLOCK - 1) * 0.5) * CONTAINER_ROW_PITCH_M;
@@ -110,15 +137,24 @@ function addContainerYard(frame: PortFrame, yardEast: number, yardNorth: number,
         }
         const stack = seed < 0.3 ? 1 : seed < 0.62 ? 2 : seed < 0.88 ? 3 : 4;
         for (let level = 0; level < stack; level += 1) {
-          const materialIndex = Math.floor(hash(slot * 7 + level, row * 13 + blockIndex) * byMaterial.length) % byMaterial.length;
-          byMaterial[materialIndex].push(containerMatrix(x, surfaceY + level * CONTAINER_HEIGHT_M, z, 0));
+          const materialIndex =
+            Math.floor(hash(slot * 7 + level, row * 13 + blockIndex) * byMaterial.length) %
+            byMaterial.length;
+          byMaterial[materialIndex].push(
+            containerMatrix(x, surfaceY + level * CONTAINER_HEIGHT_M, z, 0)
+          );
         }
       }
     }
   });
   const geometry = new THREE.BoxGeometry(CONTAINER_WIDTH_M, CONTAINER_HEIGHT_M, CONTAINER_LENGTH_M);
   byMaterial.forEach((matrices, index) => {
-    instanced(`cargo-container-stacks-${index + 1}`, geometry, cargoContainerMaterials[index], matrices);
+    instanced(
+      `cargo-container-stacks-${index + 1}`,
+      geometry,
+      cargoContainerMaterials[index],
+      matrices
+    );
   });
   return blockCentres;
 }
@@ -135,7 +171,16 @@ function addShipToShoreCranes(frame: PortFrame, craneZs: number[]) {
   const gauge = 9;
 
   for (const railX of [waterLegX, landLegX]) {
-    dark.push(boxAt(0.3, 0.16, frame.northEdge - frame.southEdge - 40, railX, surfaceY, (frame.northEdge + frame.southEdge) * 0.5));
+    dark.push(
+      boxAt(
+        0.3,
+        0.16,
+        frame.northEdge - frame.southEdge - 40,
+        railX,
+        surfaceY,
+        (frame.northEdge + frame.southEdge) * 0.5
+      )
+    );
   }
 
   craneZs.forEach((z, index) => {
@@ -148,14 +193,34 @@ function addShipToShoreCranes(frame: PortFrame, craneZs: number[]) {
       yellow.push(boxAt(2, 2, gauge * 2 + 2.2, legX, surfaceY + legHeight - 2, z));
     }
     for (const side of [-1, 1]) {
-      yellow.push(boxAt(landLegX - waterLegX + 2.2, 2, 2, (waterLegX + landLegX) * 0.5, surfaceY + 18, z + side * gauge));
-      yellow.push(boxAt(landLegX - waterLegX + 2.2, 2, 2, (waterLegX + landLegX) * 0.5, surfaceY + legHeight - 2, z + side * gauge));
+      yellow.push(
+        boxAt(
+          landLegX - waterLegX + 2.2,
+          2,
+          2,
+          (waterLegX + landLegX) * 0.5,
+          surfaceY + 18,
+          z + side * gauge
+        )
+      );
+      yellow.push(
+        boxAt(
+          landLegX - waterLegX + 2.2,
+          2,
+          2,
+          (waterLegX + landLegX) * 0.5,
+          surfaceY + legHeight - 2,
+          z + side * gauge
+        )
+      );
     }
     const boomY = surfaceY + legHeight + 1.5;
     const boomTip = frame.eastEdge + 42;
     const backreach = landLegX - 18;
     for (const side of [-1, 1]) {
-      yellow.push(boxAt(boomTip - backreach, 2.4, 1.2, (boomTip + backreach) * 0.5, boomY, z + side * 3.2));
+      yellow.push(
+        boxAt(boomTip - backreach, 2.4, 1.2, (boomTip + backreach) * 0.5, boomY, z + side * 3.2)
+      );
     }
     for (let x = backreach + 6; x < boomTip - 4; x += 8) {
       yellow.push(boxAt(0.8, 2.4, 6.4, x, boomY, z));
@@ -163,8 +228,12 @@ function addShipToShoreCranes(frame: PortFrame, craneZs: number[]) {
     const apexY = boomY + 16;
     const apexX = landLegX + 4;
     yellow.push(boxAt(2.4, 16, 2.4, apexX, boomY + 2.4, z));
-    yellow.push(boxBetween({ x: apexX, y: apexY, z }, { x: boomTip - 2, y: boomY + 2.4, z }, 0.5, 0.5));
-    yellow.push(boxBetween({ x: apexX, y: apexY, z }, { x: backreach + 2, y: boomY + 2.4, z }, 0.5, 0.5));
+    yellow.push(
+      boxBetween({ x: apexX, y: apexY, z }, { x: boomTip - 2, y: boomY + 2.4, z }, 0.5, 0.5)
+    );
+    yellow.push(
+      boxBetween({ x: apexX, y: apexY, z }, { x: backreach + 2, y: boomY + 2.4, z }, 0.5, 0.5)
+    );
     white.push(boxAt(11, 4.2, 9, landLegX - 4, boomY + 2.4, z));
     const trolleyX = index === 1 ? frame.eastEdge + 14 : frame.eastEdge - 2;
     yellow.push(boxAt(5, 1.6, 8.6, trolleyX, boomY - 1.6, z));
@@ -173,15 +242,22 @@ function addShipToShoreCranes(frame: PortFrame, craneZs: number[]) {
     for (const dz of [-2.6, 2.6]) {
       dark.push(boxAt(0.12, boomY - 1.6 - hookY, 0.12, trolleyX + dz, hookY, z + dz));
     }
-    dark.push(boxAt(CONTAINER_LENGTH_M + 0.4, 0.8, CONTAINER_WIDTH_M + 0.4, trolleyX, hookY - 0.8, z));
+    dark.push(
+      boxAt(CONTAINER_LENGTH_M + 0.4, 0.8, CONTAINER_WIDTH_M + 0.4, trolleyX, hookY - 0.8, z)
+    );
     lifted.push(containerMatrix(trolleyX, hookY - 0.8 - CONTAINER_HEIGHT_M, z, Math.PI * 0.5));
   });
 
-  addMerged("port-ship-to-shore-cranes", yellow, portCraneMaterial);
-  addMerged("port-crane-machinery-houses", white, craneWhiteMaterial);
-  addMerged("port-crane-rails-and-rigging", dark, steelDarkMaterial);
-  addMerged("port-crane-cabins", glass, shelterGlassMaterial, false);
-  instanced("port-lifted-containers", new THREE.BoxGeometry(CONTAINER_LENGTH_M, CONTAINER_HEIGHT_M, CONTAINER_WIDTH_M), cargoContainerMaterials[1], lifted);
+  addMerged('port-ship-to-shore-cranes', yellow, portCraneMaterial);
+  addMerged('port-crane-machinery-houses', white, craneWhiteMaterial);
+  addMerged('port-crane-rails-and-rigging', dark, steelDarkMaterial);
+  addMerged('port-crane-cabins', glass, shelterGlassMaterial, false);
+  instanced(
+    'port-lifted-containers',
+    new THREE.BoxGeometry(CONTAINER_LENGTH_M, CONTAINER_HEIGHT_M, CONTAINER_WIDTH_M),
+    cargoContainerMaterials[1],
+    lifted
+  );
 }
 
 function addYardGantries(blockCentres: number[], positions: Array<{ block: number; z: number }>) {
@@ -205,13 +281,17 @@ function addYardGantries(blockCentres: number[], positions: Array<{ block: numbe
       blue.push(boxAt(span + 1.4, 1.6, 1.6, centreX, surfaceY + 16.6, z + sz * 6));
     }
     blue.push(boxAt(4, 1.4, 13, centreX - 4, surfaceY + 18.2, z));
-    dark.push(boxAt(CONTAINER_WIDTH_M + 0.3, 0.6, CONTAINER_LENGTH_M + 0.3, centreX - 4, surfaceY + 12.6, z));
+    dark.push(
+      boxAt(CONTAINER_WIDTH_M + 0.3, 0.6, CONTAINER_LENGTH_M + 0.3, centreX - 4, surfaceY + 12.6, z)
+    );
   }
-  addMerged("port-yard-gantry-cranes", blue, craneBlueMaterial);
-  addMerged("port-yard-gantry-wheels", dark, steelDarkMaterial);
+  addMerged('port-yard-gantry-cranes', blue, craneBlueMaterial);
+  addMerged('port-yard-gantry-wheels', dark, steelDarkMaterial);
 }
 
-function addTrucks(placements: Array<{ x: number; z: number; heading: number; loaded: boolean; colour: number }>) {
+function addTrucks(
+  placements: Array<{ x: number; z: number; heading: number; loaded: boolean; colour: number }>
+) {
   const cabs: THREE.Matrix4[][] = truckCabMaterials.map(() => []);
   const chassis: THREE.Matrix4[] = [];
   const loads: THREE.Matrix4[] = [];
@@ -220,18 +300,29 @@ function addTrucks(placements: Array<{ x: number; z: number; heading: number; lo
     const rotation = new THREE.Quaternion().setFromAxisAngle(up, placement.heading);
     const forward = new THREE.Vector3(Math.sin(placement.heading), 0, Math.cos(placement.heading));
     const cab = new THREE.Matrix4().compose(
-      new THREE.Vector3(placement.x, surfaceY + 1.1 + 1.45, placement.z).addScaledVector(forward, 7.2),
+      new THREE.Vector3(placement.x, surfaceY + 1.1 + 1.45, placement.z).addScaledVector(
+        forward,
+        7.2
+      ),
       rotation,
-      new THREE.Vector3(1, 1, 1),
+      new THREE.Vector3(1, 1, 1)
     );
     cabs[placement.colour % cabs.length].push(cab);
-    chassis.push(new THREE.Matrix4().compose(new THREE.Vector3(placement.x, surfaceY + 0.55, placement.z), rotation, new THREE.Vector3(1, 1, 1)));
+    chassis.push(
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(placement.x, surfaceY + 0.55, placement.z),
+        rotation,
+        new THREE.Vector3(1, 1, 1)
+      )
+    );
     if (placement.loaded) {
       loads.push(containerMatrix(placement.x, surfaceY + 1.1, placement.z, placement.heading));
     }
   }
   const cabGeometry = new THREE.BoxGeometry(2.5, 2.9, 2.6);
-  cabs.forEach((matrices, index) => instanced(`port-truck-cabs-${index + 1}`, cabGeometry, truckCabMaterials[index], matrices));
+  cabs.forEach((matrices, index) =>
+    instanced(`port-truck-cabs-${index + 1}`, cabGeometry, truckCabMaterials[index], matrices)
+  );
   const chassisParts: THREE.BufferGeometry[] = [boxAt(2.5, 0.7, 16.2, 0, 0, 0.6)];
   for (const dz of [-6.2, -4.6, 2.6, 7.6]) {
     const axle = new THREE.CylinderGeometry(0.52, 0.52, 2.6, 10);
@@ -239,8 +330,18 @@ function addTrucks(placements: Array<{ x: number; z: number; heading: number; lo
     axle.translate(0, -0.15, dz);
     chassisParts.push(axle);
   }
-  instanced("port-truck-chassis", mergeAll(chassisParts) ?? chassisParts[0], truckChassisMaterial, chassis);
-  instanced("port-truck-loads", new THREE.BoxGeometry(CONTAINER_WIDTH_M, CONTAINER_HEIGHT_M, CONTAINER_LENGTH_M), cargoContainerMaterials[3], loads);
+  instanced(
+    'port-truck-chassis',
+    mergeAll(chassisParts) ?? chassisParts[0],
+    truckChassisMaterial,
+    chassis
+  );
+  instanced(
+    'port-truck-loads',
+    new THREE.BoxGeometry(CONTAINER_WIDTH_M, CONTAINER_HEIGHT_M, CONTAINER_LENGTH_M),
+    cargoContainerMaterials[3],
+    loads
+  );
 }
 
 function addLightMasts(points: Array<{ x: number; z: number }>) {
@@ -251,12 +352,17 @@ function addLightMasts(points: Array<{ x: number; z: number }>) {
     pole.translate(point.x, surfaceY + 15, point.z);
     poles.push(pole);
     poles.push(boxAt(3.2, 0.3, 3.2, point.x, surfaceY + 29.6, point.z));
-    for (const [dx, dz] of [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]]) {
+    for (const [dx, dz] of [
+      [-1.1, -1.1],
+      [1.1, -1.1],
+      [-1.1, 1.1],
+      [1.1, 1.1],
+    ]) {
       heads.push(boxAt(0.9, 0.5, 0.9, point.x + dx, surfaceY + 29.9, point.z + dz));
     }
   }
-  addMerged("port-light-masts", poles, lampPoleMaterial);
-  addMerged("port-light-mast-heads", heads, lampHeadMaterial, false);
+  addMerged('port-light-masts', poles, lampPoleMaterial);
+  addMerged('port-light-mast-heads', heads, lampHeadMaterial, false);
 }
 
 function addTransitShed(x0: number, x1: number, z0: number, z1: number) {
@@ -273,18 +379,30 @@ function addTransitShed(x0: number, x1: number, z0: number, z1: number) {
     doors.push(boxAt(6.5, 5.2, 0.3, x, surfaceY + 0.05, z0 - 0.1));
   }
   walls.push(boxAt(width * 0.4, 3.2, 6, cx, surfaceY + 10.1, cz));
-  addMerged("port-transit-shed", walls, warehouseWallMaterial);
-  addMerged("port-transit-shed-doors", doors, rollerDoorMaterial, false);
+  addMerged('port-transit-shed', walls, warehouseWallMaterial);
+  addMerged('port-transit-shed-doors', doors, rollerDoorMaterial, false);
 }
 
 function addPerimeterFence(frame: PortFrame, landEdge: number) {
   const posts: THREE.BufferGeometry[] = [];
   const mesh: THREE.BufferGeometry[] = [];
   const runs: Array<[{ x: number; z: number }, { x: number; z: number }]> = [
-    [{ x: frame.westEdge + 1.2, z: frame.southEdge + 1 }, { x: frame.westEdge + 1.2, z: frame.gateZ - frame.gateHalfWidth }],
-    [{ x: frame.westEdge + 1.2, z: frame.gateZ + frame.gateHalfWidth }, { x: frame.westEdge + 1.2, z: frame.northEdge - 1 }],
-    [{ x: frame.westEdge + 1.2, z: frame.northEdge - 1 }, { x: landEdge, z: frame.northEdge - 1 }],
-    [{ x: frame.westEdge + 1.2, z: frame.southEdge + 1 }, { x: landEdge, z: frame.southEdge + 1 }],
+    [
+      { x: frame.westEdge + 1.2, z: frame.southEdge + 1 },
+      { x: frame.westEdge + 1.2, z: frame.gateZ - frame.gateHalfWidth },
+    ],
+    [
+      { x: frame.westEdge + 1.2, z: frame.gateZ + frame.gateHalfWidth },
+      { x: frame.westEdge + 1.2, z: frame.northEdge - 1 },
+    ],
+    [
+      { x: frame.westEdge + 1.2, z: frame.northEdge - 1 },
+      { x: landEdge, z: frame.northEdge - 1 },
+    ],
+    [
+      { x: frame.westEdge + 1.2, z: frame.southEdge + 1 },
+      { x: landEdge, z: frame.southEdge + 1 },
+    ],
   ];
   for (const [a, b] of runs) {
     const length = Math.hypot(b.x - a.x, b.z - a.z);
@@ -298,26 +416,60 @@ function addPerimeterFence(frame: PortFrame, landEdge: number) {
     mesh.push(boxBetween(from, to, 0.04, 2.3, 0.2));
     posts.push(boxBetween(from, to, 0.07, 0.07, 2.5));
   }
-  addMerged("port-perimeter-fence-posts", posts, guardrailMaterial);
-  addMerged("port-perimeter-fence-mesh", mesh, fenceMeshMaterial, false);
+  addMerged('port-perimeter-fence-posts', posts, guardrailMaterial);
+  addMerged('port-perimeter-fence-mesh', mesh, fenceMeshMaterial, false);
 }
 
-function addApronMarkings(frame: PortFrame, blockCentres: number[], yardNorth: number, yardSouth: number) {
+function addApronMarkings(
+  frame: PortFrame,
+  blockCentres: number[],
+  yardNorth: number,
+  yardSouth: number
+) {
   const yellow: THREE.BufferGeometry[] = [];
   const white: THREE.BufferGeometry[] = [];
   const laneZ = frame.gateZ;
   const laneHalf = 4;
   const laneEnd = frame.eastEdge - 36;
-  yellow.push(boxAt(laneEnd - frame.westEdge - 4, 0.02, 0.16, (laneEnd + frame.westEdge + 4) * 0.5, surfaceY + 0.01, laneZ - laneHalf));
-  yellow.push(boxAt(laneEnd - frame.westEdge - 4, 0.02, 0.16, (laneEnd + frame.westEdge + 4) * 0.5, surfaceY + 0.01, laneZ + laneHalf));
+  yellow.push(
+    boxAt(
+      laneEnd - frame.westEdge - 4,
+      0.02,
+      0.16,
+      (laneEnd + frame.westEdge + 4) * 0.5,
+      surfaceY + 0.01,
+      laneZ - laneHalf
+    )
+  );
+  yellow.push(
+    boxAt(
+      laneEnd - frame.westEdge - 4,
+      0.02,
+      0.16,
+      (laneEnd + frame.westEdge + 4) * 0.5,
+      surfaceY + 0.01,
+      laneZ + laneHalf
+    )
+  );
   for (let x = frame.westEdge + 12; x < laneEnd; x += 9) {
     white.push(boxAt(3, 0.02, 0.14, x, surfaceY + 0.01, laneZ));
   }
-  yellow.push(boxAt(0.18, 0.02, frame.northEdge - frame.southEdge - 30, frame.eastEdge - 34, surfaceY + 0.01, (frame.northEdge + frame.southEdge) * 0.5));
+  yellow.push(
+    boxAt(
+      0.18,
+      0.02,
+      frame.northEdge - frame.southEdge - 30,
+      frame.eastEdge - 34,
+      surfaceY + 0.01,
+      (frame.northEdge + frame.southEdge) * 0.5
+    )
+  );
   for (const centre of blockCentres) {
     for (const side of [-1, 1]) {
       const x = centre + side * (YARD_ROWS_PER_BLOCK * CONTAINER_ROW_PITCH_M * 0.5 + 0.6);
-      white.push(boxAt(0.14, 0.02, yardNorth - yardSouth, x, surfaceY + 0.01, (yardNorth + yardSouth) * 0.5));
+      white.push(
+        boxAt(0.14, 0.02, yardNorth - yardSouth, x, surfaceY + 0.01, (yardNorth + yardSouth) * 0.5)
+      );
     }
   }
   for (let z = frame.southEdge + 16; z < frame.northEdge - 16; z += 6) {
@@ -325,26 +477,37 @@ function addApronMarkings(frame: PortFrame, blockCentres: number[], yardNorth: n
   }
   const hatchX0 = frame.westEdge + 4;
   for (let index = 0; index < 8; index += 1) {
-    yellow.push(boxAt(10, 0.02, 0.18, hatchX0 + 6 + index * 1.6, surfaceY + 0.01, laneZ + laneHalf + 5));
+    yellow.push(
+      boxAt(10, 0.02, 0.18, hatchX0 + 6 + index * 1.6, surfaceY + 0.01, laneZ + laneHalf + 5)
+    );
   }
-  addMerged("port-apron-markings-yellow", yellow, roadMarkingYellowMaterial, false);
-  addMerged("port-apron-markings-white", white, roadMarkingWhiteMaterial, false);
+  addMerged('port-apron-markings-yellow', yellow, roadMarkingYellowMaterial, false);
+  addMerged('port-apron-markings-white', white, roadMarkingWhiteMaterial, false);
 }
 
 function addQuayEdge(frame: PortFrame) {
   const kerb: THREE.BufferGeometry[] = [];
-  kerb.push(boxAt(0.8, 0.5, frame.northEdge - frame.southEdge - 2, frame.eastEdge - 0.5, surfaceY, (frame.northEdge + frame.southEdge) * 0.5));
-  addMerged("port-quay-edge-kerb", kerb, roadStructureConcreteMaterial);
+  kerb.push(
+    boxAt(
+      0.8,
+      0.5,
+      frame.northEdge - frame.southEdge - 2,
+      frame.eastEdge - 0.5,
+      surfaceY,
+      (frame.northEdge + frame.southEdge) * 0.5
+    )
+  );
+  addMerged('port-quay-edge-kerb', kerb, roadStructureConcreteMaterial);
   const bollards: Array<{ x: number; z: number }> = [];
   for (let index = 0; index < CARGO_BOLLARD_COUNT; index += 1) {
     const z = THREE.MathUtils.lerp(
       (frame.northEdge + frame.southEdge) * 0.5 - CARGO_PORT_DEPTH_M * 0.42,
       (frame.northEdge + frame.southEdge) * 0.5 + CARGO_PORT_DEPTH_M * 0.42,
-      index / (CARGO_BOLLARD_COUNT - 1),
+      index / (CARGO_BOLLARD_COUNT - 1)
     );
     bollards.push({ x: frame.eastEdge - 3, z });
   }
-  addCylinderInstances("cargo-port-bollards", 0.6, 1.1, dockMaterial, surfaceY + 1.1, bollards);
+  addCylinderInstances('cargo-port-bollards', 0.6, 1.1, dockMaterial, surfaceY + 1.1, bollards);
 }
 
 export function addCargoPortYard(frame: PortFrame, landEdge: number) {
@@ -352,17 +515,45 @@ export function addCargoPortYard(frame: PortFrame, landEdge: number) {
   const yardNorth = frame.gateZ - 14;
   const yardSouth = frame.southEdge + 30;
   const blockCentres = addContainerYard(frame, yardEast, yardNorth, yardSouth);
-  addShipToShoreCranes(frame, [frame.southEdge + 46, (frame.northEdge + frame.southEdge) * 0.5, frame.northEdge - 46]);
+  addShipToShoreCranes(frame, [
+    frame.southEdge + 46,
+    (frame.northEdge + frame.southEdge) * 0.5,
+    frame.northEdge - 46,
+  ]);
   addYardGantries(blockCentres, [
     { block: 1, z: yardSouth + 40 },
     { block: 4, z: yardNorth - 52 },
   ]);
   addTrucks([
     { x: frame.westEdge + 30, z: frame.gateZ - 2, heading: Math.PI * 0.5, loaded: true, colour: 0 },
-    { x: frame.westEdge + 92, z: frame.gateZ - 2, heading: Math.PI * 0.5, loaded: false, colour: 1 },
-    { x: frame.westEdge + 150, z: frame.gateZ + 2, heading: -Math.PI * 0.5, loaded: true, colour: 2 },
-    { x: blockCentres[2] + YARD_BLOCK_PITCH_M * 0.5, z: yardSouth + 70, heading: 0, loaded: true, colour: 3 },
-    { x: blockCentres[5] + YARD_BLOCK_PITCH_M * 0.5, z: yardNorth - 30, heading: Math.PI, loaded: false, colour: 0 },
+    {
+      x: frame.westEdge + 92,
+      z: frame.gateZ - 2,
+      heading: Math.PI * 0.5,
+      loaded: false,
+      colour: 1,
+    },
+    {
+      x: frame.westEdge + 150,
+      z: frame.gateZ + 2,
+      heading: -Math.PI * 0.5,
+      loaded: true,
+      colour: 2,
+    },
+    {
+      x: blockCentres[2] + YARD_BLOCK_PITCH_M * 0.5,
+      z: yardSouth + 70,
+      heading: 0,
+      loaded: true,
+      colour: 3,
+    },
+    {
+      x: blockCentres[5] + YARD_BLOCK_PITCH_M * 0.5,
+      z: yardNorth - 30,
+      heading: Math.PI,
+      loaded: false,
+      colour: 0,
+    },
     { x: frame.eastEdge - 44, z: frame.southEdge + 46, heading: 0, loaded: false, colour: 1 },
   ]);
   addLightMasts([
@@ -372,7 +563,12 @@ export function addCargoPortYard(frame: PortFrame, landEdge: number) {
     { x: yardEast + 8, z: yardNorth + 6 },
     { x: frame.eastEdge - 44, z: (frame.northEdge + frame.southEdge) * 0.5 },
   ]);
-  addTransitShed(frame.westEdge + 44, frame.westEdge + 170, frame.southEdge + 6, frame.southEdge + 26);
+  addTransitShed(
+    frame.westEdge + 44,
+    frame.westEdge + 170,
+    frame.southEdge + 6,
+    frame.southEdge + 26
+  );
   addPerimeterFence(frame, landEdge);
   addApronMarkings(frame, blockCentres, yardNorth, yardSouth);
   addQuayEdge(frame);

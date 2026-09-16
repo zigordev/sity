@@ -8,7 +8,8 @@ export const MAIN_BOUNDARY_WEST_EXTENSION_M = 2_534;
 
 export const MAIN_BOUNDARY_WIDTH_M = MAIN_BOUNDARY_SIDE_M + MAIN_BOUNDARY_WEST_EXTENSION_M;
 
-export const MAIN_BOUNDARY_DEPTH_M = MAIN_BOUNDARY_SIDE_M + MAIN_BOUNDARY_NORTH_EXTENSION_M + MAIN_BOUNDARY_SOUTH_EXTENSION_M;
+export const MAIN_BOUNDARY_DEPTH_M =
+  MAIN_BOUNDARY_SIDE_M + MAIN_BOUNDARY_NORTH_EXTENSION_M + MAIN_BOUNDARY_SOUTH_EXTENSION_M;
 
 export const MAIN_BOUNDARY_AREA_M2 = MAIN_BOUNDARY_WIDTH_M * MAIN_BOUNDARY_DEPTH_M;
 
@@ -410,13 +411,13 @@ export const DAM_SPILLWAY_GATE_COUNT = 5;
 
 export const DAM_CREST_RAIL_POST_COUNT = 18;
 
-export const ASSET_PIPELINE_SUPPORTED_FORMATS = ["glb", "gltf", "ktx2", "drc", "meshopt"] as const;
+export const ASSET_PIPELINE_SUPPORTED_FORMATS = ['glb', 'gltf', 'ktx2', 'drc', 'meshopt'] as const;
 
 export const UNIFIED_SEA_WATER_SURFACE_COUNT = 5;
 
-export const ASSET_MANIFEST_URL = "/assets/sity/asset-manifest.json";
+export const ASSET_MANIFEST_URL = '/assets/sity/asset-manifest.json';
 
-export const HIGH_END_QUALITY_PROFILE = "cinematic-pbr-terrain-water";
+export const HIGH_END_QUALITY_PROFILE = 'cinematic-pbr-terrain-water';
 
 export const SCALE_X_MEASURE_M = MAIN_BOUNDARY_SIDE_M;
 

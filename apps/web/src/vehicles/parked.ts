@@ -1,8 +1,8 @@
-import * as THREE from "three";
-import { vehicleElements } from "../render/context";
-import { carGlassMaterial, carPaintMaterials, tyreMaterial } from "../render/materials";
-import { mergeAll } from "../roads/geometry";
-import { roadSideSlots, type OrientedSlot } from "../roads/render";
+import * as THREE from 'three';
+import { vehicleElements } from '../render/context';
+import { carGlassMaterial, carPaintMaterials, tyreMaterial } from '../render/materials';
+import { mergeAll } from '../roads/geometry';
+import { roadSideSlots, type OrientedSlot } from '../roads/render';
 
 function hash(x: number, z: number) {
   const value = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
@@ -38,7 +38,12 @@ function createWheelsGeometry() {
   return mergeAll(parts) ?? parts[0];
 }
 
-function instanced(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, matrices: THREE.Matrix4[]) {
+function instanced(
+  name: string,
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material,
+  matrices: THREE.Matrix4[]
+) {
   if (matrices.length === 0) {
     return;
   }
@@ -66,7 +71,7 @@ export function addParkedVehicles() {
     const matrix = new THREE.Matrix4().compose(
       new THREE.Vector3(slot.x, slot.y, slot.z),
       new THREE.Quaternion().setFromAxisAngle(up, heading),
-      new THREE.Vector3(1, 1, 1),
+      new THREE.Vector3(1, 1, 1)
     );
     const colour = Math.floor(hash(slot.x * 3.1, slot.z * 1.7) * byColour.length) % byColour.length;
     byColour[colour].push(matrix);
@@ -76,9 +81,11 @@ export function addParkedVehicles() {
     place(slot, 0.52, false);
   }
   const body = createBodyGeometry();
-  byColour.forEach((matrices, index) => instanced(`parked-car-bodies-${index + 1}`, body, carPaintMaterials[index], matrices));
-  instanced("parked-car-cabins", createCabinGeometry(), carGlassMaterial, all);
-  instanced("parked-car-wheels", createWheelsGeometry(), tyreMaterial, all);
+  byColour.forEach((matrices, index) =>
+    instanced(`parked-car-bodies-${index + 1}`, body, carPaintMaterials[index], matrices)
+  );
+  instanced('parked-car-cabins', createCabinGeometry(), carGlassMaterial, all);
+  instanced('parked-car-wheels', createWheelsGeometry(), tyreMaterial, all);
   parkedVehicleStats.count = all.length;
   return all.length;
 }

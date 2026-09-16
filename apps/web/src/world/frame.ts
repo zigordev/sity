@@ -1,6 +1,27 @@
-import * as THREE from "three";
-import { COASTAL_INLET_OVERLAP_M, DAM_CURVE_BOW_M, DAM_LENGTH_M, DAM_THICKNESS_M, DAM_UPSTREAM_FACE_OFFSET_M, ESTUARY_SEA_BLEND_END_OFFSET_M, ESTUARY_SEA_BLEND_START_OFFSET_M, MAINLAND_EAST_MARGIN_M, MAINLAND_NORTH_SOUTH_MARGIN_M, MAINLAND_WEST_MARGIN_M, MAIN_BOUNDARY_NORTH_EXTENSION_M, MAIN_BOUNDARY_SIDE_M, MAIN_BOUNDARY_SOUTH_EXTENSION_M, MAIN_BOUNDARY_WEST_EXTENSION_M, MOUNTAIN_RADIUS_X_M, MOUNTAIN_RADIUS_Z_M, RESERVOIR_RADIUS_X_M, RESERVOIR_RADIUS_Z_M, SNOW_MOUNTAIN_RADIUS_X_M, SNOW_MOUNTAIN_RADIUS_Z_M } from "../config/constants";
-import { GroundPathPoint } from "../geometry/types";
+import * as THREE from 'three';
+import {
+  COASTAL_INLET_OVERLAP_M,
+  DAM_CURVE_BOW_M,
+  DAM_LENGTH_M,
+  DAM_THICKNESS_M,
+  DAM_UPSTREAM_FACE_OFFSET_M,
+  ESTUARY_SEA_BLEND_END_OFFSET_M,
+  ESTUARY_SEA_BLEND_START_OFFSET_M,
+  MAINLAND_EAST_MARGIN_M,
+  MAINLAND_NORTH_SOUTH_MARGIN_M,
+  MAINLAND_WEST_MARGIN_M,
+  MAIN_BOUNDARY_NORTH_EXTENSION_M,
+  MAIN_BOUNDARY_SIDE_M,
+  MAIN_BOUNDARY_SOUTH_EXTENSION_M,
+  MAIN_BOUNDARY_WEST_EXTENSION_M,
+  MOUNTAIN_RADIUS_X_M,
+  MOUNTAIN_RADIUS_Z_M,
+  RESERVOIR_RADIUS_X_M,
+  RESERVOIR_RADIUS_Z_M,
+  SNOW_MOUNTAIN_RADIUS_X_M,
+  SNOW_MOUNTAIN_RADIUS_Z_M,
+} from '../config/constants';
+import { GroundPathPoint } from '../geometry/types';
 
 export const mainBoundaryCenterX = 0;
 
@@ -14,7 +35,8 @@ export const mainBoundaryMinX = originalBoundaryMinX - MAIN_BOUNDARY_WEST_EXTENS
 
 export const mainBoundaryMaxX = mainBoundaryCenterX + MAIN_BOUNDARY_SIDE_M / 2;
 
-export const mainBoundaryMinZ = mainBoundaryCenterZ - MAIN_BOUNDARY_SIDE_M / 2 - MAIN_BOUNDARY_NORTH_EXTENSION_M;
+export const mainBoundaryMinZ =
+  mainBoundaryCenterZ - MAIN_BOUNDARY_SIDE_M / 2 - MAIN_BOUNDARY_NORTH_EXTENSION_M;
 
 export const mainBoundaryMaxZ = originalBoundaryMaxZ + MAIN_BOUNDARY_SOUTH_EXTENSION_M;
 
@@ -45,7 +67,7 @@ export const maxWorldZ = mainlandMaxZ;
 export const seaCenter = new THREE.Vector3(
   (minWorldX + maxWorldX) / 2,
   0,
-  (minWorldZ + maxWorldZ) / 2,
+  (minWorldZ + maxWorldZ) / 2
 );
 
 export const mountainCenter = {
@@ -88,7 +110,7 @@ export const reservoirOutletScale =
   1 /
   Math.sqrt(
     (reservoirOutletDirection.x / RESERVOIR_RADIUS_X_M) ** 2 +
-      (reservoirOutletDirection.z / RESERVOIR_RADIUS_Z_M) ** 2,
+      (reservoirOutletDirection.z / RESERVOIR_RADIUS_Z_M) ** 2
   );
 
 export const reservoirOutletEdge = {
@@ -148,7 +170,7 @@ export const riverSeaTransitionPath = sampleGroundPath(
       z: riverMouth.z - 8,
     },
   ],
-  34,
+  34
 );
 
 export const mainBoundaryCoastlinePoints: GroundPathPoint[] = [
@@ -170,8 +192,8 @@ export function sampleGroundPath(controlPath: GroundPathPoint[], segments: numbe
   const curve = new THREE.CatmullRomCurve3(
     controlPath.map((point) => new THREE.Vector3(point.x, 0, point.z)),
     false,
-    "centripetal",
-    0.35,
+    'centripetal',
+    0.35
   );
 
   return curve.getPoints(segments).map((point) => ({
@@ -189,14 +211,8 @@ export function curvedDamPoint(lengthOffset: number, sideOffset: number) {
   const thicknessOffset = sideOffset + damCurveOffsetAt(lengthOffset);
 
   return {
-    x:
-      damCenter.x +
-      damLongAxis.x * lengthOffset +
-      reservoirOutletDirection.x * thicknessOffset,
-    z:
-      damCenter.z +
-      damLongAxis.z * lengthOffset +
-      reservoirOutletDirection.z * thicknessOffset,
+    x: damCenter.x + damLongAxis.x * lengthOffset + reservoirOutletDirection.x * thicknessOffset,
+    z: damCenter.z + damLongAxis.z * lengthOffset + reservoirOutletDirection.z * thicknessOffset,
   };
 }
 

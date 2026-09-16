@@ -1,9 +1,9 @@
-import * as THREE from "three";
-import { cityElements } from "../render/context";
-import { rooftopPropMaterial } from "../render/materials";
-import type { Lot } from "./lots";
-import { DISTRICT_STYLES } from "./districts";
-import { createRandom, hash2 } from "./random";
+import * as THREE from 'three';
+import { cityElements } from '../render/context';
+import { rooftopPropMaterial } from '../render/materials';
+import type { Lot } from './lots';
+import { DISTRICT_STYLES } from './districts';
+import { createRandom, hash2 } from './random';
 
 export interface BuildingInstance {
   x: number;
@@ -82,16 +82,16 @@ export function createFacadeMaterial() {
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
       .replace(
-        "#include <common>",
+        '#include <common>',
         `#include <common>
 attribute vec4 aFacade;
 varying vec4 vFacade;
 varying vec3 vLocalPosition;
 varying vec3 vLocalNormal;
-varying vec3 vInstanceScale;`,
+varying vec3 vInstanceScale;`
       )
       .replace(
-        "#include <begin_vertex>",
+        '#include <begin_vertex>',
         `#include <begin_vertex>
 vFacade = aFacade;
 vLocalPosition = position;
@@ -100,11 +100,11 @@ vLocalNormal = normal;
 vInstanceScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
 #else
 vInstanceScale = vec3(1.0);
-#endif`,
+#endif`
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
-        "#include <common>",
+        '#include <common>',
         `#include <common>
 varying vec4 vFacade;
 varying vec3 vLocalPosition;
@@ -112,10 +112,10 @@ varying vec3 vLocalNormal;
 varying vec3 vInstanceScale;
 float sityHash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-}`,
+}`
       )
       .replace(
-        "#include <color_fragment>",
+        '#include <color_fragment>',
         `#include <color_fragment>
 float sityWindow = 0.0;
 float sityBand = 0.0;
@@ -155,17 +155,17 @@ if (sityWall > 0.5) {
   float edge = min(min(0.5 - abs(vLocalPosition.x), 0.5 - abs(vLocalPosition.z)) * min(vInstanceScale.x, vInstanceScale.z), 1.2);
   float parapet = 1.0 - smoothstep(0.35, 0.9, edge);
   diffuseColor.rgb = mix(diffuseColor.rgb * 0.5 + vec3(0.14, 0.13, 0.12), diffuseColor.rgb * 0.82, parapet);
-}`,
+}`
       )
       .replace(
-        "#include <roughnessmap_fragment>",
+        '#include <roughnessmap_fragment>',
         `#include <roughnessmap_fragment>
-roughnessFactor = mix(roughnessFactor, 0.16, sityWindow);`,
+roughnessFactor = mix(roughnessFactor, 0.16, sityWindow);`
       )
       .replace(
-        "#include <metalnessmap_fragment>",
+        '#include <metalnessmap_fragment>',
         `#include <metalnessmap_fragment>
-metalnessFactor = mix(metalnessFactor, 0.62, sityWindow);`,
+metalnessFactor = mix(metalnessFactor, 0.62, sityWindow);`
       );
   };
   return material;
@@ -174,16 +174,13 @@ metalnessFactor = mix(metalnessFactor, 0.62, sityWindow);`,
 export function createGableRoofGeometry() {
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array([
-    -0.5, 0, -0.5, 0.5, 0, -0.5, 0, 1, -0.5,
-    0.5, 0, 0.5, -0.5, 0, 0.5, 0, 1, 0.5,
-    -0.5, 0, -0.5, 0, 1, -0.5, 0, 1, 0.5,
-    -0.5, 0, -0.5, 0, 1, 0.5, -0.5, 0, 0.5,
-    0.5, 0, -0.5, 0.5, 0, 0.5, 0, 1, 0.5,
-    0.5, 0, -0.5, 0, 1, 0.5, 0, 1, -0.5,
+    -0.5, 0, -0.5, 0.5, 0, -0.5, 0, 1, -0.5, 0.5, 0, 0.5, -0.5, 0, 0.5, 0, 1, 0.5, -0.5, 0, -0.5, 0,
+    1, -0.5, 0, 1, 0.5, -0.5, 0, -0.5, 0, 1, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0, 0.5, 0, 1,
+    0.5, 0.5, 0, -0.5, 0, 1, 0.5, 0, 1, -0.5,
   ]);
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   const uvs = new Float32Array((positions.length / 3) * 2);
-  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   geometry.computeVertexNormals();
   return geometry;
 }
@@ -208,7 +205,13 @@ export class BuildingBatch {
     }
   }
 
-  addPlinth(lot: Lot, width: number, depth: number, centre: { x: number; z: number }, color: THREE.Color) {
+  addPlinth(
+    lot: Lot,
+    width: number,
+    depth: number,
+    centre: { x: number; z: number },
+    color: THREE.Color
+  ) {
     const rise = lot.groundMaxY - lot.groundMinY;
     if (rise < 0.3) {
       return lot.groundY;
@@ -243,7 +246,13 @@ export class BuildingBatch {
     const scale = new THREE.Vector3();
     const yAxis = new THREE.Vector3(0, 1, 0);
     for (const instance of this.walls) {
-      if (instance.height < 9 || instance.width < 11 || instance.depth < 11 || instance.windowRatio < 0.3 || instance.floorHeight > 12) {
+      if (
+        instance.height < 9 ||
+        instance.width < 11 ||
+        instance.depth < 11 ||
+        instance.windowRatio < 0.3 ||
+        instance.floorHeight > 12
+      ) {
         continue;
       }
       const count = 1 + Math.floor(hash2(instance.x, instance.z, instance.seed) * 3);
@@ -255,7 +264,11 @@ export class BuildingBatch {
         const width = 1.6 + hash2(u, v, 3) * 1.6;
         const depth = 1.4 + hash2(v, u, 5) * 1.2;
         const height = 1.1 + hash2(u, v, 9) * 1.4;
-        position.set(instance.x + u * cos + v * sin, instance.y + instance.height + height * 0.5, instance.z - u * sin + v * cos);
+        position.set(
+          instance.x + u * cos + v * sin,
+          instance.y + instance.height + height * 0.5,
+          instance.z - u * sin + v * cos
+        );
         quaternion.setFromAxisAngle(yAxis, instance.rotationY);
         scale.set(width, height, depth);
         matrix.compose(position, quaternion, scale);
@@ -265,7 +278,11 @@ export class BuildingBatch {
     if (props.length === 0) {
       return;
     }
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), rooftopPropMaterial, props.length);
+    const mesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      rooftopPropMaterial,
+      props.length
+    );
     props.forEach((prop, index) => mesh.setMatrixAt(index, prop));
     mesh.instanceMatrix.needsUpdate = true;
     mesh.name = `${name}-rooftop-props`;
@@ -284,7 +301,7 @@ export class BuildingBatch {
         facade[index * 4 + 2] = instance.windowRatio;
         facade[index * 4 + 3] = instance.seed;
       });
-      geometry.setAttribute("aFacade", new THREE.InstancedBufferAttribute(facade, 4));
+      geometry.setAttribute('aFacade', new THREE.InstancedBufferAttribute(facade, 4));
       const mesh = new THREE.InstancedMesh(geometry, createFacadeMaterial(), this.walls.length);
       const matrix = new THREE.Matrix4();
       const position = new THREE.Vector3();
@@ -311,7 +328,7 @@ export class BuildingBatch {
       const mesh = new THREE.InstancedMesh(
         geometry,
         new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0.02 }),
-        this.roofs.length,
+        this.roofs.length
       );
       const matrix = new THREE.Matrix4();
       const position = new THREE.Vector3();
@@ -353,10 +370,16 @@ export function buildLotBuildings(lots: Lot[]) {
       z: lot.front.z + lot.inward.z * frontDistance,
     });
     const plinthColor = color.setHex(0x8f8c84).clone();
-    const groundedBase = (width: number, depth: number, centre: { x: number; z: number }) => batch.addPlinth(lot, width, depth, centre, plinthColor);
+    const groundedBase = (width: number, depth: number, centre: { x: number; z: number }) =>
+      batch.addPlinth(lot, width, depth, centre, plinthColor);
 
-    if (style.building === "tower") {
-      const closeness = 1 - Math.min(1, Math.hypot(lot.center.x - DOWNTOWN_CENTER.x, lot.center.z - DOWNTOWN_CENTER.z) / 240);
+    if (style.building === 'tower') {
+      const closeness =
+        1 -
+        Math.min(
+          1,
+          Math.hypot(lot.center.x - DOWNTOWN_CENTER.x, lot.center.z - DOWNTOWN_CENTER.z) / 240
+        );
       const towerFloors = Math.round(8 + closeness * 20 + random() * 8);
       const podiumFloors = 3;
       const podiumWidth = lot.width - 1.5;
@@ -364,111 +387,234 @@ export function buildLotBuildings(lots: Lot[]) {
       const podiumCenter = centerAt(podiumDepth * 0.5 + 1);
       const podiumColor = color.setHex(pick(WALL_PALETTES.concrete, random)).clone();
       const baseY = groundedBase(podiumWidth, podiumDepth, podiumCenter);
-      batch.addBox({
-        x: podiumCenter.x, y: baseY, z: podiumCenter.z,
-        width: podiumWidth, height: podiumFloors * 4.2, depth: podiumDepth, rotationY: rotation,
-        color: podiumColor, floorHeight: 4.2, windowWidth: 3.2, windowRatio: 0.62, seed,
-      }, lot.id);
+      batch.addBox(
+        {
+          x: podiumCenter.x,
+          y: baseY,
+          z: podiumCenter.z,
+          width: podiumWidth,
+          height: podiumFloors * 4.2,
+          depth: podiumDepth,
+          rotationY: rotation,
+          color: podiumColor,
+          floorHeight: 4.2,
+          windowWidth: 3.2,
+          windowRatio: 0.62,
+          seed,
+        },
+        lot.id
+      );
       const towerWidth = Math.max(14, podiumWidth - 6 - random() * 4);
       const towerDepth = Math.max(14, podiumDepth - 6 - random() * 4);
       const towerCenter = centerAt(podiumDepth * 0.5 + 1);
       const glassy = random() > 0.35;
-      const towerColor = color.setHex(pick(glassy ? WALL_PALETTES.glass : WALL_PALETTES.white, random)).clone();
+      const towerColor = color
+        .setHex(pick(glassy ? WALL_PALETTES.glass : WALL_PALETTES.white, random))
+        .clone();
       batch.addBox({
-        x: towerCenter.x, y: baseY + podiumFloors * 4.2, z: towerCenter.z,
-        width: towerWidth, height: towerFloors * style.floorHeight, depth: towerDepth, rotationY: rotation,
-        color: towerColor, floorHeight: style.floorHeight, windowWidth: glassy ? 2.2 : 2.8, windowRatio: glassy ? 0.9 : 0.55, seed: seed + 3,
+        x: towerCenter.x,
+        y: baseY + podiumFloors * 4.2,
+        z: towerCenter.z,
+        width: towerWidth,
+        height: towerFloors * style.floorHeight,
+        depth: towerDepth,
+        rotationY: rotation,
+        color: towerColor,
+        floorHeight: style.floorHeight,
+        windowWidth: glassy ? 2.2 : 2.8,
+        windowRatio: glassy ? 0.9 : 0.55,
+        seed: seed + 3,
       });
       if (random() > 0.5) {
         const crownWidth = towerWidth * 0.6;
         batch.addBox({
-          x: towerCenter.x, y: baseY + podiumFloors * 4.2 + towerFloors * style.floorHeight, z: towerCenter.z,
-          width: crownWidth, height: 4.5 + random() * 6, depth: towerDepth * 0.6, rotationY: rotation,
-          color: towerColor, floorHeight: 3.2, windowWidth: 2.4, windowRatio: 0.4, seed: seed + 5,
+          x: towerCenter.x,
+          y: baseY + podiumFloors * 4.2 + towerFloors * style.floorHeight,
+          z: towerCenter.z,
+          width: crownWidth,
+          height: 4.5 + random() * 6,
+          depth: towerDepth * 0.6,
+          rotationY: rotation,
+          color: towerColor,
+          floorHeight: 3.2,
+          windowWidth: 2.4,
+          windowRatio: 0.4,
+          seed: seed + 5,
         });
       }
       count += 2;
-    } else if (style.building === "block") {
+    } else if (style.building === 'block') {
       const width = lot.width - 1.2;
       const depth = Math.min(lot.depth - 1.5, 22 + random() * 6);
       const center = centerAt(depth * 0.5 + 0.6);
-      const paletteName = random() > 0.6 ? "brick" : random() > 0.5 ? "plaster" : "concrete";
+      const paletteName = random() > 0.6 ? 'brick' : random() > 0.5 ? 'plaster' : 'concrete';
       const wallColor = color.setHex(pick(WALL_PALETTES[paletteName], random)).clone();
       const height = floors * style.floorHeight;
       const baseY = groundedBase(width, depth, center);
-      batch.addBox({
-        x: center.x, y: baseY, z: center.z, width, height, depth, rotationY: rotation,
-        color: wallColor, floorHeight: style.floorHeight, windowWidth: 2.4 + random() * 0.8, windowRatio: 0.42 + random() * 0.18, seed,
-      }, lot.id);
+      batch.addBox(
+        {
+          x: center.x,
+          y: baseY,
+          z: center.z,
+          width,
+          height,
+          depth,
+          rotationY: rotation,
+          color: wallColor,
+          floorHeight: style.floorHeight,
+          windowWidth: 2.4 + random() * 0.8,
+          windowRatio: 0.42 + random() * 0.18,
+          seed,
+        },
+        lot.id
+      );
       if (random() > 0.45) {
         batch.addBox({
-          x: center.x, y: baseY + height, z: center.z,
-          width: Math.max(4, width * 0.3), height: 2.8, depth: Math.max(4, depth * 0.35), rotationY: rotation,
-          color: wallColor.clone().multiplyScalar(0.85), floorHeight: 2.8, windowWidth: 2, windowRatio: 0.2, seed: seed + 1,
+          x: center.x,
+          y: baseY + height,
+          z: center.z,
+          width: Math.max(4, width * 0.3),
+          height: 2.8,
+          depth: Math.max(4, depth * 0.35),
+          rotationY: rotation,
+          color: wallColor.clone().multiplyScalar(0.85),
+          floorHeight: 2.8,
+          windowWidth: 2,
+          windowRatio: 0.2,
+          seed: seed + 1,
         });
       }
       count += 1;
-    } else if (style.building === "house") {
+    } else if (style.building === 'house') {
       const width = Math.min(lot.width - 3, 9 + random() * 3.5);
       const depth = Math.min(lot.depth - 8, 9 + random() * 3);
       const center = centerAt(depth * 0.5 + 3.5);
-      const paletteName = random() > 0.5 ? "plaster" : random() > 0.4 ? "white" : "brick";
+      const paletteName = random() > 0.5 ? 'plaster' : random() > 0.4 ? 'white' : 'brick';
       const wallColor = color.setHex(pick(WALL_PALETTES[paletteName], random)).clone();
       const height = floors * style.floorHeight;
       const baseY = groundedBase(width, depth, center);
-      batch.addBox({
-        x: center.x, y: baseY, z: center.z, width, height, depth, rotationY: rotation,
-        color: wallColor, floorHeight: style.floorHeight, windowWidth: 2.6, windowRatio: 0.38, seed,
-      }, lot.id);
-      const roofColor = color.setHex(random() > 0.5 ? 0x8d4a3b : random() > 0.5 ? 0x5b5f66 : 0xa35f45).clone();
+      batch.addBox(
+        {
+          x: center.x,
+          y: baseY,
+          z: center.z,
+          width,
+          height,
+          depth,
+          rotationY: rotation,
+          color: wallColor,
+          floorHeight: style.floorHeight,
+          windowWidth: 2.6,
+          windowRatio: 0.38,
+          seed,
+        },
+        lot.id
+      );
+      const roofColor = color
+        .setHex(random() > 0.5 ? 0x8d4a3b : random() > 0.5 ? 0x5b5f66 : 0xa35f45)
+        .clone();
       batch.addRoof({
-        x: center.x, y: baseY + height, z: center.z,
-        width: width + 1.2, height: 2.6 + random() * 1.2, depth: depth + 1.2, rotationY: rotation,
+        x: center.x,
+        y: baseY + height,
+        z: center.z,
+        width: width + 1.2,
+        height: 2.6 + random() * 1.2,
+        depth: depth + 1.2,
+        rotationY: rotation,
         color: roofColor,
       });
       count += 1;
-    } else if (style.building === "shed") {
+    } else if (style.building === 'shed') {
       const width = lot.width - 6;
       const depth = Math.min(lot.depth - 10, 34 + random() * 16);
       const center = centerAt(depth * 0.5 + 8);
       const wallColor = color.setHex(pick(WALL_PALETTES.metal, random)).clone();
       const height = 8 + random() * 5;
       const baseY = groundedBase(width, depth, center);
-      batch.addBox({
-        x: center.x, y: baseY, z: center.z, width, height, depth, rotationY: rotation,
-        color: wallColor, floorHeight: height, windowWidth: 4, windowRatio: 0.28, seed,
-      }, lot.id);
+      batch.addBox(
+        {
+          x: center.x,
+          y: baseY,
+          z: center.z,
+          width,
+          height,
+          depth,
+          rotationY: rotation,
+          color: wallColor,
+          floorHeight: height,
+          windowWidth: 4,
+          windowRatio: 0.28,
+          seed,
+        },
+        lot.id
+      );
       if (random() > 0.4) {
         const officeWidth = Math.min(16, width * 0.4);
         const officeCenter = centerAt(4.2);
-        batch.addBox({
-          x: officeCenter.x + lot.tangent.x * (width * 0.5 - officeWidth * 0.5), y: baseY, z: officeCenter.z + lot.tangent.z * (width * 0.5 - officeWidth * 0.5),
-          width: officeWidth, height: 6.6, depth: 8, rotationY: rotation,
-          color: color.setHex(pick(WALL_PALETTES.plaster, random)).clone(), floorHeight: 3.3, windowWidth: 2.4, windowRatio: 0.5, seed: seed + 2,
-        }, lot.id);
+        batch.addBox(
+          {
+            x: officeCenter.x + lot.tangent.x * (width * 0.5 - officeWidth * 0.5),
+            y: baseY,
+            z: officeCenter.z + lot.tangent.z * (width * 0.5 - officeWidth * 0.5),
+            width: officeWidth,
+            height: 6.6,
+            depth: 8,
+            rotationY: rotation,
+            color: color.setHex(pick(WALL_PALETTES.plaster, random)).clone(),
+            floorHeight: 3.3,
+            windowWidth: 2.4,
+            windowRatio: 0.5,
+            seed: seed + 2,
+          },
+          lot.id
+        );
         count += 1;
       }
       count += 1;
-    } else if (style.building === "hotel") {
+    } else if (style.building === 'hotel') {
       const width = lot.width - 2;
       const depth = Math.min(lot.depth - 3, 20 + random() * 8);
       const center = centerAt(depth * 0.5 + 1.5);
-      const wallColor = color.setHex(pick(random() > 0.5 ? WALL_PALETTES.white : WALL_PALETTES.glass, random)).clone();
+      const wallColor = color
+        .setHex(pick(random() > 0.5 ? WALL_PALETTES.white : WALL_PALETTES.glass, random))
+        .clone();
       const height = floors * style.floorHeight;
       const baseY = groundedBase(width, depth, center);
+      batch.addBox(
+        {
+          x: center.x,
+          y: baseY,
+          z: center.z,
+          width,
+          height,
+          depth,
+          rotationY: rotation,
+          color: wallColor,
+          floorHeight: style.floorHeight,
+          windowWidth: 3.0,
+          windowRatio: 0.7,
+          seed,
+        },
+        lot.id
+      );
       batch.addBox({
-        x: center.x, y: baseY, z: center.z, width, height, depth, rotationY: rotation,
-        color: wallColor, floorHeight: style.floorHeight, windowWidth: 3.0, windowRatio: 0.7, seed,
-      }, lot.id);
-      batch.addBox({
-        x: center.x, y: baseY + height, z: center.z,
-        width: width * 0.5, height: 3.2, depth: depth * 0.5, rotationY: rotation,
-        color: wallColor.clone().multiplyScalar(0.9), floorHeight: 3.2, windowWidth: 2.4, windowRatio: 0.3, seed: seed + 4,
+        x: center.x,
+        y: baseY + height,
+        z: center.z,
+        width: width * 0.5,
+        height: 3.2,
+        depth: depth * 0.5,
+        rotationY: rotation,
+        color: wallColor.clone().multiplyScalar(0.9),
+        floorHeight: 3.2,
+        windowWidth: 2.4,
+        windowRatio: 0.3,
+        seed: seed + 4,
       });
       count += 2;
     }
   }
 
-  batch.commit("city-buildings");
+  batch.commit('city-buildings');
   return count;
 }

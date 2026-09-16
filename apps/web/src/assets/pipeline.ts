@@ -1,28 +1,52 @@
-import * as THREE from "three";
-import { ASSET_MANIFEST_URL, SEA_Y } from "../config/constants";
-import { artificialElements, gltfLoader, renderer, textureLoader } from "../render/context";
-import { mainlandMaterial, beachGrassMaterial, beachSandMaterial, bridgeCableMaterial, bridgeSteelMaterial, concretePortMaterial, damMaterial, dockMaterial, duneSandMaterial, grassMaterial, highwayAsphaltMaterial, lowlandDryGrassMaterial, lowlandScrubMaterial, mountainCutMaterial, portCraneMaterial, reedMaterial, roadStructureConcreteMaterial, smallPebbleMaterial, smallRockMaterial, terrainCutMaterial, terrainMicroDisplacementMaterial, wetSandMaterial, woodPierMaterial } from "../render/materials";
+import * as THREE from 'three';
+import { ASSET_MANIFEST_URL, SEA_Y } from '../config/constants';
+import { artificialElements, gltfLoader, renderer, textureLoader } from '../render/context';
+import {
+  mainlandMaterial,
+  beachGrassMaterial,
+  beachSandMaterial,
+  bridgeCableMaterial,
+  bridgeSteelMaterial,
+  concretePortMaterial,
+  damMaterial,
+  dockMaterial,
+  duneSandMaterial,
+  grassMaterial,
+  highwayAsphaltMaterial,
+  lowlandDryGrassMaterial,
+  lowlandScrubMaterial,
+  mountainCutMaterial,
+  portCraneMaterial,
+  reedMaterial,
+  roadStructureConcreteMaterial,
+  smallPebbleMaterial,
+  smallRockMaterial,
+  terrainCutMaterial,
+  terrainMicroDisplacementMaterial,
+  wetSandMaterial,
+  woodPierMaterial,
+} from '../render/materials';
 
 export const TEXTURE_ASSET_KEYS = [
-  "grass_meadow_albedo",
-  "asphalt_aggregate_albedo",
-  "concrete_weathered_albedo",
-  "sand_dry_albedo",
-  "sand_wet_albedo",
-  "rock_strata_albedo",
-  "wood_planks_albedo",
-  "sea_ripple_albedo",
-  "metal_worn_albedo",
+  'grass_meadow_albedo',
+  'asphalt_aggregate_albedo',
+  'concrete_weathered_albedo',
+  'sand_dry_albedo',
+  'sand_wet_albedo',
+  'rock_strata_albedo',
+  'wood_planks_albedo',
+  'sea_ripple_albedo',
+  'metal_worn_albedo',
 ] as const;
 
-export const IMPORTED_MODEL_KINDS = ["cargoShip", "privateBoat"] as const;
+export const IMPORTED_MODEL_KINDS = ['cargoShip', 'privateBoat'] as const;
 
 export type ImportedModelKind = (typeof IMPORTED_MODEL_KINDS)[number];
 
 export type AssetManifest = {
   version: number;
-  units: "meters";
-  renderer: "three.js";
+  units: 'meters';
+  renderer: 'three.js';
   compressionReady: string[];
   decoders?: {
     basis?: string;
@@ -31,11 +55,14 @@ export type AssetManifest = {
   };
   models: Record<ImportedModelKind, string>;
   textures: Record<string, string>;
-  pbrTextures?: Record<string, {
-    albedo: string;
-    normal: string;
-    orm: string;
-  }>;
+  pbrTextures?: Record<
+    string,
+    {
+      albedo: string;
+      normal: string;
+      orm: string;
+    }
+  >;
 };
 
 export type TextureAssetTarget = {
@@ -74,7 +101,10 @@ export const importedModelAnchors: ImportedModelAnchor[] = [];
 
 export const assetLoadFailures: string[] = [];
 
-export const textureAssetTargets: Record<(typeof TEXTURE_ASSET_KEYS)[number], TextureAssetTarget[]> = {
+export const textureAssetTargets: Record<
+  (typeof TEXTURE_ASSET_KEYS)[number],
+  TextureAssetTarget[]
+> = {
   grass_meadow_albedo: [
     { material: grassMaterial, repeatX: 34, repeatY: 34 },
     { material: terrainMicroDisplacementMaterial, repeatX: 34, repeatY: 34 },
@@ -96,9 +126,7 @@ export const textureAssetTargets: Record<(typeof TEXTURE_ASSET_KEYS)[number], Te
     { material: beachSandMaterial, repeatX: 26, repeatY: 26, useAsBump: true },
     { material: duneSandMaterial, repeatX: 22, repeatY: 22, useAsBump: true },
   ],
-  sand_wet_albedo: [
-    { material: wetSandMaterial, repeatX: 18, repeatY: 18, useAsBump: true },
-  ],
+  sand_wet_albedo: [{ material: wetSandMaterial, repeatX: 18, repeatY: 18, useAsBump: true }],
   rock_strata_albedo: [
     { material: terrainCutMaterial, repeatX: 18, repeatY: 18, useAsBump: true },
     { material: mountainCutMaterial, repeatX: 16, repeatY: 16, useAsBump: true },
@@ -109,8 +137,7 @@ export const textureAssetTargets: Record<(typeof TEXTURE_ASSET_KEYS)[number], Te
     { material: woodPierMaterial, repeatX: 10, repeatY: 8, useAsBump: true },
     { material: dockMaterial, repeatX: 10, repeatY: 8, useAsBump: true },
   ],
-  sea_ripple_albedo: [
-  ],
+  sea_ripple_albedo: [],
   metal_worn_albedo: [
     { material: bridgeSteelMaterial, repeatX: 10, repeatY: 10 },
     { material: bridgeCableMaterial, repeatX: 8, repeatY: 8 },
@@ -118,7 +145,12 @@ export const textureAssetTargets: Record<(typeof TEXTURE_ASSET_KEYS)[number], Te
   ],
 };
 
-export function configureTextureAsset(texture: THREE.Texture, repeatX: number, repeatY: number, colorSpace: THREE.ColorSpace) {
+export function configureTextureAsset(
+  texture: THREE.Texture,
+  repeatX: number,
+  repeatY: number,
+  colorSpace: THREE.ColorSpace
+) {
   texture.colorSpace = colorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
@@ -131,7 +163,7 @@ export function applyTextureAsset(
   textureKey: (typeof TEXTURE_ASSET_KEYS)[number],
   sourceTexture: THREE.Texture,
   normalTexture?: THREE.Texture,
-  ormTexture?: THREE.Texture,
+  ormTexture?: THREE.Texture
 ) {
   for (const target of textureAssetTargets[textureKey]) {
     const colorMap = sourceTexture.clone();
@@ -183,14 +215,14 @@ export async function loadAssetManifest() {
   }
 
   const manifest = (await response.json()) as AssetManifest;
-  assetManifestLoaded = manifest.units === "meters" && manifest.renderer === "three.js";
+  assetManifestLoaded = manifest.units === 'meters' && manifest.renderer === 'three.js';
   decoderRuntimeAssetsAvailable = Boolean(
     manifest.decoders?.basis &&
-      manifest.decoders.draco &&
-      manifest.decoders.meshopt &&
-      manifest.compressionReady.includes("ktx2") &&
-      manifest.compressionReady.includes("draco") &&
-      manifest.compressionReady.includes("meshopt"),
+    manifest.decoders.draco &&
+    manifest.decoders.meshopt &&
+    manifest.compressionReady.includes('ktx2') &&
+    manifest.compressionReady.includes('draco') &&
+    manifest.compressionReady.includes('meshopt')
   );
   return manifest;
 }
@@ -223,9 +255,11 @@ export async function loadTextureAssetPack(manifest: AssetManifest) {
         applyTextureAsset(textureKey, texture, normalTexture, ormTexture);
         loadedTextureAssetKeys.add(textureKey);
       } catch (error) {
-        assetLoadFailures.push(`texture:${textureKey}:${error instanceof Error ? error.message : String(error)}`);
+        assetLoadFailures.push(
+          `texture:${textureKey}:${error instanceof Error ? error.message : String(error)}`
+        );
       }
-    }),
+    })
   );
 }
 
@@ -263,9 +297,11 @@ export async function loadImportedModelSources(manifest: AssetManifest) {
         configureImportedModel(gltf.scene);
         importedModelSources.set(kind, gltf.scene);
       } catch (error) {
-        assetLoadFailures.push(`model:${kind}:${error instanceof Error ? error.message : String(error)}`);
+        assetLoadFailures.push(
+          `model:${kind}:${error instanceof Error ? error.message : String(error)}`
+        );
       }
-    }),
+    })
   );
 }
 
@@ -276,7 +312,7 @@ export function queueImportedModelReplacement(
   z: number,
   fallback: THREE.Object3D,
   scale = 1,
-  rotationY = 0,
+  rotationY = 0
 ) {
   importedModelAnchors.push({
     kind,
