@@ -1,27 +1,39 @@
-import * as THREE from "three";
-import { cityStats } from "../city";
-import { camera, cityElements, controls, roadElements, vegetationElements, vehicleElements } from "../render/context";
-import { estimateVisibleSceneRenderStats } from "../render/stats";
-import { roadGraph } from "../roads/build";
-import { addRouteHighlight, clearRouteHighlight, laneOverlayGroup, roadFurnitureGroup } from "../roads/render";
-import { CAMERA_VIEWS, findView, type CameraView } from "./views";
+import * as THREE from 'three';
+import { cityStats } from '../city';
+import {
+  camera,
+  cityElements,
+  controls,
+  roadElements,
+  vegetationElements,
+  vehicleElements,
+} from '../render/context';
+import { estimateVisibleSceneRenderStats } from '../render/stats';
+import { roadGraph } from '../roads/build';
+import {
+  addRouteHighlight,
+  clearRouteHighlight,
+  laneOverlayGroup,
+  roadFurnitureGroup,
+} from '../roads/render';
+import { CAMERA_VIEWS, findView, type CameraView } from './views';
 
-const naturalToggle = document.querySelector<HTMLInputElement>("#toggle-natural");
-const artificialToggle = document.querySelector<HTMLInputElement>("#toggle-artificial");
-const roadsToggle = document.querySelector<HTMLInputElement>("#toggle-roads");
-const furnitureToggle = document.querySelector<HTMLInputElement>("#toggle-furniture");
-const buildingsToggle = document.querySelector<HTMLInputElement>("#toggle-buildings");
-const vegetationToggle = document.querySelector<HTMLInputElement>("#toggle-vegetation");
-const vehiclesToggle = document.querySelector<HTMLInputElement>("#toggle-vehicles");
-const lanesToggle = document.querySelector<HTMLInputElement>("#toggle-lanes");
-const helpToggle = document.querySelector<HTMLInputElement>("#toggle-help");
-const compass = document.querySelector<HTMLElement>(".compass");
-const axisScale = document.querySelector<HTMLElement>(".axis-scale");
-const viewButtons = document.querySelector<HTMLElement>("#view-buttons");
-const routeRandomButton = document.querySelector<HTMLButtonElement>("#route-random");
-const routeClearButton = document.querySelector<HTMLButtonElement>("#route-clear");
-const routeInfo = document.querySelector<HTMLElement>("#route-info");
-const sceneStats = document.querySelector<HTMLElement>("#scene-stats");
+const naturalToggle = document.querySelector<HTMLInputElement>('#toggle-natural');
+const artificialToggle = document.querySelector<HTMLInputElement>('#toggle-artificial');
+const roadsToggle = document.querySelector<HTMLInputElement>('#toggle-roads');
+const furnitureToggle = document.querySelector<HTMLInputElement>('#toggle-furniture');
+const buildingsToggle = document.querySelector<HTMLInputElement>('#toggle-buildings');
+const vegetationToggle = document.querySelector<HTMLInputElement>('#toggle-vegetation');
+const vehiclesToggle = document.querySelector<HTMLInputElement>('#toggle-vehicles');
+const lanesToggle = document.querySelector<HTMLInputElement>('#toggle-lanes');
+const helpToggle = document.querySelector<HTMLInputElement>('#toggle-help');
+const compass = document.querySelector<HTMLElement>('.compass');
+const axisScale = document.querySelector<HTMLElement>('.axis-scale');
+const viewButtons = document.querySelector<HTMLElement>('#view-buttons');
+const routeRandomButton = document.querySelector<HTMLButtonElement>('#route-random');
+const routeClearButton = document.querySelector<HTMLButtonElement>('#route-clear');
+const routeInfo = document.querySelector<HTMLElement>('#route-info');
+const sceneStats = document.querySelector<HTMLElement>('#scene-stats');
 
 const flight = {
   active: false,
@@ -53,7 +65,7 @@ export function applyLayerVisibility() {
   vegetationElements.visible = vegetation;
   vehicleElements.visible = vehicles;
   laneOverlayGroup.visible = lanes;
-  document.dispatchEvent(new CustomEvent("sity:layers", { detail: { natural, artificial } }));
+  document.dispatchEvent(new CustomEvent('sity:layers', { detail: { natural, artificial } }));
   if (compass) {
     compass.hidden = !help;
   }
@@ -97,8 +109,8 @@ export function flyToView(view: CameraView, immediate = false) {
     flight.startedAt = performance.now();
     flight.active = true;
   }
-  for (const button of viewButtons?.querySelectorAll("button") ?? []) {
-    button.classList.toggle("active", button.dataset.view === view.id);
+  for (const button of viewButtons?.querySelectorAll('button') ?? []) {
+    button.classList.toggle('active', button.dataset.view === view.id);
   }
 }
 
@@ -128,7 +140,7 @@ export function showRandomRoute(seed = routeSeed) {
   const route = roadGraph.randomRoute(seed, 900);
   if (!route) {
     if (routeInfo) {
-      routeInfo.textContent = "No route found for that seed.";
+      routeInfo.textContent = 'No route found for that seed.';
     }
     return undefined;
   }
@@ -139,7 +151,7 @@ export function showRandomRoute(seed = routeSeed) {
   const roadName = (laneId: string | undefined) => {
     const lane = laneId ? roadGraph.lane(laneId) : undefined;
     const road = lane?.roadId ? roadGraph.network.roads.get(lane.roadId) : undefined;
-    return road?.spec.name ?? lane?.roadId ?? lane?.nodeId ?? "?";
+    return road?.spec.name ?? lane?.roadId ?? lane?.nodeId ?? '?';
   };
   if (routeInfo) {
     routeInfo.textContent = `${(route.lengthM / 1000).toFixed(2)} km over ${route.laneIds.length} lanes, from ${roadName(first?.id)} to ${roadName(last?.id)}.`;
@@ -151,7 +163,7 @@ export function clearRoute() {
   clearRouteHighlight();
   lastRouteSummary = undefined;
   if (routeInfo) {
-    routeInfo.textContent = "Pick a random route to trace it through the lane graph.";
+    routeInfo.textContent = 'Pick a random route to trace it through the lane graph.';
   }
 }
 
@@ -166,23 +178,23 @@ export function refreshSceneStats() {
   const graph = roadGraph.stats();
   const render = estimateVisibleSceneRenderStats();
   const rows: Array<[string, string]> = [
-    ["Roads", String(graph.roadCount)],
-    ["Lanes", String(graph.laneCount)],
-    ["Lane km", graph.totalLaneLengthKm.toFixed(1)],
-    ["Junctions", String(graph.junctionCount + graph.roundaboutCount)],
-    ["Buildings", String(cityStats.buildingCount)],
-    ["Trees", String(cityStats.treeCount)],
-    ["Draw calls", String(render.drawCalls)],
-    ["Triangles", `${(render.triangles / 1000).toFixed(0)}k`],
+    ['Roads', String(graph.roadCount)],
+    ['Lanes', String(graph.laneCount)],
+    ['Lane km', graph.totalLaneLengthKm.toFixed(1)],
+    ['Junctions', String(graph.junctionCount + graph.roundaboutCount)],
+    ['Buildings', String(cityStats.buildingCount)],
+    ['Trees', String(cityStats.treeCount)],
+    ['Draw calls', String(render.drawCalls)],
+    ['Triangles', `${(render.triangles / 1000).toFixed(0)}k`],
   ];
   sceneStats.replaceChildren(
     ...rows.flatMap(([label, value]) => {
-      const term = document.createElement("dt");
+      const term = document.createElement('dt');
       term.textContent = label;
-      const detail = document.createElement("dd");
+      const detail = document.createElement('dd');
       detail.textContent = value;
       return [term, detail];
-    }),
+    })
   );
 }
 
@@ -190,25 +202,35 @@ export function initPanel() {
   if (viewButtons) {
     viewButtons.replaceChildren(
       ...CAMERA_VIEWS.map((view) => {
-        const button = document.createElement("button");
-        button.type = "button";
+        const button = document.createElement('button');
+        button.type = 'button';
         button.textContent = view.label;
         button.dataset.view = view.id;
-        button.addEventListener("click", () => flyToView(view));
+        button.addEventListener('click', () => flyToView(view));
         return button;
-      }),
+      })
     );
   }
-  for (const toggle of [naturalToggle, artificialToggle, roadsToggle, furnitureToggle, buildingsToggle, vegetationToggle, vehiclesToggle, lanesToggle, helpToggle]) {
-    toggle?.addEventListener("change", () => {
+  for (const toggle of [
+    naturalToggle,
+    artificialToggle,
+    roadsToggle,
+    furnitureToggle,
+    buildingsToggle,
+    vegetationToggle,
+    vehiclesToggle,
+    lanesToggle,
+    helpToggle,
+  ]) {
+    toggle?.addEventListener('change', () => {
       applyLayerVisibility();
       refreshSceneStats();
     });
   }
-  routeRandomButton?.addEventListener("click", () => {
+  routeRandomButton?.addEventListener('click', () => {
     showRandomRoute();
   });
-  routeClearButton?.addEventListener("click", clearRoute);
+  routeClearButton?.addEventListener('click', clearRoute);
   applyLayerVisibility();
   refreshSceneStats();
 }

@@ -1,17 +1,31 @@
-import * as THREE from "three";
-import { COAST_SURFACE_Y, RIVER_WIDTH_M, WESTERN_COUNTRY_SPLIT_Z_M } from "../config/constants";
-import { distanceToPath2D } from "../geometry/helpers";
-import { mergeAll } from "../roads/geometry";
-import { fullTerrainSurfaceYAt, groundSurfaceYAt, isInsideReservoirFootprint, mountainHeightAt, snowMountainHeightAt, terrainMicroNoise } from "../natural/terrain";
-import { vegetationElements } from "../render/context";
-import { roadSideSlots } from "../roads/render";
-import { corridorClearance, pavementClearance } from "../world/occupancy";
-import { mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, riverMouth, riverPath } from "../world/frame";
-import { DISTRICTS, SPECIAL_BLOCKS } from "./districts";
-import { RASTER_SPECIAL, isNaturalKeepOut, rasterValueAt, type Lot } from "./lots";
-import { createRandom, hash2 } from "./random";
+import * as THREE from 'three';
+import { COAST_SURFACE_Y, RIVER_WIDTH_M, WESTERN_COUNTRY_SPLIT_Z_M } from '../config/constants';
+import { distanceToPath2D } from '../geometry/helpers';
+import { mergeAll } from '../roads/geometry';
+import {
+  fullTerrainSurfaceYAt,
+  groundSurfaceYAt,
+  isInsideReservoirFootprint,
+  mountainHeightAt,
+  snowMountainHeightAt,
+  terrainMicroNoise,
+} from '../natural/terrain';
+import { vegetationElements } from '../render/context';
+import { roadSideSlots } from '../roads/render';
+import { corridorClearance, pavementClearance } from '../world/occupancy';
+import {
+  mainBoundaryMaxX,
+  mainBoundaryMaxZ,
+  mainBoundaryMinX,
+  mainBoundaryMinZ,
+  riverMouth,
+  riverPath,
+} from '../world/frame';
+import { DISTRICTS, SPECIAL_BLOCKS } from './districts';
+import { RASTER_SPECIAL, isNaturalKeepOut, rasterValueAt, type Lot } from './lots';
+import { createRandom, hash2 } from './random';
 
-export type TreeKind = "broadleaf" | "conifer" | "palm" | "pine";
+export type TreeKind = 'broadleaf' | 'conifer' | 'palm' | 'pine';
 
 interface TreePlacement {
   x: number;
@@ -23,24 +37,74 @@ interface TreePlacement {
   furniture: boolean;
 }
 
-const placements: Record<TreeKind, TreePlacement[]> = { broadleaf: [], conifer: [], palm: [], pine: [] };
+const placements: Record<TreeKind, TreePlacement[]> = {
+  broadleaf: [],
+  conifer: [],
+  palm: [],
+  pine: [],
+};
 
-const CROWN_RADIUS_M: Record<TreeKind, number> = { broadleaf: 3.5, conifer: 2.7, palm: 4.2, pine: 2.5 };
+const CROWN_RADIUS_M: Record<TreeKind, number> = {
+  broadleaf: 3.5,
+  conifer: 2.7,
+  palm: 4.2,
+  pine: 2.5,
+};
 
-const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x6b4f35, roughness: 0.95, metalness: 0 });
-const broadleafMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
-const coniferMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0 });
-const palmMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, metalness: 0, side: THREE.DoubleSide });
+const trunkMaterial = new THREE.MeshStandardMaterial({
+  color: 0x6b4f35,
+  roughness: 0.95,
+  metalness: 0,
+});
+const broadleafMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 0.9,
+  metalness: 0,
+});
+const coniferMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 0.92,
+  metalness: 0,
+});
+const palmMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 0.85,
+  metalness: 0,
+  side: THREE.DoubleSide,
+});
 
 const BROADLEAF_TINTS = [0x4f8a3c, 0x5c9a44, 0x477f38, 0x6aa04c, 0x3f7a35, 0x7aa551];
 const CONIFER_TINTS = [0x2f5e34, 0x35683a, 0x2a5530, 0x3b7040, 0x2c5f38];
 const PALM_TINTS = [0x5f9b3f, 0x6ba846, 0x559439];
 const PINE_TINTS = [0x2b5432, 0x33613a, 0x264c2d, 0x3a6b3f, 0x2f5a35, 0x1f4527];
 
-export function addTree(kind: TreeKind, x: number, z: number, y: number, scale = 1, seed = 0, furniture = false) {
-  const tints = kind === "broadleaf" ? BROADLEAF_TINTS : kind === "conifer" ? CONIFER_TINTS : kind === "pine" ? PINE_TINTS : PALM_TINTS;
+export function addTree(
+  kind: TreeKind,
+  x: number,
+  z: number,
+  y: number,
+  scale = 1,
+  seed = 0,
+  furniture = false
+) {
+  const tints =
+    kind === 'broadleaf'
+      ? BROADLEAF_TINTS
+      : kind === 'conifer'
+        ? CONIFER_TINTS
+        : kind === 'pine'
+          ? PINE_TINTS
+          : PALM_TINTS;
   const h = hash2(x, z, seed);
-  placements[kind].push({ x, y, z, scale, rotation: h * Math.PI * 2, tint: tints[Math.floor(h * tints.length) % tints.length], furniture });
+  placements[kind].push({
+    x,
+    y,
+    z,
+    scale,
+    rotation: h * Math.PI * 2,
+    tint: tints[Math.floor(h * tints.length) % tints.length],
+    furniture,
+  });
 }
 
 function createBroadleafCanopy() {
@@ -88,7 +152,7 @@ function createPalmFronds() {
   const parts: THREE.BufferGeometry[] = [];
   for (let index = 0; index < 7; index += 1) {
     const frond = new THREE.PlaneGeometry(0.9, 4.2, 1, 3);
-    const position = frond.getAttribute("position");
+    const position = frond.getAttribute('position');
     for (let vertex = 0; vertex < position.count; vertex += 1) {
       const py = position.getY(vertex);
       const t = (py + 2.1) / 4.2;
@@ -104,7 +168,12 @@ function createPalmFronds() {
   return mergeAll(parts) ?? parts[0];
 }
 
-function commitKind(kind: TreeKind, canopy: THREE.BufferGeometry, canopyMaterial: THREE.Material, trunk: THREE.BufferGeometry) {
+function commitKind(
+  kind: TreeKind,
+  canopy: THREE.BufferGeometry,
+  canopyMaterial: THREE.Material,
+  trunk: THREE.BufferGeometry
+) {
   const list = placements[kind];
   if (list.length === 0) {
     return;
@@ -157,17 +226,25 @@ export function commitTrees() {
   coniferTrunk.translate(0, 1.8, 0);
   const palmTrunk = new THREE.CylinderGeometry(0.22, 0.34, 8.8, 7);
   palmTrunk.translate(0, 4.4, 0);
-  commitKind("broadleaf", createBroadleafCanopy(), broadleafMaterial, broadleafTrunk);
-  commitKind("conifer", createConiferCanopy(), coniferMaterial, coniferTrunk);
-  commitKind("palm", createPalmFronds(), palmMaterial, palmTrunk);
+  commitKind('broadleaf', createBroadleafCanopy(), broadleafMaterial, broadleafTrunk);
+  commitKind('conifer', createConiferCanopy(), coniferMaterial, coniferTrunk);
+  commitKind('palm', createPalmFronds(), palmMaterial, palmTrunk);
   const pineTrunk = new THREE.CylinderGeometry(0.16, 0.26, 3.0, 5);
   pineTrunk.translate(0, 1.5, 0);
-  commitKind("pine", createPineCanopy(), coniferMaterial, pineTrunk);
-  return placements.broadleaf.length + placements.conifer.length + placements.palm.length + placements.pine.length;
+  commitKind('pine', createPineCanopy(), coniferMaterial, pineTrunk);
+  return (
+    placements.broadleaf.length +
+    placements.conifer.length +
+    placements.palm.length +
+    placements.pine.length
+  );
 }
 
 function insideAnyDistrict(x: number, z: number) {
-  return DISTRICTS.some((district) => x >= district.minX && x <= district.maxX && z >= district.minZ && z <= district.maxZ);
+  return DISTRICTS.some(
+    (district) =>
+      x >= district.minX && x <= district.maxX && z >= district.minZ && z <= district.maxZ
+  );
 }
 
 export function placeStreetTrees() {
@@ -176,15 +253,32 @@ export function placeStreetTrees() {
     if (rasterValueAt(slot.x, slot.z) === RASTER_SPECIAL) {
       continue;
     }
-    addTree("broadleaf", slot.x, slot.z, slot.y, 0.75 + random() * 0.35, 1, true);
+    addTree('broadleaf', slot.x, slot.z, slot.y, 0.75 + random() * 0.35, 1, true);
   }
   for (const slot of roadSideSlots.medianTrees) {
     const coastal = slot.x > 700;
-    addTree(coastal ? "palm" : "broadleaf", slot.x, slot.z, slot.y, coastal ? 0.9 + random() * 0.3 : 0.6 + random() * 0.3, 2, true);
+    addTree(
+      coastal ? 'palm' : 'broadleaf',
+      slot.x,
+      slot.z,
+      slot.y,
+      coastal ? 0.9 + random() * 0.3 : 0.6 + random() * 0.3,
+      2,
+      true
+    );
   }
 }
 
-export function placeParkTrees(minX: number, maxX: number, minZ: number, maxZ: number, spacing: number, seed: number, kind: TreeKind = "broadleaf", keepOut?: (x: number, z: number) => boolean) {
+export function placeParkTrees(
+  minX: number,
+  maxX: number,
+  minZ: number,
+  maxZ: number,
+  spacing: number,
+  seed: number,
+  kind: TreeKind = 'broadleaf',
+  keepOut?: (x: number, z: number) => boolean
+) {
   const random = createRandom(seed);
   for (let z = minZ + spacing * 0.5; z < maxZ; z += spacing) {
     for (let x = minX + spacing * 0.5; x < maxX; x += spacing) {
@@ -204,7 +298,7 @@ export function placeParkTrees(minX: number, maxX: number, minZ: number, maxZ: n
 export function placeGardenTrees(lots: Lot[]) {
   const random = createRandom(552);
   for (const lot of lots) {
-    if (lot.district !== "residential" && lot.district !== "westend") {
+    if (lot.district !== 'residential' && lot.district !== 'westend') {
       continue;
     }
     const treeCount = random() > 0.35 ? 1 : 2;
@@ -213,7 +307,7 @@ export function placeGardenTrees(lots: Lot[]) {
       const back = lot.depth - 4 - random() * 5;
       const x = lot.front.x + lot.tangent.x * along + lot.inward.x * back;
       const z = lot.front.z + lot.tangent.z * along + lot.inward.z * back;
-      addTree("broadleaf", x, z, groundSurfaceYAt(x, z), 0.55 + random() * 0.4, 3);
+      addTree('broadleaf', x, z, groundSurfaceYAt(x, z), 0.55 + random() * 0.4, 3);
     }
   }
 }
@@ -227,19 +321,28 @@ export function placeRiversideTrees() {
     const length = Math.hypot(tangent.x, tangent.z) || 1;
     const normal = { x: -tangent.z / length, z: tangent.x / length };
     for (const side of [-1, 1]) {
-      for (const offset of [RIVER_WIDTH_M * 0.5 + 58, RIVER_WIDTH_M * 0.5 + 76, RIVER_WIDTH_M * 0.5 + 96]) {
+      for (const offset of [
+        RIVER_WIDTH_M * 0.5 + 58,
+        RIVER_WIDTH_M * 0.5 + 76,
+        RIVER_WIDTH_M * 0.5 + 96,
+      ]) {
         if (random() > 0.62) {
           continue;
         }
         const x = point.x + normal.x * offset * side + (random() - 0.5) * 10;
         const z = point.z + normal.z * offset * side + (random() - 0.5) * 10;
-        if (x < mainBoundaryMinX + 40 || x > 640 || corridorClearance(x, z) < 7 || rasterValueAt(x, z) !== 0) {
+        if (
+          x < mainBoundaryMinX + 40 ||
+          x > 640 ||
+          corridorClearance(x, z) < 7 ||
+          rasterValueAt(x, z) !== 0
+        ) {
           continue;
         }
         if (fullTerrainSurfaceYAt({ x, z }) - 2 > 30) {
           continue;
         }
-        addTree("broadleaf", x, z, groundSurfaceYAt(x, z), 0.8 + random() * 0.6, 4);
+        addTree('broadleaf', x, z, groundSurfaceYAt(x, z), 0.8 + random() * 0.6, 4);
       }
     }
   }
@@ -262,7 +365,11 @@ export function placeForest() {
       if (insideAnyDistrict(jx, jz) && height < 30) {
         continue;
       }
-      if (corridorClearance(jx, jz) < 9 || rasterValueAt(jx, jz) !== 0 || isInsideReservoirFootprint({ x: jx, z: jz }, 1.5)) {
+      if (
+        corridorClearance(jx, jz) < 9 ||
+        rasterValueAt(jx, jz) !== 0 ||
+        isInsideReservoirFootprint({ x: jx, z: jz }, 1.5)
+      ) {
         continue;
       }
       if (distanceToPath2D({ x: jx, z: jz }, riverPath) < RIVER_WIDTH_M * 0.5 + 40) {
@@ -272,7 +379,7 @@ export function placeForest() {
       if (random() > density) {
         continue;
       }
-      const kind: TreeKind = height > 45 || random() > 0.7 ? "pine" : "broadleaf";
+      const kind: TreeKind = height > 45 || random() > 0.7 ? 'pine' : 'broadleaf';
       addTree(kind, jx, jz, groundSurfaceYAt(jx, jz) - 0.3, 0.9 + random() * 0.7, 5);
       count += 1;
     }
@@ -303,8 +410,15 @@ export function placeWesternForest() {
       if (corridorClearance(jx, jz, 60) < 7) {
         continue;
       }
-      const kind: TreeKind = random() > 0.12 ? "pine" : "broadleaf";
-      addTree(kind, jx, jz, groundSurfaceYAt(jx, jz) + terrainMicroNoise(jx, jz) - 0.25, 0.85 + random() * 0.6, 7);
+      const kind: TreeKind = random() > 0.12 ? 'pine' : 'broadleaf';
+      addTree(
+        kind,
+        jx,
+        jz,
+        groundSurfaceYAt(jx, jz) + terrainMicroNoise(jx, jz) - 0.25,
+        0.85 + random() * 0.6,
+        7
+      );
       count += 1;
     }
   }
@@ -315,21 +429,42 @@ export function placeCoastPalms() {
   const random = createRandom(77);
   for (let z = riverMouth.z + 296; z < 720; z += 11) {
     const x = 780 + (random() - 0.5) * 0.6;
-    addTree("palm", x, z, Math.max(groundSurfaceYAt(x, z) + 0.1, COAST_SURFACE_Y + 0.35), 0.82 + random() * 0.16, 6);
+    addTree(
+      'palm',
+      x,
+      z,
+      Math.max(groundSurfaceYAt(x, z) + 0.1, COAST_SURFACE_Y + 0.35),
+      0.82 + random() * 0.16,
+      6
+    );
   }
   for (let z = -540; z < -110; z += 14) {
     const x = 776 + (random() - 0.5) * 3;
     if (corridorClearance(x, z) < 3) {
       continue;
     }
-    addTree("palm", x, z, groundSurfaceYAt(x, z) + 0.1, 0.8 + random() * 0.3, 8);
+    addTree('palm', x, z, groundSurfaceYAt(x, z) + 0.1, 0.8 + random() * 0.3, 8);
   }
 }
 
 export function placeSpecialBlockTrees() {
   for (const block of SPECIAL_BLOCKS) {
-    if (block.kind === "park") {
-      placeParkTrees(block.minX, block.maxX, block.minZ, block.maxZ, 13, 61, "broadleaf", (x, z) => Math.abs((x - block.minX) - (z - block.minZ) * ((block.maxX - block.minX) / (block.maxZ - block.minZ))) < 4);
+    if (block.kind === 'park') {
+      placeParkTrees(
+        block.minX,
+        block.maxX,
+        block.minZ,
+        block.maxZ,
+        13,
+        61,
+        'broadleaf',
+        (x, z) =>
+          Math.abs(
+            x -
+              block.minX -
+              (z - block.minZ) * ((block.maxX - block.minX) / (block.maxZ - block.minZ))
+          ) < 4
+      );
     }
   }
 }
@@ -354,7 +489,7 @@ export function placeLowlandMeadowTrees() {
       if (random() > 0.32) {
         continue;
       }
-      addTree("broadleaf", jx, jz, groundSurfaceYAt(jx, jz), 0.9 + random() * 0.6, 9);
+      addTree('broadleaf', jx, jz, groundSurfaceYAt(jx, jz), 0.9 + random() * 0.6, 9);
     }
   }
 }

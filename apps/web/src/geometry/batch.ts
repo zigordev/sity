@@ -1,15 +1,22 @@
-import * as THREE from "three";
-import { mergeAll } from "../roads/geometry";
+import * as THREE from 'three';
+import { mergeAll } from '../roads/geometry';
 
 export class MaterialBatch {
-  private readonly parts = new Map<THREE.Material, { geometries: THREE.BufferGeometry[]; castShadow: boolean }>();
+  private readonly parts = new Map<
+    THREE.Material,
+    { geometries: THREE.BufferGeometry[]; castShadow: boolean }
+  >();
 
   constructor(
     private readonly parent: THREE.Object3D,
-    private readonly namePrefix: string,
+    private readonly namePrefix: string
   ) {}
 
-  add(material: THREE.Material, geometries: THREE.BufferGeometry | THREE.BufferGeometry[], castShadow = true) {
+  add(
+    material: THREE.Material,
+    geometries: THREE.BufferGeometry | THREE.BufferGeometry[],
+    castShadow = true
+  ) {
     const list = Array.isArray(geometries) ? geometries : [geometries];
     const entry = this.parts.get(material);
     if (entry) {
@@ -29,7 +36,7 @@ export class MaterialBatch {
       }
       index += 1;
       const mesh = new THREE.Mesh(merged, material);
-      mesh.name = `${this.namePrefix}-${material.name || "material"}-${index}`;
+      mesh.name = `${this.namePrefix}-${material.name || 'material'}-${index}`;
       mesh.castShadow = entry.castShadow;
       mesh.receiveShadow = true;
       this.parent.add(mesh);

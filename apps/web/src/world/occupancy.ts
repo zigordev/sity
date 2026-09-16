@@ -1,5 +1,5 @@
-import type { GroundPathPoint } from "../geometry/types";
-import { mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ } from "./frame";
+import type { GroundPathPoint } from '../geometry/types';
+import { mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ } from './frame';
 
 interface Segment {
   ax: number;
@@ -31,7 +31,12 @@ function bucketIndex(value: number) {
   return Math.floor(value / BUCKET_M);
 }
 
-export function registerCorridor(points: GroundPathPoint[], halfWidth: number, tag: string, closed = false) {
+export function registerCorridor(
+  points: GroundPathPoint[],
+  halfWidth: number,
+  tag: string,
+  closed = false
+) {
   const count = closed ? points.length : points.length - 1;
   for (let index = 0; index < count; index += 1) {
     const a = points[index];
@@ -74,7 +79,13 @@ function segmentDistance(x: number, z: number, segment: Segment) {
   return Math.hypot(x - px, z - pz);
 }
 
-export function corridorClearance(x: number, z: number, searchRadius = 90, tagPrefix?: string, excludePrefix?: string) {
+export function corridorClearance(
+  x: number,
+  z: number,
+  searchRadius = 90,
+  tagPrefix?: string,
+  excludePrefix?: string
+) {
   let best = Number.POSITIVE_INFINITY;
   const reach = Math.ceil(searchRadius / BUCKET_M);
   const ix = bucketIndex(x);
@@ -108,19 +119,37 @@ export function corridorClearance(x: number, z: number, searchRadius = 90, tagPr
 }
 
 export function pavementClearance(x: number, z: number, searchRadius = 60) {
-  return corridorClearance(x, z, searchRadius, "pavement:", "pavement:railway:");
+  return corridorClearance(x, z, searchRadius, 'pavement:', 'pavement:railway:');
 }
 
-function pointSegmentDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number) {
+function pointSegmentDistance(
+  px: number,
+  pz: number,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number
+) {
   const dx = bx - ax;
   const dz = bz - az;
   const lengthSq = dx * dx + dz * dz;
-  const t = lengthSq > 0.0001 ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / lengthSq)) : 0;
+  const t =
+    lengthSq > 0.0001 ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / lengthSq)) : 0;
   return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
 }
 
-function segmentsCross(ax: number, az: number, bx: number, bz: number, cx: number, cz: number, dx: number, dz: number) {
-  const orient = (px: number, pz: number, qx: number, qz: number, rx: number, rz: number) => (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
+function segmentsCross(
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+  cx: number,
+  cz: number,
+  dx: number,
+  dz: number
+) {
+  const orient = (px: number, pz: number, qx: number, qz: number, rx: number, rz: number) =>
+    (qx - px) * (rz - pz) - (qz - pz) * (rx - px);
   const o1 = orient(ax, az, bx, bz, cx, cz);
   const o2 = orient(ax, az, bx, bz, dx, dz);
   const o3 = orient(cx, cz, dx, dz, ax, az);
@@ -128,8 +157,15 @@ function segmentsCross(ax: number, az: number, bx: number, bz: number, cx: numbe
   return o1 * o2 <= 0 && o3 * o4 <= 0;
 }
 
-function segmentRectDistance(segment: Segment, minX: number, maxX: number, minZ: number, maxZ: number) {
-  const outside = (px: number, pz: number) => Math.hypot(Math.max(minX - px, 0, px - maxX), Math.max(minZ - pz, 0, pz - maxZ));
+function segmentRectDistance(
+  segment: Segment,
+  minX: number,
+  maxX: number,
+  minZ: number,
+  maxZ: number
+) {
+  const outside = (px: number, pz: number) =>
+    Math.hypot(Math.max(minX - px, 0, px - maxX), Math.max(minZ - pz, 0, pz - maxZ));
   const fromA = outside(segment.ax, segment.az);
   const fromB = outside(segment.bx, segment.bz);
   if (fromA === 0 || fromB === 0) {
@@ -148,7 +184,10 @@ function segmentRectDistance(segment: Segment, minX: number, maxX: number, minZ:
     if (segmentsCross(segment.ax, segment.az, segment.bx, segment.bz, cx, cz, nx, nz)) {
       return 0;
     }
-    best = Math.min(best, pointSegmentDistance(cx, cz, segment.ax, segment.az, segment.bx, segment.bz));
+    best = Math.min(
+      best,
+      pointSegmentDistance(cx, cz, segment.ax, segment.az, segment.bx, segment.bz)
+    );
   }
   return best;
 }
@@ -167,7 +206,10 @@ export function rectClearance(minX: number, maxX: number, minZ: number, maxZ: nu
           continue;
         }
         seen.add(segment);
-        best = Math.min(best, segmentRectDistance(segment, minX, maxX, minZ, maxZ) - segment.halfWidth);
+        best = Math.min(
+          best,
+          segmentRectDistance(segment, minX, maxX, minZ, maxZ) - segment.halfWidth
+        );
       }
     }
   }
@@ -222,7 +264,14 @@ interface CutPoint {
 const CUT_BUCKET_M = 30;
 const cutBuckets = new Map<string, CutPoint[]>();
 
-export function registerCut(x: number, z: number, roadY: number, halfWidth: number, isCut = true, group = "") {
+export function registerCut(
+  x: number,
+  z: number,
+  roadY: number,
+  halfWidth: number,
+  isCut = true,
+  group = ''
+) {
   const key = `${Math.floor(x / CUT_BUCKET_M)}:${Math.floor(z / CUT_BUCKET_M)}`;
   const list = cutBuckets.get(key);
   const point = { x, z, roadY, halfWidth, isCut, group };

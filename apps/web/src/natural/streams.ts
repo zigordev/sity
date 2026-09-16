@@ -1,12 +1,17 @@
-import * as THREE from "three";
-import { groundSurfaceBaseYAt, groundSurfaceYAt } from "./terrain";
-import { naturalElements } from "../render/context";
-import { riverBankMaterial, roadStructureConcreteMaterial, sharedSeaWaterMaterial, steelDarkMaterial } from "../render/materials";
-import { roadNetwork } from "../roads/build";
-import { mergeAll, polylineStations, volumeFromStations } from "../roads/geometry";
-import { registerCorridor, registerCut } from "../world/occupancy";
-import { sampleGroundPath } from "../world/frame";
-import type { GroundPathPoint } from "../geometry/types";
+import * as THREE from 'three';
+import { groundSurfaceBaseYAt, groundSurfaceYAt } from './terrain';
+import { naturalElements } from '../render/context';
+import {
+  riverBankMaterial,
+  roadStructureConcreteMaterial,
+  sharedSeaWaterMaterial,
+  steelDarkMaterial,
+} from '../render/materials';
+import { roadNetwork } from '../roads/build';
+import { mergeAll, polylineStations, volumeFromStations } from '../roads/geometry';
+import { registerCorridor, registerCut } from '../world/occupancy';
+import { sampleGroundPath } from '../world/frame';
+import type { GroundPathPoint } from '../geometry/types';
 
 export interface StreamSpec {
   id: string;
@@ -26,7 +31,7 @@ export interface LakeSpec {
 
 export const STREAMS: StreamSpec[] = [
   {
-    id: "mill-brook",
+    id: 'mill-brook',
     controls: [
       { x: -2640, z: -230 },
       { x: -2685, z: 120 },
@@ -40,7 +45,7 @@ export const STREAMS: StreamSpec[] = [
     depth: 1.4,
   },
   {
-    id: "pine-brook",
+    id: 'pine-brook',
     controls: [
       { x: -2280, z: -1230 },
       { x: -2420, z: -930 },
@@ -53,7 +58,7 @@ export const STREAMS: StreamSpec[] = [
     depth: 1.1,
   },
   {
-    id: "lake-outflow",
+    id: 'lake-outflow',
     controls: [
       { x: -2400, z: -420 },
       { x: -2470, z: -480 },
@@ -63,7 +68,7 @@ export const STREAMS: StreamSpec[] = [
     depth: 0.9,
   },
   {
-    id: "hill-brook",
+    id: 'hill-brook',
     controls: [
       { x: -1900, z: 560 },
       { x: -2120, z: 600 },
@@ -76,14 +81,26 @@ export const STREAMS: StreamSpec[] = [
   },
 ];
 
-export const LAKES: LakeSpec[] = [{ id: "forest-lake", x: -2350, z: -470, radiusX: 78, radiusZ: 56, depth: 3.2 }];
+export const LAKES: LakeSpec[] = [
+  { id: 'forest-lake', x: -2350, z: -470, radiusX: 78, radiusZ: 56, depth: 3.2 },
+];
 
 const streamPaths = new Map<string, GroundPathPoint[]>();
 
 function pathFor(stream: StreamSpec) {
   let path = streamPaths.get(stream.id);
   if (!path) {
-    const length = stream.controls.reduce((sum, point, index) => (index === 0 ? 0 : sum + Math.hypot(point.x - stream.controls[index - 1].x, point.z - stream.controls[index - 1].z)), 0);
+    const length = stream.controls.reduce(
+      (sum, point, index) =>
+        index === 0
+          ? 0
+          : sum +
+            Math.hypot(
+              point.x - stream.controls[index - 1].x,
+              point.z - stream.controls[index - 1].z
+            ),
+      0
+    );
     path = sampleGroundPath(stream.controls, Math.max(12, Math.ceil(length / 12)));
     streamPaths.set(stream.id, path);
   }
@@ -100,18 +117,37 @@ export function registerStreamCuts() {
     }
   }
   for (const lake of LAKES) {
-    registerCorridor([{ x: lake.x, z: lake.z }, { x: lake.x + 0.01, z: lake.z }], Math.max(lake.radiusX, lake.radiusZ) + 8, `lake:${lake.id}`);
+    registerCorridor(
+      [
+        { x: lake.x, z: lake.z },
+        { x: lake.x + 0.01, z: lake.z },
+      ],
+      Math.max(lake.radiusX, lake.radiusZ) + 8,
+      `lake:${lake.id}`
+    );
     const bed = groundSurfaceBaseYAt(lake.x, lake.z) - lake.depth;
     for (let angle = 0; angle < Math.PI * 2; angle += 0.16) {
       for (const scale of [0.25, 0.55, 0.85]) {
-        registerCut(lake.x + Math.cos(angle) * lake.radiusX * scale, lake.z + Math.sin(angle) * lake.radiusZ * scale, bed, 10, true, `lake:${lake.id}`);
+        registerCut(
+          lake.x + Math.cos(angle) * lake.radiusX * scale,
+          lake.z + Math.sin(angle) * lake.radiusZ * scale,
+          bed,
+          10,
+          true,
+          `lake:${lake.id}`
+        );
       }
     }
     registerCut(lake.x, lake.z, bed, 12, true, `lake:${lake.id}`);
   }
 }
 
-function addMesh(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, castShadow = false) {
+function addMesh(
+  name: string,
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material,
+  castShadow = false
+) {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
   mesh.castShadow = castShadow;
@@ -126,12 +162,14 @@ function addCulverts() {
   for (const stream of STREAMS) {
     const path = pathFor(stream);
     for (const road of roadNetwork.roads.values()) {
-      if (road.spec.class === "ramp") {
+      if (road.spec.class === 'ramp') {
         continue;
       }
-      let best: { distance: number; sample: (typeof road.samples)[number]; point: GroundPathPoint } | undefined;
+      let best:
+        | { distance: number; sample: (typeof road.samples)[number]; point: GroundPathPoint }
+        | undefined;
       for (const sample of road.samples) {
-        if (sample.structure !== "ground") {
+        if (sample.structure !== 'ground') {
           continue;
         }
         for (const point of path) {
@@ -151,10 +189,16 @@ function addCulverts() {
       const flow = { x: next.x - previous.x, z: next.z - previous.z };
       const length = Math.hypot(flow.x, flow.z) || 1;
       const heading = Math.atan2(flow.x / length, flow.z / length);
-      const crossing = Math.max(0.35, Math.abs((flow.x / length) * sample.tz - (flow.z / length) * sample.tx));
+      const crossing = Math.max(
+        0.35,
+        Math.abs((flow.x / length) * sample.tz - (flow.z / length) * sample.tx)
+      );
       const span = (2 * (road.halfWidth + road.cls.sidewalkWidth + 2)) / crossing;
       const radius = Math.min(stream.width * 0.45, 1.1);
-      const bedY = Math.min(groundSurfaceBaseYAt(sample.x, sample.z) - stream.depth, sample.y - 0.55 - radius * 2 - 0.2);
+      const bedY = Math.min(
+        groundSurfaceBaseYAt(sample.x, sample.z) - stream.depth,
+        sample.y - 0.55 - radius * 2 - 0.2
+      );
       const pipe = new THREE.CylinderGeometry(radius, radius, span, 12, 1, true);
       pipe.rotateX(Math.PI / 2);
       pipe.rotateY(heading);
@@ -163,7 +207,11 @@ function addCulverts() {
       for (const sign of [-1, 1]) {
         const wall = new THREE.BoxGeometry(stream.width + 3, stream.depth + 1.4, 0.5);
         wall.rotateY(heading);
-        wall.translate(sample.x + (flow.x / length) * sign * span * 0.5, bedY + (stream.depth + 1.4) * 0.5 - 0.4, sample.z + (flow.z / length) * sign * span * 0.5);
+        wall.translate(
+          sample.x + (flow.x / length) * sign * span * 0.5,
+          bedY + (stream.depth + 1.4) * 0.5 - 0.4,
+          sample.z + (flow.z / length) * sign * span * 0.5
+        );
         headwalls.push(wall);
       }
       if (stream.width >= 5) {
@@ -174,7 +222,11 @@ function addCulverts() {
           const offset = road.halfWidth + road.cls.sidewalkWidth + 0.35;
           const parapet = new THREE.BoxGeometry(0.4, 1.0, stream.width + 6);
           parapet.rotateY(roadHeading);
-          parapet.translate(sample.x + rightX * offset * sign, sample.y + 0.5, sample.z + rightZ * offset * sign);
+          parapet.translate(
+            sample.x + rightX * offset * sign,
+            sample.y + 0.5,
+            sample.z + rightZ * offset * sign
+          );
           parapets.push(parapet);
         }
       }
@@ -182,15 +234,15 @@ function addCulverts() {
   }
   const pipeMerged = mergeAll(pipes);
   if (pipeMerged) {
-    addMesh("stream-culvert-pipes", pipeMerged, steelDarkMaterial);
+    addMesh('stream-culvert-pipes', pipeMerged, steelDarkMaterial);
   }
   const wallMerged = mergeAll(headwalls);
   if (wallMerged) {
-    addMesh("stream-culvert-headwalls", wallMerged, roadStructureConcreteMaterial, true);
+    addMesh('stream-culvert-headwalls', wallMerged, roadStructureConcreteMaterial, true);
   }
   const parapetMerged = mergeAll(parapets);
   if (parapetMerged) {
-    addMesh("stream-bridge-parapets", parapetMerged, roadStructureConcreteMaterial, true);
+    addMesh('stream-bridge-parapets', parapetMerged, roadStructureConcreteMaterial, true);
   }
 }
 
@@ -199,16 +251,35 @@ export function addStreams() {
   const beds: THREE.BufferGeometry[] = [];
   for (const stream of STREAMS) {
     const path = pathFor(stream);
-    const stations = polylineStations(path.map((point) => ({ x: point.x, y: groundSurfaceBaseYAt(point.x, point.z) - stream.depth + 0.55, z: point.z })));
-    const surface = volumeFromStations(stations, -stream.width * 0.5, stream.width * 0.5, 0, 0.3, false);
+    const stations = polylineStations(
+      path.map((point) => ({
+        x: point.x,
+        y: groundSurfaceBaseYAt(point.x, point.z) - stream.depth + 0.55,
+        z: point.z,
+      }))
+    );
+    const surface = volumeFromStations(
+      stations,
+      -stream.width * 0.5,
+      stream.width * 0.5,
+      0,
+      0.3,
+      false
+    );
     water.push(surface.top);
     const bed = volumeFromStations(
-      polylineStations(path.map((point) => ({ x: point.x, y: groundSurfaceBaseYAt(point.x, point.z) - stream.depth + 0.1, z: point.z }))),
+      polylineStations(
+        path.map((point) => ({
+          x: point.x,
+          y: groundSurfaceBaseYAt(point.x, point.z) - stream.depth + 0.1,
+          z: point.z,
+        }))
+      ),
       -stream.width * 0.5 - 0.8,
       stream.width * 0.5 + 0.8,
       0,
       0.2,
-      false,
+      false
     );
     beds.push(bed.top);
   }
@@ -223,15 +294,21 @@ export function addStreams() {
   const waterMerged = mergeAll(water);
   if (waterMerged) {
     const mesh = new THREE.Mesh(waterMerged, sharedSeaWaterMaterial);
-    mesh.name = "streams-and-lakes-water";
+    mesh.name = 'streams-and-lakes-water';
     mesh.renderOrder = 6;
     mesh.receiveShadow = true;
     naturalElements.add(mesh);
   }
   const bedMerged = mergeAll(beds);
   if (bedMerged) {
-    bedMerged.setAttribute("color", new THREE.Float32BufferAttribute(new Array((bedMerged.getAttribute("position").count) * 3).fill(0.42), 3));
-    addMesh("stream-beds", bedMerged, riverBankMaterial);
+    bedMerged.setAttribute(
+      'color',
+      new THREE.Float32BufferAttribute(
+        new Array(bedMerged.getAttribute('position').count * 3).fill(0.42),
+        3
+      )
+    );
+    addMesh('stream-beds', bedMerged, riverBankMaterial);
   }
   addCulverts();
 }

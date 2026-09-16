@@ -1,4 +1,4 @@
-import type { Lane, RoadNetwork, Vec3 } from "./network";
+import type { Lane, RoadNetwork, Vec3 } from './network';
 
 export interface RouteResult {
   laneIds: string[];
@@ -42,7 +42,9 @@ export class RoadGraph {
     if (!lane) {
       return [];
     }
-    return lane.next.map((nextId) => this.network.lanes.get(nextId)).filter((next): next is Lane => Boolean(next));
+    return lane.next
+      .map((nextId) => this.network.lanes.get(nextId))
+      .filter((next): next is Lane => Boolean(next));
   }
 
   predecessors(id: string): Lane[] {
@@ -50,7 +52,9 @@ export class RoadGraph {
     if (!lane) {
       return [];
     }
-    return lane.prev.map((prevId) => this.network.lanes.get(prevId)).filter((prev): prev is Lane => Boolean(prev));
+    return lane.prev
+      .map((prevId) => this.network.lanes.get(prevId))
+      .filter((prev): prev is Lane => Boolean(prev));
   }
 
   laneIds() {
@@ -58,15 +62,21 @@ export class RoadGraph {
   }
 
   drivableLaneIds() {
-    return [...this.network.lanes.values()].filter((lane) => lane.kind !== "connector").map((lane) => lane.id);
+    return [...this.network.lanes.values()]
+      .filter((lane) => lane.kind !== 'connector')
+      .map((lane) => lane.id);
   }
 
   sources() {
-    return [...this.network.lanes.values()].filter((lane) => lane.prev.length === 0 && lane.kind !== "connector");
+    return [...this.network.lanes.values()].filter(
+      (lane) => lane.prev.length === 0 && lane.kind !== 'connector'
+    );
   }
 
   sinks() {
-    return [...this.network.lanes.values()].filter((lane) => lane.next.length === 0 && lane.kind !== "connector");
+    return [...this.network.lanes.values()].filter(
+      (lane) => lane.next.length === 0 && lane.kind !== 'connector'
+    );
   }
 
   findRoute(fromLaneId: string, toLaneId: string): RouteResult | undefined {
@@ -95,7 +105,11 @@ export class RoadGraph {
         continue;
       }
       const candidates: Array<{ lane: Lane; cost: number; change: boolean }> = [
-        ...this.successors(current.id).map((lane) => ({ lane, cost: current.cost + lane.length, change: false })),
+        ...this.successors(current.id).map((lane) => ({
+          lane,
+          cost: current.cost + lane.length,
+          change: false,
+        })),
         ...currentLane.adjacent
           .map((id) => this.lane(id))
           .filter((lane): lane is Lane => Boolean(lane))
@@ -229,7 +243,7 @@ export class RoadGraph {
     let maxConnectorGapM = 0;
     const stranded: string[] = [];
     const edgeNodeIds = new Set(
-      [...this.network.nodes.values()].filter((node) => node.spec.edge).map((node) => node.spec.id),
+      [...this.network.nodes.values()].filter((node) => node.spec.edge).map((node) => node.spec.id)
     );
 
     for (const lane of this.network.lanes.values()) {

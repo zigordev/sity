@@ -1,18 +1,25 @@
-import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import * as THREE from "three";
-import { GroundPathPoint, OrientedXYZPlacement, ScaledOrientedXYZPlacement, ScaledXYZPlacement, XYZPlacement, XZPlacement } from "./types";
-import { artificialElements, naturalElements, roadElements } from "../render/context";
-import { contactShadowMaterial } from "../render/materials";
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import * as THREE from 'three';
+import {
+  GroundPathPoint,
+  OrientedXYZPlacement,
+  ScaledOrientedXYZPlacement,
+  ScaledXYZPlacement,
+  XYZPlacement,
+  XZPlacement,
+} from './types';
+import { artificialElements, naturalElements, roadElements } from '../render/context';
+import { contactShadowMaterial } from '../render/materials';
 
 export function addPlanarXZUVs(geometry: THREE.BufferGeometry, textureScaleM = 80) {
-  const position = geometry.getAttribute("position");
+  const position = geometry.getAttribute('position');
   const uvs: number[] = [];
 
   for (let index = 0; index < position.count; index += 1) {
     uvs.push(position.getX(index) / textureScaleM, position.getZ(index) / textureScaleM);
   }
 
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
 }
 
 export function addFlatPlane(
@@ -24,7 +31,7 @@ export function addFlatPlane(
   y: number,
   z: number,
   renderOrder: number,
-  parent: THREE.Object3D = naturalElements,
+  parent: THREE.Object3D = naturalElements
 ) {
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), material);
   plane.name = name;
@@ -42,7 +49,7 @@ export function addContactShadowPlane(
   x: number,
   y: number,
   z: number,
-  parent: THREE.Object3D = artificialElements,
+  parent: THREE.Object3D = artificialElements
 ) {
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), contactShadowMaterial);
   plane.name = name;
@@ -59,12 +66,12 @@ export function addExtrudedPolygonSurface(
   topY: number,
   thickness: number,
   renderOrder: number,
-  parent: THREE.Object3D = naturalElements,
+  parent: THREE.Object3D = naturalElements
 ) {
   const positions: number[] = [];
   const topTriangles = THREE.ShapeUtils.triangulateShape(
     points.map((point) => new THREE.Vector2(point.x, point.z)),
-    [],
+    []
   );
   const indices: number[] = [];
   const bottomY = topY - thickness;
@@ -83,7 +90,7 @@ export function addExtrudedPolygonSurface(
     indices.push(
       triangle[2] + points.length,
       triangle[1] + points.length,
-      triangle[0] + points.length,
+      triangle[0] + points.length
     );
   }
 
@@ -97,7 +104,7 @@ export function addExtrudedPolygonSurface(
   }
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   addPlanarXZUVs(geometry);
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
@@ -119,12 +126,12 @@ export function addLayeredPolygonVolume(
   thickness: number,
   renderOrder: number,
   parent: THREE.Object3D = naturalElements,
-  castShadow = true,
+  castShadow = true
 ) {
   const positions: number[] = [];
   const topTriangles = THREE.ShapeUtils.triangulateShape(
     points.map((point) => new THREE.Vector2(point.x, point.z)),
-    [],
+    []
   );
   const indices: number[] = [];
   const bottomY = topY - thickness;
@@ -146,7 +153,7 @@ export function addLayeredPolygonVolume(
     indices.push(
       triangle[2] + points.length,
       triangle[1] + points.length,
-      triangle[0] + points.length,
+      triangle[0] + points.length
     );
   }
   const bottomIndexCount = indices.length - bottomIndexStart;
@@ -163,7 +170,7 @@ export function addLayeredPolygonVolume(
   const sideIndexCount = indices.length - sideIndexStart;
 
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   addPlanarXZUVs(geometry);
   geometry.setIndex(indices);
   geometry.clearGroups();
@@ -180,7 +187,11 @@ export function addLayeredPolygonVolume(
   parent.add(mesh);
 }
 
-export function distanceToSegment2D(point: GroundPathPoint, start: GroundPathPoint, end: GroundPathPoint) {
+export function distanceToSegment2D(
+  point: GroundPathPoint,
+  start: GroundPathPoint,
+  end: GroundPathPoint
+) {
   const segmentX = end.x - start.x;
   const segmentZ = end.z - start.z;
   const lengthSq = segmentX * segmentX + segmentZ * segmentZ;
@@ -192,7 +203,7 @@ export function distanceToSegment2D(point: GroundPathPoint, start: GroundPathPoi
   const t = THREE.MathUtils.clamp(
     ((point.x - start.x) * segmentX + (point.z - start.z) * segmentZ) / lengthSq,
     0,
-    1,
+    1
   );
   const projectedX = start.x + segmentX * t;
   const projectedZ = start.z + segmentZ * t;
@@ -206,7 +217,7 @@ export function distanceToPath2D(point: GroundPathPoint, path: GroundPathPoint[]
   for (let index = 0; index < segmentCount; index += 1) {
     minDistance = Math.min(
       minDistance,
-      distanceToSegment2D(point, path[index], path[(index + 1) % path.length]),
+      distanceToSegment2D(point, path[index], path[(index + 1) % path.length])
     );
   }
 
@@ -222,7 +233,7 @@ export function addBox(
   x: number,
   y: number,
   z: number,
-  parent: THREE.Object3D = artificialElements,
+  parent: THREE.Object3D = artificialElements
 ) {
   const bevelRadius = Math.min(width, height, depth) * 0.08;
   const geometry =
@@ -247,7 +258,7 @@ export function addTopAlignedBox(
   topY: number,
   z: number,
   renderOrder: number,
-  parent: THREE.Object3D = artificialElements,
+  parent: THREE.Object3D = artificialElements
 ) {
   const bevelRadius = Math.min(width, height, depth) * 0.08;
   const geometry =
@@ -272,12 +283,12 @@ export function addCylinderInstances(
   material: THREE.Material,
   topY: number,
   placements: XZPlacement[],
-  parent: THREE.Object3D = artificialElements,
+  parent: THREE.Object3D = artificialElements
 ) {
   const mesh = new THREE.InstancedMesh(
     new THREE.CylinderGeometry(radius, radius, height, 12),
     material,
-    placements.length,
+    placements.length
   );
   const matrix = new THREE.Matrix4();
 
@@ -300,7 +311,7 @@ export function addBoxInstances(
   depth: number,
   material: THREE.Material,
   placements: XYZPlacement[],
-  parent: THREE.Object3D = artificialElements,
+  parent: THREE.Object3D = artificialElements
 ) {
   const bevelRadius = Math.min(width, height, depth) * 0.08;
   const mesh = new THREE.InstancedMesh(
@@ -308,7 +319,7 @@ export function addBoxInstances(
       ? new RoundedBoxGeometry(width, height, depth, 2, Math.min(bevelRadius, 1.4))
       : new THREE.BoxGeometry(width, height, depth),
     material,
-    placements.length,
+    placements.length
   );
   const matrix = new THREE.Matrix4();
 
@@ -332,7 +343,7 @@ export function addOrientedBoxInstances(
   material: THREE.Material,
   placements: OrientedXYZPlacement[],
   parent: THREE.Object3D = artificialElements,
-  castShadow = true,
+  castShadow = true
 ) {
   if (placements.length === 0) {
     return;
@@ -344,7 +355,7 @@ export function addOrientedBoxInstances(
       ? new RoundedBoxGeometry(width, height, depth, 2, Math.min(bevelRadius, 1.1))
       : new THREE.BoxGeometry(width, height, depth),
     material,
-    placements.length,
+    placements.length
   );
   const matrix = new THREE.Matrix4();
   const position = new THREE.Vector3();
@@ -370,12 +381,12 @@ export function addScaledSphereInstances(
   name: string,
   material: THREE.Material,
   placements: ScaledXYZPlacement[],
-  parent: THREE.Object3D = naturalElements,
+  parent: THREE.Object3D = naturalElements
 ) {
   const mesh = new THREE.InstancedMesh(
     new THREE.SphereGeometry(1, 14, 8),
     material,
-    placements.length,
+    placements.length
   );
   const matrix = new THREE.Matrix4();
   const position = new THREE.Vector3();
@@ -400,7 +411,7 @@ export function addScaledOrientedSphereInstances(
   name: string,
   material: THREE.Material,
   placements: ScaledOrientedXYZPlacement[],
-  parent: THREE.Object3D = naturalElements,
+  parent: THREE.Object3D = naturalElements
 ) {
   if (placements.length === 0) {
     return;
@@ -409,7 +420,7 @@ export function addScaledOrientedSphereInstances(
   const mesh = new THREE.InstancedMesh(
     new THREE.SphereGeometry(1, 12, 7),
     material,
-    placements.length,
+    placements.length
   );
   const matrix = new THREE.Matrix4();
   const position = new THREE.Vector3();
@@ -438,7 +449,7 @@ export function createLocalMesh(
   material: THREE.Material,
   x: number,
   y: number,
-  z: number,
+  z: number
 ) {
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = name;
@@ -451,7 +462,7 @@ export function createLocalMesh(
 export function isInsideBounds(
   point: GroundPathPoint,
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number },
-  marginM = 0,
+  marginM = 0
 ) {
   return (
     point.x >= bounds.minX + marginM &&
@@ -471,7 +482,7 @@ export function addOrientedBox(
   y: number,
   z: number,
   rotationY: number,
-  parent: THREE.Object3D = roadElements,
+  parent: THREE.Object3D = roadElements
 ) {
   const box = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
   box.name = name;

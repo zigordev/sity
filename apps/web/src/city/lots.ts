@@ -1,12 +1,23 @@
-import { RIVER_WIDTH_M } from "../config/constants";
-import { distanceToPath2D } from "../geometry/helpers";
-import { fullTerrainSurfaceYAt, groundSurfaceYAt, isInsideReservoirFootprint } from "../natural/terrain";
-import { roadNetwork } from "../roads/build";
-import { perpRight, sampleAtStation, type BuiltRoad } from "../roads/network";
-import { corridorClearance } from "../world/occupancy";
-import { mainBoundaryMaxX, mainBoundaryMaxZ, mainBoundaryMinX, mainBoundaryMinZ, riverPath, riverSeaTransitionPath } from "../world/frame";
-import { DISTRICT_STYLES, SPECIAL_BLOCKS, districtAt, type DistrictKind } from "./districts";
-import { createRandom } from "./random";
+import { RIVER_WIDTH_M } from '../config/constants';
+import { distanceToPath2D } from '../geometry/helpers';
+import {
+  fullTerrainSurfaceYAt,
+  groundSurfaceYAt,
+  isInsideReservoirFootprint,
+} from '../natural/terrain';
+import { roadNetwork } from '../roads/build';
+import { perpRight, sampleAtStation, type BuiltRoad } from '../roads/network';
+import { corridorClearance } from '../world/occupancy';
+import {
+  mainBoundaryMaxX,
+  mainBoundaryMaxZ,
+  mainBoundaryMinX,
+  mainBoundaryMinZ,
+  riverPath,
+  riverSeaTransitionPath,
+} from '../world/frame';
+import { DISTRICT_STYLES, SPECIAL_BLOCKS, districtAt, type DistrictKind } from './districts';
+import { createRandom } from './random';
 
 export const RASTER_CELL_M = 4;
 const rasterColumns = Math.ceil((mainBoundaryMaxX - mainBoundaryMinX) / RASTER_CELL_M) + 2;
@@ -129,9 +140,15 @@ export function markSpecialBlocks() {
   }
 }
 
-const LOT_CLASSES = new Set(["arterial", "collector", "local", "industrial"]);
+const LOT_CLASSES = new Set(['arterial', 'collector', 'local', 'industrial']);
 
-function lotQuad(front: { x: number; z: number }, tangent: { x: number; z: number }, inward: { x: number; z: number }, width: number, depth: number): Quad {
+function lotQuad(
+  front: { x: number; z: number },
+  tangent: { x: number; z: number },
+  inward: { x: number; z: number },
+  width: number,
+  depth: number
+): Quad {
   const half = width * 0.5;
   const a = { x: front.x - tangent.x * half, z: front.z - tangent.z * half };
   const b = { x: front.x + tangent.x * half, z: front.z + tangent.z * half };
@@ -142,10 +159,13 @@ function lotQuad(front: { x: number; z: number }, tangent: { x: number; z: numbe
 
 function lotIsBuildable(quad: Quad, maxRise = 3.2, allowHighGround = false) {
   const heights: number[] = [];
-  const probes = [...quad.corners, {
-    x: (quad.corners[0].x + quad.corners[2].x) * 0.5,
-    z: (quad.corners[0].z + quad.corners[2].z) * 0.5,
-  }];
+  const probes = [
+    ...quad.corners,
+    {
+      x: (quad.corners[0].x + quad.corners[2].x) * 0.5,
+      z: (quad.corners[0].z + quad.corners[2].z) * 0.5,
+    },
+  ];
   for (const point of probes) {
     if (isNaturalKeepOut(point.x, point.z, allowHighGround)) {
       return false;
@@ -153,7 +173,7 @@ function lotIsBuildable(quad: Quad, maxRise = 3.2, allowHighGround = false) {
     heights.push(groundSurfaceYAt(point.x, point.z));
   }
   for (const point of quadPoints(quad, 3.5)) {
-    if (corridorClearance(point.x, point.z, 60, "pavement:") < 1.0) {
+    if (corridorClearance(point.x, point.z, 60, 'pavement:') < 1.0) {
       return false;
     }
   }
@@ -200,7 +220,7 @@ function generateLotsAlong(road: BuiltRoad, random: () => number) {
       for (const depthScale of [1, 0.72, 0.5, 0.36]) {
         const depth = style.lotDepth * depthScale;
         const quad = lotQuad(front, tangent, inward, width - 1.2, depth);
-        if (!lotIsBuildable(quad, style.maxRise ?? 3.2, district.kind === "alpine")) {
+        if (!lotIsBuildable(quad, style.maxRise ?? 3.2, district.kind === 'alpine')) {
           continue;
         }
         markQuad(quad, RASTER_LOT);
@@ -210,7 +230,7 @@ function generateLotsAlong(road: BuiltRoad, random: () => number) {
         };
         const cornerHeights = quad.corners.map((corner) => groundSurfaceYAt(corner.x, corner.z));
         lots.push({
-          id: `${road.spec.id}:${side > 0 ? "r" : "l"}:${index}`,
+          id: `${road.spec.id}:${side > 0 ? 'r' : 'l'}:${index}`,
           district: district.kind,
           roadId: road.spec.id,
           center,

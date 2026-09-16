@@ -1,6 +1,10 @@
-import * as THREE from "three";
-import { ATTRACTION_PIER_DEPTH_M, ATTRACTION_PIER_LENGTH_M, PLATFORM_SURFACE_Y } from "../config/constants";
-import { artificialElements } from "../render/context";
+import * as THREE from 'three';
+import {
+  ATTRACTION_PIER_DEPTH_M,
+  ATTRACTION_PIER_LENGTH_M,
+  PLATFORM_SURFACE_Y,
+} from '../config/constants';
+import { artificialElements } from '../render/context';
 import {
   attractionBlueMaterial,
   attractionRedMaterial,
@@ -14,19 +18,30 @@ import {
   shelterGlassMaterial,
   steelDarkMaterial,
   woodPierMaterial,
-} from "../render/materials";
-import { boxBetween, mergeAll } from "../roads/geometry";
-import { MaterialBatch } from "../geometry/batch";
+} from '../render/materials';
+import { boxBetween, mergeAll } from '../roads/geometry';
+import { MaterialBatch } from '../geometry/batch';
 
 const deckY = PLATFORM_SURFACE_Y;
 
-const batch = new MaterialBatch(artificialElements, "pier");
+const batch = new MaterialBatch(artificialElements, 'pier');
 
-function addMerged(_name: string, parts: THREE.BufferGeometry[], material: THREE.Material, castShadow = true) {
+function addMerged(
+  _name: string,
+  parts: THREE.BufferGeometry[],
+  material: THREE.Material,
+  castShadow = true
+) {
   batch.add(material, parts, castShadow);
 }
 
-function instanced(name: string, geometry: THREE.BufferGeometry, material: THREE.Material, matrices: THREE.Matrix4[], castShadow = true) {
+function instanced(
+  name: string,
+  geometry: THREE.BufferGeometry,
+  material: THREE.Material,
+  matrices: THREE.Matrix4[],
+  castShadow = true
+) {
   if (matrices.length === 0) {
     return;
   }
@@ -39,7 +54,15 @@ function instanced(name: string, geometry: THREE.BufferGeometry, material: THREE
   artificialElements.add(mesh);
 }
 
-function boxAt(width: number, height: number, depth: number, x: number, bottomY: number, z: number, rotationY = 0) {
+function boxAt(
+  width: number,
+  height: number,
+  depth: number,
+  x: number,
+  bottomY: number,
+  z: number,
+  rotationY = 0
+) {
   const geometry = new THREE.BoxGeometry(width, height, depth);
   geometry.rotateY(rotationY);
   geometry.translate(x, bottomY + height * 0.5, z);
@@ -52,8 +75,13 @@ function addEntrance(x: number, z: number) {
     parts.push(boxAt(0.7, 7.5, 0.7, x, deckY, z + dz));
   }
   parts.push(boxAt(0.6, 1.4, 23, x, deckY + 7.2, z));
-  addMerged("pier-entrance-arch", parts, craneWhiteMaterial);
-  addMerged("pier-entrance-sign", [boxAt(0.3, 2.2, 12, x, deckY + 8.6, z)], attractionYellowMaterial, false);
+  addMerged('pier-entrance-arch', parts, craneWhiteMaterial);
+  addMerged(
+    'pier-entrance-sign',
+    [boxAt(0.3, 2.2, 12, x, deckY + 8.6, z)],
+    attractionYellowMaterial,
+    false
+  );
 }
 
 function addStalls(x0: number, z: number, count: number) {
@@ -71,9 +99,9 @@ function addStalls(x0: number, z: number, count: number) {
       counters.push(boxAt(0.08, 2.9, 0.08, x + dx, deckY, zz - side * 3.9));
     }
   }
-  addMerged("pier-stall-walls", walls, craneWhiteMaterial);
-  addMerged("pier-stall-awnings", awnings, attractionRedMaterial, false);
-  addMerged("pier-stall-counters", counters, dockMaterial);
+  addMerged('pier-stall-walls', walls, craneWhiteMaterial);
+  addMerged('pier-stall-awnings', awnings, attractionRedMaterial, false);
+  addMerged('pier-stall-counters', counters, dockMaterial);
 }
 
 function addCarousel(x: number, z: number) {
@@ -81,17 +109,17 @@ function addCarousel(x: number, z: number) {
   platform.translate(x, deckY + 0.25, z);
   const step = new THREE.CylinderGeometry(9.6, 9.8, 0.25, 32);
   step.translate(x, deckY + 0.12, z);
-  addMerged("pier-carousel-platform", [platform, step], woodPierMaterial);
+  addMerged('pier-carousel-platform', [platform, step], woodPierMaterial);
   const column = new THREE.CylinderGeometry(0.7, 0.7, 5.6, 12);
   column.translate(x, deckY + 3.3, z);
-  addMerged("pier-carousel-column", [column], attractionYellowMaterial);
+  addMerged('pier-carousel-column', [column], attractionYellowMaterial);
   const canopy = new THREE.ConeGeometry(10.2, 3.8, 24);
   canopy.translate(x, deckY + 7.5, z);
-  addMerged("pier-carousel-canopy", [canopy], attractionRedMaterial);
+  addMerged('pier-carousel-canopy', [canopy], attractionRedMaterial);
   const rim = new THREE.TorusGeometry(10, 0.25, 8, 32);
   rim.rotateX(Math.PI / 2);
   rim.translate(x, deckY + 5.6, z);
-  addMerged("pier-carousel-rim", [rim], attractionYellowMaterial, false);
+  addMerged('pier-carousel-rim', [rim], attractionYellowMaterial, false);
   const poles: THREE.BufferGeometry[] = [];
   const horses: THREE.Matrix4[] = [];
   for (let index = 0; index < 16; index += 1) {
@@ -106,17 +134,24 @@ function addCarousel(x: number, z: number) {
       new THREE.Matrix4().compose(
         new THREE.Vector3(px, deckY + 1.25 + (index % 3) * 0.2, pz),
         new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -angle),
-        new THREE.Vector3(1, 1, 1),
-      ),
+        new THREE.Vector3(1, 1, 1)
+      )
     );
   }
-  addMerged("pier-carousel-poles", poles, guardrailMaterial, false);
+  addMerged('pier-carousel-poles', poles, guardrailMaterial, false);
   const horse = mergeAll([
-    (() => { const g = new THREE.BoxGeometry(0.45, 0.55, 1.4); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(0.3, 0.6, 0.45); g.translate(0, 0.5, 0.75); return g; })(),
+    (() => {
+      const g = new THREE.BoxGeometry(0.45, 0.55, 1.4);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(0.3, 0.6, 0.45);
+      g.translate(0, 0.5, 0.75);
+      return g;
+    })(),
   ]);
   if (horse) {
-    instanced("pier-carousel-horses", horse, craneWhiteMaterial, horses);
+    instanced('pier-carousel-horses', horse, craneWhiteMaterial, horses);
   }
 }
 
@@ -137,28 +172,40 @@ function addFerrisWheel(x: number, z: number) {
     const rx = x + Math.cos(angle) * radius;
     const ry = hubY + Math.sin(angle) * radius;
     for (const dz of [-2.1, 2.1]) {
-      spokes.push(boxBetween({ x, y: hubY, z: z + dz }, { x: rx, y: ry, z: z + dz }, 0.22, 0.22, 0));
+      spokes.push(
+        boxBetween({ x, y: hubY, z: z + dz }, { x: rx, y: ry, z: z + dz }, 0.22, 0.22, 0)
+      );
     }
     gondolas.push(new THREE.Matrix4().makeTranslation(rx, ry - 1.6, z));
   }
-  addMerged("pier-ferris-wheel-rim", [rim, innerRim, hub], attractionRedMaterial);
-  addMerged("pier-ferris-wheel-spokes", spokes, steelDarkMaterial, false);
+  addMerged('pier-ferris-wheel-rim', [rim, innerRim, hub], attractionRedMaterial);
+  addMerged('pier-ferris-wheel-spokes', spokes, steelDarkMaterial, false);
   const gondola = mergeAll([
-    (() => { const g = new THREE.BoxGeometry(1.9, 1.9, 1.6); g.translate(0, 0, 0); return g; })(),
-    (() => { const g = new THREE.BoxGeometry(0.12, 1.4, 0.12); g.translate(0, 1.55, 0); return g; })(),
+    (() => {
+      const g = new THREE.BoxGeometry(1.9, 1.9, 1.6);
+      g.translate(0, 0, 0);
+      return g;
+    })(),
+    (() => {
+      const g = new THREE.BoxGeometry(0.12, 1.4, 0.12);
+      g.translate(0, 1.55, 0);
+      return g;
+    })(),
   ]);
   if (gondola) {
-    instanced("pier-ferris-wheel-gondolas", gondola, attractionBlueMaterial, gondolas);
+    instanced('pier-ferris-wheel-gondolas', gondola, attractionBlueMaterial, gondolas);
   }
   const supports: THREE.BufferGeometry[] = [];
   for (const dz of [-3.2, 3.2]) {
     for (const dx of [-16, 16]) {
-      supports.push(boxBetween({ x: x + dx, y: deckY, z: z + dz }, { x, y: hubY, z: z + dz }, 0.9, 0.9, 0));
+      supports.push(
+        boxBetween({ x: x + dx, y: deckY, z: z + dz }, { x, y: hubY, z: z + dz }, 0.9, 0.9, 0)
+      );
     }
     supports.push(boxAt(34, 0.8, 1.6, x, deckY, z + dz));
   }
   supports.push(boxBetween({ x, y: hubY, z: z - 3.6 }, { x, y: hubY, z: z + 3.6 }, 1.2, 1.2, 0));
-  addMerged("pier-ferris-wheel-supports", supports, craneWhiteMaterial);
+  addMerged('pier-ferris-wheel-supports', supports, craneWhiteMaterial);
 }
 
 function addRollerCoaster(x0: number, x1: number, z0: number, z1: number) {
@@ -177,9 +224,9 @@ function addRollerCoaster(x0: number, x1: number, z0: number, z1: number) {
     new THREE.Vector3(cx - halfX * 0.3, deckY + 12, cz - halfZ * 0.85),
     new THREE.Vector3(cx - halfX * 0.75, deckY + 6, cz - halfZ * 0.3),
   ];
-  const curve = new THREE.CatmullRomCurve3(points, true, "centripetal", 0.6);
+  const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.6);
   const track = new THREE.TubeGeometry(curve, 220, 0.42, 8, true);
-  addMerged("pier-coaster-track", [track], attractionYellowMaterial);
+  addMerged('pier-coaster-track', [track], attractionYellowMaterial);
   const length = curve.getLength();
   const ties: THREE.Matrix4[] = [];
   const supports: THREE.BufferGeometry[] = [];
@@ -191,56 +238,119 @@ function addRollerCoaster(x0: number, x1: number, z0: number, z1: number) {
     const tangent = curve.getTangentAt(t);
     const flat = new THREE.Vector3(tangent.x, 0, tangent.z).normalize();
     const quaternion = new THREE.Quaternion().setFromUnitVectors(forward, flat);
-    ties.push(new THREE.Matrix4().compose(new THREE.Vector3(point.x, point.y - 0.5, point.z), quaternion, new THREE.Vector3(1, 1, 1)));
+    ties.push(
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(point.x, point.y - 0.5, point.z),
+        quaternion,
+        new THREE.Vector3(1, 1, 1)
+      )
+    );
   }
-  instanced("pier-coaster-ties", new THREE.BoxGeometry(2.4, 0.16, 0.5), steelDarkMaterial, ties, false);
+  instanced(
+    'pier-coaster-ties',
+    new THREE.BoxGeometry(2.4, 0.16, 0.5),
+    steelDarkMaterial,
+    ties,
+    false
+  );
   const supportCount = Math.floor(length / 6.5);
   for (let index = 0; index < supportCount; index += 1) {
     const point = curve.getPointAt(index / supportCount);
     if (point.y - deckY < 2.2) {
       continue;
     }
-    supports.push(boxBetween({ x: point.x, y: deckY, z: point.z }, { x: point.x, y: point.y - 0.6, z: point.z }, 0.35, 0.35, 0));
+    supports.push(
+      boxBetween(
+        { x: point.x, y: deckY, z: point.z },
+        { x: point.x, y: point.y - 0.6, z: point.z },
+        0.35,
+        0.35,
+        0
+      )
+    );
     if (point.y - deckY > 9) {
-      supports.push(boxBetween({ x: point.x - 2.2, y: deckY, z: point.z }, { x: point.x, y: point.y - 4, z: point.z }, 0.22, 0.22, 0));
-      supports.push(boxBetween({ x: point.x + 2.2, y: deckY, z: point.z }, { x: point.x, y: point.y - 4, z: point.z }, 0.22, 0.22, 0));
+      supports.push(
+        boxBetween(
+          { x: point.x - 2.2, y: deckY, z: point.z },
+          { x: point.x, y: point.y - 4, z: point.z },
+          0.22,
+          0.22,
+          0
+        )
+      );
+      supports.push(
+        boxBetween(
+          { x: point.x + 2.2, y: deckY, z: point.z },
+          { x: point.x, y: point.y - 4, z: point.z },
+          0.22,
+          0.22,
+          0
+        )
+      );
     }
   }
-  addMerged("pier-coaster-supports", supports, craneWhiteMaterial);
+  addMerged('pier-coaster-supports', supports, craneWhiteMaterial);
   const cars: THREE.Matrix4[] = [];
   for (let index = 0; index < 4; index += 1) {
     const t = 0.26 + index * 0.012;
     const point = curve.getPointAt(t);
     const tangent = curve.getTangentAt(t);
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(forward, tangent.clone().normalize());
-    cars.push(new THREE.Matrix4().compose(new THREE.Vector3(point.x, point.y + 0.55, point.z), quaternion, new THREE.Vector3(1, 1, 1)));
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(
+      forward,
+      tangent.clone().normalize()
+    );
+    cars.push(
+      new THREE.Matrix4().compose(
+        new THREE.Vector3(point.x, point.y + 0.55, point.z),
+        quaternion,
+        new THREE.Vector3(1, 1, 1)
+      )
+    );
   }
-  instanced("pier-coaster-train", new THREE.BoxGeometry(1.6, 1.1, 2.8), attractionRedMaterial, cars);
+  instanced(
+    'pier-coaster-train',
+    new THREE.BoxGeometry(1.6, 1.1, 2.8),
+    attractionRedMaterial,
+    cars
+  );
   const stationPoint = curve.getPointAt(0.02);
-  addMerged("pier-coaster-station", [boxAt(14, 0.9, 5, stationPoint.x + 4, deckY, stationPoint.z + 3.2)], woodPierMaterial);
-  addMerged("pier-coaster-station-canopy", [boxAt(14, 0.25, 6, stationPoint.x + 4, deckY + 4.3, stationPoint.z + 3.2)], attractionBlueMaterial);
+  addMerged(
+    'pier-coaster-station',
+    [boxAt(14, 0.9, 5, stationPoint.x + 4, deckY, stationPoint.z + 3.2)],
+    woodPierMaterial
+  );
+  addMerged(
+    'pier-coaster-station-canopy',
+    [boxAt(14, 0.25, 6, stationPoint.x + 4, deckY + 4.3, stationPoint.z + 3.2)],
+    attractionBlueMaterial
+  );
   const posts: THREE.BufferGeometry[] = [];
   for (const dx of [-6, 6]) {
     for (const dz of [-2.6, 2.6]) {
       posts.push(boxAt(0.2, 4.3, 0.2, stationPoint.x + 4 + dx, deckY, stationPoint.z + 3.2 + dz));
     }
   }
-  addMerged("pier-coaster-station-posts", posts, guardrailMaterial);
+  addMerged('pier-coaster-station-posts', posts, guardrailMaterial);
 }
 
 function addArcade(x: number, z: number) {
-  addMerged("pier-arcade-walls", [boxAt(34, 6.5, 14, x, deckY, z)], craneWhiteMaterial);
+  addMerged('pier-arcade-walls', [boxAt(34, 6.5, 14, x, deckY, z)], craneWhiteMaterial);
   const roof = new THREE.CylinderGeometry(7.2, 7.2, 34.6, 24, 1, false, 0, Math.PI);
   roof.rotateZ(Math.PI / 2);
   roof.rotateY(Math.PI / 2);
   roof.translate(x, deckY + 6.5, z);
-  addMerged("pier-arcade-roof", [roof], attractionBlueMaterial);
-  addMerged("pier-arcade-sign", [boxAt(12, 1.6, 0.3, x, deckY + 6.8, z + 7.2)], attractionYellowMaterial, false);
+  addMerged('pier-arcade-roof', [roof], attractionBlueMaterial);
+  addMerged(
+    'pier-arcade-sign',
+    [boxAt(12, 1.6, 0.3, x, deckY + 6.8, z + 7.2)],
+    attractionYellowMaterial,
+    false
+  );
   const glass: THREE.BufferGeometry[] = [];
   for (let dx = -14; dx <= 14; dx += 7) {
     glass.push(boxAt(4.4, 3.2, 0.1, x + dx, deckY + 1.2, z + 7.05));
   }
-  addMerged("pier-arcade-glass", glass, shelterGlassMaterial, false);
+  addMerged('pier-arcade-glass', glass, shelterGlassMaterial, false);
 }
 
 function addPierFurniture(x0: number, x1: number, z0: number, z1: number) {
@@ -272,10 +382,10 @@ function addPierFurniture(x0: number, x1: number, z0: number, z1: number) {
       benches.push(boxAt(1.8, 0.4, 0.06, x, deckY + 0.5, z + (z < (z0 + z1) * 0.5 ? -0.24 : 0.24)));
     }
   }
-  addMerged("pier-lamp-poles", poles, lampPoleMaterial);
-  addMerged("pier-lamp-heads", heads, lampHeadMaterial, false);
-  addMerged("pier-flags", flags, beachFlagMaterial, false);
-  addMerged("pier-benches", benches, dockMaterial);
+  addMerged('pier-lamp-poles', poles, lampPoleMaterial);
+  addMerged('pier-lamp-heads', heads, lampHeadMaterial, false);
+  addMerged('pier-flags', flags, beachFlagMaterial, false);
+  addMerged('pier-benches', benches, dockMaterial);
 }
 
 export function addPierAmusements(centreX: number, centreZ: number) {

@@ -1,5 +1,5 @@
 export function createRandom(seed: number) {
-  let state = (seed >>> 0) || 0x9e3779b9;
+  let state = seed >>> 0 || 0x9e3779b9;
   return () => {
     state += 0x6d2b79f5;
     let t = state;

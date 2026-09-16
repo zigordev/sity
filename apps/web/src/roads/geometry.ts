@@ -1,6 +1,6 @@
-import * as THREE from "three";
-import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { perpRight, sampleAtStation, type RoadSample, type Vec3 } from "./network";
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { perpRight, sampleAtStation, type RoadSample, type Vec3 } from './network';
 
 export type Station = Vec3 & { tx: number; tz: number; s: number };
 
@@ -10,7 +10,14 @@ export function stationsBetween(samples: RoadSample[], s0: number, s1: number): 
   const stations: Station[] = [{ ...start, s: s0 }];
   for (const sample of samples) {
     if (sample.s > s0 + 0.05 && sample.s < s1 - 0.05) {
-      stations.push({ x: sample.x, y: sample.y, z: sample.z, tx: sample.tx, tz: sample.tz, s: sample.s });
+      stations.push({
+        x: sample.x,
+        y: sample.y,
+        z: sample.z,
+        tx: sample.tx,
+        tz: sample.tz,
+        s: sample.s,
+      });
     }
   }
   stations.push({ ...end, s: s1 });
@@ -31,15 +38,15 @@ export function dedupeStations(stations: Station[]) {
 
 function finalize(positions: number[], indices: number[], uvs?: number[]) {
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   if (uvs && uvs.length === (positions.length / 3) * 2) {
-    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   } else {
     const generated: number[] = [];
     for (let index = 0; index < positions.length; index += 3) {
       generated.push(positions[index] / 24, positions[index + 2] / 24);
     }
-    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(generated, 2));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(generated, 2));
   }
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
@@ -48,7 +55,7 @@ function finalize(positions: number[], indices: number[], uvs?: number[]) {
 }
 
 export function sanitizeNormals(geometry: THREE.BufferGeometry) {
-  const normal = geometry.getAttribute("normal");
+  const normal = geometry.getAttribute('normal');
   if (!normal) {
     return;
   }
@@ -57,7 +64,12 @@ export function sanitizeNormals(geometry: THREE.BufferGeometry) {
     const x = array[index];
     const y = array[index + 1];
     const z = array[index + 2];
-    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || x * x + y * y + z * z < 1e-6) {
+    if (
+      !Number.isFinite(x) ||
+      !Number.isFinite(y) ||
+      !Number.isFinite(z) ||
+      x * x + y * y + z * z < 1e-6
+    ) {
       array[index] = 0;
       array[index + 1] = 1;
       array[index + 2] = 0;
@@ -70,7 +82,7 @@ export function skirtFromStations(
   stations: Station[],
   sign: 1 | -1,
   innerOffset: number,
-  groundY: (x: number, z: number) => number,
+  groundY: (x: number, z: number) => number
 ) {
   const positions: number[] = [];
   const indices: number[] = [];
@@ -109,7 +121,7 @@ export function stripFromStations(
   offsetA: number,
   offsetB: number,
   yLift: number,
-  offsetAt?: (station: Station, index: number) => [number, number],
+  offsetAt?: (station: Station, index: number) => [number, number]
 ) {
   const positions: number[] = [];
   const indices: number[] = [];
@@ -122,7 +134,7 @@ export function stripFromStations(
       station.z + right.z * a,
       station.x + right.x * b,
       station.y + yLift,
-      station.z + right.z * b,
+      station.z + right.z * b
     );
   });
   for (let index = 0; index < stations.length - 1; index += 1) {
@@ -135,7 +147,14 @@ export function stripFromStations(
   return finalize(positions, indices);
 }
 
-export function stripBetweenOffsets(samples: RoadSample[], s0: number, s1: number, offsetA: number, offsetB: number, yLift: number) {
+export function stripBetweenOffsets(
+  samples: RoadSample[],
+  s0: number,
+  s1: number,
+  offsetA: number,
+  offsetB: number,
+  yLift: number
+) {
   return stripFromStations(stationsBetween(samples, s0, s1), offsetA, offsetB, yLift);
 }
 
@@ -145,7 +164,7 @@ export function volumeFromStations(
   offsetB: number,
   topLift: number,
   thickness: number,
-  closed = false,
+  closed = false
 ): { top: THREE.BufferGeometry; side: THREE.BufferGeometry } {
   const topPositions: number[] = [];
   const topIndices: number[] = [];
@@ -221,7 +240,7 @@ export function polygonSurface(polygon: Vec3[], lift: number) {
   const ordered = area > 0 ? polygon.slice().reverse() : polygon;
   const triangles = THREE.ShapeUtils.triangulateShape(
     ordered.map((point) => new THREE.Vector2(point.x, point.z)),
-    [],
+    []
   );
   const positions: number[] = [];
   for (const point of ordered) {
@@ -246,7 +265,14 @@ export function polygonVolume(polygon: Vec3[], topLift: number, thickness: numbe
   }
   const ordered = area > 0 ? polygon.slice().reverse() : polygon;
   ordered.forEach((point) => {
-    positions.push(point.x, point.y + topLift, point.z, point.x, point.y + topLift - thickness, point.z);
+    positions.push(
+      point.x,
+      point.y + topLift,
+      point.z,
+      point.x,
+      point.y + topLift - thickness,
+      point.z
+    );
   });
   for (let index = 0; index < count; index += 1) {
     const next = (index + 1) % count;
@@ -260,7 +286,7 @@ export function polygonVolume(polygon: Vec3[], topLift: number, thickness: numbe
 }
 
 export function mergeAll(geometries: THREE.BufferGeometry[]) {
-  const valid = geometries.filter((geometry) => geometry.getAttribute("position")?.count > 0);
+  const valid = geometries.filter((geometry) => geometry.getAttribute('position')?.count > 0);
   if (valid.length === 0) {
     return null;
   }
@@ -279,6 +305,10 @@ export function boxBetween(a: Vec3, b: Vec3, width: number, height: number, yLif
   const geometry = new THREE.BoxGeometry(width, height, length);
   const angle = Math.atan2(b.x - a.x, b.z - a.z);
   geometry.rotateY(angle);
-  geometry.translate((a.x + b.x) * 0.5, (a.y + b.y) * 0.5 + yLift + height * 0.5, (a.z + b.z) * 0.5);
+  geometry.translate(
+    (a.x + b.x) * 0.5,
+    (a.y + b.y) * 0.5 + yLift + height * 0.5,
+    (a.z + b.z) * 0.5
+  );
   return geometry;
 }

@@ -1,10 +1,15 @@
-import { buildLotBuildings, buildingFootprints, footprintCorners, type BuildingFootprint } from "./buildings";
-import { corridorClearance, registerZone } from "../world/occupancy";
-import { DISTRICTS } from "./districts";
-import { WESTERN_COUNTRY_SPLIT_Z_M } from "../config/constants";
-import { mainBoundaryMaxZ, mainBoundaryMinX } from "../world/frame";
-import { buildSpecialBlocks } from "./landmarks";
-import { generateLots, markSpecialBlocks } from "./lots";
+import {
+  buildLotBuildings,
+  buildingFootprints,
+  footprintCorners,
+  type BuildingFootprint,
+} from './buildings';
+import { corridorClearance, registerZone } from '../world/occupancy';
+import { DISTRICTS } from './districts';
+import { WESTERN_COUNTRY_SPLIT_Z_M } from '../config/constants';
+import { mainBoundaryMaxZ, mainBoundaryMinX } from '../world/frame';
+import { buildSpecialBlocks } from './landmarks';
+import { generateLots, markSpecialBlocks } from './lots';
 import {
   commitTrees,
   placeCoastPalms,
@@ -16,8 +21,8 @@ import {
   placeSpecialBlockTrees,
   placeStreetTrees,
   placeWesternForest,
-} from "./vegetation";
-import { SPECIAL_BLOCKS } from "./districts";
+} from './vegetation';
+import { SPECIAL_BLOCKS } from './districts';
 
 export const cityStats = {
   lotCount: 0,
@@ -29,12 +34,30 @@ export const cityStats = {
 
 export function registerCityZones() {
   for (const district of DISTRICTS) {
-    registerZone({ minX: district.minX, maxX: district.maxX, minZ: district.minZ, maxZ: district.maxZ, tag: `district:${district.kind}` });
+    registerZone({
+      minX: district.minX,
+      maxX: district.maxX,
+      minZ: district.minZ,
+      maxZ: district.maxZ,
+      tag: `district:${district.kind}`,
+    });
   }
   for (const block of SPECIAL_BLOCKS) {
-    registerZone({ minX: block.minX, maxX: block.maxX, minZ: block.minZ, maxZ: block.maxZ, tag: `block:${block.id}` });
+    registerZone({
+      minX: block.minX,
+      maxX: block.maxX,
+      minZ: block.minZ,
+      maxZ: block.maxZ,
+      tag: `block:${block.id}`,
+    });
   }
-  registerZone({ minX: mainBoundaryMinX, maxX: -1900, minZ: WESTERN_COUNTRY_SPLIT_Z_M, maxZ: mainBoundaryMaxZ, tag: "farmland" });
+  registerZone({
+    minX: mainBoundaryMinX,
+    maxX: -1900,
+    minZ: WESTERN_COUNTRY_SPLIT_Z_M,
+    maxZ: mainBoundaryMaxZ,
+    tag: 'farmland',
+  });
 }
 
 function projectPolygon(points: Array<{ x: number; z: number }>, axis: { x: number; z: number }) {
@@ -51,7 +74,9 @@ function projectPolygon(points: Array<{ x: number; z: number }>, axis: { x: numb
 function footprintsOverlap(a: BuildingFootprint, b: BuildingFootprint, tolerance = 0.25) {
   const cornersA = footprintCorners(a);
   const cornersB = footprintCorners(b);
-  const axes = [a.rotationY, a.rotationY + Math.PI / 2, b.rotationY, b.rotationY + Math.PI / 2].map((angle) => ({ x: Math.cos(angle), z: -Math.sin(angle) }));
+  const axes = [a.rotationY, a.rotationY + Math.PI / 2, b.rotationY, b.rotationY + Math.PI / 2].map(
+    (angle) => ({ x: Math.cos(angle), z: -Math.sin(angle) })
+  );
   for (const axis of axes) {
     const pa = projectPolygon(cornersA, axis);
     const pb = projectPolygon(cornersB, axis);
@@ -89,7 +114,7 @@ export function auditCity() {
         const t = step / steps;
         const x = from.x + (to.x - from.x) * t;
         const z = from.z + (to.z - from.z) * t;
-        if (corridorClearance(x, z, 40, "pavement:") < -0.2) {
+        if (corridorClearance(x, z, 40, 'pavement:') < -0.2) {
           hit = `${a.group}@${x.toFixed(0)},${z.toFixed(0)}`;
           break;
         }

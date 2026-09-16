@@ -1,23 +1,30 @@
-import * as THREE from "three";
-import { BEACH_SAND_COLOR, CONCRETE_PORT_COLOR, GRASS_COLOR, HIGHWAY_ASPHALT_COLOR, WET_SAND_COLOR, WOOD_PIER_COLOR } from "../config/constants";
+import * as THREE from 'three';
+import {
+  BEACH_SAND_COLOR,
+  CONCRETE_PORT_COLOR,
+  GRASS_COLOR,
+  HIGHWAY_ASPHALT_COLOR,
+  WET_SAND_COLOR,
+  WOOD_PIER_COLOR,
+} from '../config/constants';
 
 export function createSpeckledTexture(
   name: string,
   baseColor: number,
   speckleColors: number[],
   size = 256,
-  repeat = 24,
+  repeat = 24
 ) {
-  const textureCanvas = document.createElement("canvas");
+  const textureCanvas = document.createElement('canvas');
   textureCanvas.width = size;
   textureCanvas.height = size;
-  const context = textureCanvas.getContext("2d");
+  const context = textureCanvas.getContext('2d');
 
   if (!context) {
     throw new Error(`Could not create ${name} texture.`);
   }
 
-  context.fillStyle = `#${baseColor.toString(16).padStart(6, "0")}`;
+  context.fillStyle = `#${baseColor.toString(16).padStart(6, '0')}`;
   context.fillRect(0, 0, size, size);
 
   for (let index = 0; index < size * 10; index += 1) {
@@ -26,7 +33,7 @@ export function createSpeckledTexture(
     const x = (index * 47 + Math.sin(index) * 91) % size;
     const y = (index * 83 + Math.cos(index * 0.7) * 67) % size;
     context.globalAlpha = 0.16 + ((index * 11) % 9) * 0.025;
-    context.fillStyle = `#${color.toString(16).padStart(6, "0")}`;
+    context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
     context.beginPath();
     context.arc((x + size) % size, (y + size) % size, radius, 0, Math.PI * 2);
     context.fill();
@@ -50,20 +57,20 @@ export function createLinearTexture(
   size = 256,
   repeatX = 12,
   repeatY = 12,
-  stripeEvery = 28,
+  stripeEvery = 28
 ) {
-  const textureCanvas = document.createElement("canvas");
+  const textureCanvas = document.createElement('canvas');
   textureCanvas.width = size;
   textureCanvas.height = size;
-  const context = textureCanvas.getContext("2d");
+  const context = textureCanvas.getContext('2d');
 
   if (!context) {
     throw new Error(`Could not create ${name} texture.`);
   }
 
-  context.fillStyle = `#${baseColor.toString(16).padStart(6, "0")}`;
+  context.fillStyle = `#${baseColor.toString(16).padStart(6, '0')}`;
   context.fillRect(0, 0, size, size);
-  context.strokeStyle = `#${stripeColor.toString(16).padStart(6, "0")}`;
+  context.strokeStyle = `#${stripeColor.toString(16).padStart(6, '0')}`;
   context.globalAlpha = 0.32;
   context.lineWidth = 2;
 
@@ -93,10 +100,10 @@ export function createLinearTexture(
 }
 
 export function createCorrugatedTexture(name: string, size = 128, ridges = 10) {
-  const textureCanvas = document.createElement("canvas");
+  const textureCanvas = document.createElement('canvas');
   textureCanvas.width = size;
   textureCanvas.height = size;
-  const context = textureCanvas.getContext("2d");
+  const context = textureCanvas.getContext('2d');
 
   if (!context) {
     throw new Error(`Could not create ${name} texture.`);
@@ -110,14 +117,14 @@ export function createCorrugatedTexture(name: string, size = 128, ridges = 10) {
     context.fillRect(x, 0, 1, size);
   }
   context.globalAlpha = 0.22;
-  context.fillStyle = "#3a2a1c";
+  context.fillStyle = '#3a2a1c';
   for (let index = 0; index < 90; index += 1) {
     const x = (index * 53) % size;
     const y = (index * 29) % size;
     context.fillRect(x, y, 1 + (index % 4), 1 + (index % 3));
   }
   context.globalAlpha = 0.5;
-  context.fillStyle = "#c9c9c9";
+  context.fillStyle = '#c9c9c9';
   context.fillRect(0, 0, size, 3);
   context.fillRect(0, size - 3, size, 3);
   context.globalAlpha = 1;
@@ -133,10 +140,10 @@ export function createCorrugatedTexture(name: string, size = 128, ridges = 10) {
 }
 
 export function createWaterNormalTexture(name: string, size = 256) {
-  const textureCanvas = document.createElement("canvas");
+  const textureCanvas = document.createElement('canvas');
   textureCanvas.width = size;
   textureCanvas.height = size;
-  const context = textureCanvas.getContext("2d");
+  const context = textureCanvas.getContext('2d');
 
   if (!context) {
     throw new Error(`Could not create ${name} texture.`);
@@ -169,63 +176,88 @@ export function createWaterNormalTexture(name: string, size = 256) {
   return texture;
 }
 
-export const grassTexture = createSpeckledTexture("grass-varied-ground-texture", GRASS_COLOR, [
-  0x7fb567,
-  0xa6d28b,
-  0x6f9f58,
-  0xb0d79a,
-], 256, 34);
+export const grassTexture = createSpeckledTexture(
+  'grass-varied-ground-texture',
+  GRASS_COLOR,
+  [0x7fb567, 0xa6d28b, 0x6f9f58, 0xb0d79a],
+  256,
+  34
+);
 
-export const mainlandTexture = createSpeckledTexture("outside-mainland-muted-ground-texture", 0x9da19b, [
-  0x8f958d,
-  0xb0b4ab,
-  0x7f857c,
-], 256, 28);
+export const mainlandTexture = createSpeckledTexture(
+  'outside-mainland-muted-ground-texture',
+  0x9da19b,
+  [0x8f958d, 0xb0b4ab, 0x7f857c],
+  256,
+  28
+);
 
-export const terrainCutTexture = createSpeckledTexture("earth-cut-strata-texture", 0x68705d, [
-  0x575d4e,
-  0x7b806e,
-  0x4f5448,
-], 256, 18);
+export const terrainCutTexture = createSpeckledTexture(
+  'earth-cut-strata-texture',
+  0x68705d,
+  [0x575d4e, 0x7b806e, 0x4f5448],
+  256,
+  18
+);
 
-export const drySandTexture = createSpeckledTexture("dry-sand-grain-texture", BEACH_SAND_COLOR, [
-  0xc8b275,
-  0xead99c,
-  0xbda66e,
-], 256, 26);
+export const drySandTexture = createSpeckledTexture(
+  'dry-sand-grain-texture',
+  BEACH_SAND_COLOR,
+  [0xc8b275, 0xead99c, 0xbda66e],
+  256,
+  26
+);
 
-export const wetSandTexture = createSpeckledTexture("wet-sand-grain-texture", WET_SAND_COLOR, [
-  0xa69668,
-  0xc6b783,
-  0x8f805d,
-], 256, 18);
+export const wetSandTexture = createSpeckledTexture(
+  'wet-sand-grain-texture',
+  WET_SAND_COLOR,
+  [0xa69668, 0xc6b783, 0x8f805d],
+  256,
+  18
+);
 
-export const asphaltTexture = createSpeckledTexture("asphalt-aggregate-texture", HIGHWAY_ASPHALT_COLOR, [
-  0x53585a,
-  0x747a7d,
-  0x3f4446,
-], 256, 36);
+export const asphaltTexture = createSpeckledTexture(
+  'asphalt-aggregate-texture',
+  HIGHWAY_ASPHALT_COLOR,
+  [0x53585a, 0x747a7d, 0x3f4446],
+  256,
+  36
+);
 
-export const concreteTexture = createSpeckledTexture("weathered-concrete-texture", CONCRETE_PORT_COLOR, [
-  0x8a867b,
-  0xb0aa9a,
-  0x777368,
-], 256, 16);
+export const concreteTexture = createSpeckledTexture(
+  'weathered-concrete-texture',
+  CONCRETE_PORT_COLOR,
+  [0x8a867b, 0xb0aa9a, 0x777368],
+  256,
+  16
+);
 
-export const woodTexture = createLinearTexture("weathered-wood-plank-texture", WOOD_PIER_COLOR, 0x5f4d38, 256, 10, 8, 34);
+export const woodTexture = createLinearTexture(
+  'weathered-wood-plank-texture',
+  WOOD_PIER_COLOR,
+  0x5f4d38,
+  256,
+  10,
+  8,
+  34
+);
 
-export const metalTexture = createSpeckledTexture("dull-metal-wear-texture", 0x596368, [
-  0x485155,
-  0x727d82,
-  0x30383b,
-], 256, 10);
+export const metalTexture = createSpeckledTexture(
+  'dull-metal-wear-texture',
+  0x596368,
+  [0x485155, 0x727d82, 0x30383b],
+  256,
+  10
+);
 
-export const darkWearTexture = createSpeckledTexture("dark-weathering-decal-texture", 0x2f302d, [
-  0x1f211f,
-  0x454640,
-  0x555149,
-], 256, 12);
+export const darkWearTexture = createSpeckledTexture(
+  'dark-weathering-decal-texture',
+  0x2f302d,
+  [0x1f211f, 0x454640, 0x555149],
+  256,
+  12
+);
 
-export const waterNormalTexture = createWaterNormalTexture("generated-water-normal-map");
+export const waterNormalTexture = createWaterNormalTexture('generated-water-normal-map');
 
-export const corrugatedTexture = createCorrugatedTexture("corrugated-container-panel-texture");
+export const corrugatedTexture = createCorrugatedTexture('corrugated-container-panel-texture');

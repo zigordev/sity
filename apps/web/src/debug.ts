@@ -19,33 +19,57 @@ import {
   SCALE_Y_MEASURE_M,
   SCALE_Z_MEASURE_M,
   SNOW_MOUNTAIN_SNOWLINE_M,
-} from "./config/constants";
-import { assetLoadComplete, assetLoadFailures, importedModelInstanceCount, loadedTextureAssetKeys } from "./assets/pipeline";
-import { auditCity, cityStats } from "./city";
-import { parkedVehicleStats } from "./vehicles/parked";
-import { DISTRICTS, SPECIAL_BLOCKS } from "./city/districts";
-import { lots } from "./city/lots";
-import { fullTerrainSurfaceYAt, groundSurfaceBaseYAt, groundSurfaceYAt, mountainHeightAt, snowMountainHeightAt } from "./natural/terrain";
-import { cutLimitAt } from "./world/occupancy";
-import { sharedSeaWaterSurfaceCount } from "./natural/water";
-import { camera, composer, controls, renderer, scene } from "./render/context";
-import { estimateVisibleSceneRenderStats } from "./render/stats";
-import { roadGraph, roadNetwork } from "./roads/build";
-import { roadSideSlots } from "./roads/render";
-import { auditRoadClearance, type RoadClearanceAudit } from "./roads/clearance";
-import type { NetworkInvariants, NetworkStats, RoadGraph, RouteResult } from "./roads/graph";
-import { compassBearingDegrees, scaleAxisAnglesDegrees } from "./ui/overlays";
-import { flyToViewId, getLayerVisibility, lastRoute, setLaneOverlayVisible, showRandomRoute } from "./ui/panel";
-import { CAMERA_VIEWS } from "./ui/views";
-import { damCenter, mountainCenter, reservoirCenter, riverMouth, riverPath, snowMountainCenter } from "./world/frame";
+} from './config/constants';
+import {
+  assetLoadComplete,
+  assetLoadFailures,
+  importedModelInstanceCount,
+  loadedTextureAssetKeys,
+} from './assets/pipeline';
+import { auditCity, cityStats } from './city';
+import { parkedVehicleStats } from './vehicles/parked';
+import { DISTRICTS, SPECIAL_BLOCKS } from './city/districts';
+import { lots } from './city/lots';
+import {
+  fullTerrainSurfaceYAt,
+  groundSurfaceBaseYAt,
+  groundSurfaceYAt,
+  mountainHeightAt,
+  snowMountainHeightAt,
+} from './natural/terrain';
+import { cutLimitAt } from './world/occupancy';
+import { sharedSeaWaterSurfaceCount } from './natural/water';
+import { camera, composer, controls, renderer, scene } from './render/context';
+import { estimateVisibleSceneRenderStats } from './render/stats';
+import { roadGraph, roadNetwork } from './roads/build';
+import { roadSideSlots } from './roads/render';
+import { auditRoadClearance, type RoadClearanceAudit } from './roads/clearance';
+import type { NetworkInvariants, NetworkStats, RoadGraph, RouteResult } from './roads/graph';
+import { compassBearingDegrees, scaleAxisAnglesDegrees } from './ui/overlays';
+import {
+  flyToViewId,
+  getLayerVisibility,
+  lastRoute,
+  setLaneOverlayVisible,
+  showRandomRoute,
+} from './ui/panel';
+import { CAMERA_VIEWS } from './ui/views';
+import {
+  damCenter,
+  mountainCenter,
+  reservoirCenter,
+  riverMouth,
+  riverPath,
+  snowMountainCenter,
+} from './world/frame';
 
 declare global {
   interface Window {
     __SITY_DEBUG__: {
       getSiteLayout: () => {
-        unit: "meter";
+        unit: 'meter';
         northDirection: { x: number; z: number };
-        seaSide: "east";
+        seaSide: 'east';
         mainBoundaryAreaM2: number;
         mainBoundarySideM: number;
         mainBoundaryWidthM: number;
@@ -57,19 +81,44 @@ declare global {
       getNaturalFeatures: () => {
         mountain: { center: { x: number; z: number }; maxHeightM: number };
         snowMountain: { center: { x: number; z: number }; maxHeightM: number; snowLineM: number };
-        river: { source: { x: number; z: number }; mouth: { x: number; z: number }; widthM: number; path: Array<{ x: number; z: number }> };
-        reservoir: { center: { x: number; z: number }; radiusXM: number; radiusZM: number; waterDepthM: number };
+        river: {
+          source: { x: number; z: number };
+          mouth: { x: number; z: number };
+          widthM: number;
+          path: Array<{ x: number; z: number }>;
+        };
+        reservoir: {
+          center: { x: number; z: number };
+          radiusXM: number;
+          radiusZM: number;
+          waterDepthM: number;
+        };
         dam: { center: { x: number; z: number }; lengthM: number; heightM: number };
         coast: { beachInlandWidthM: number };
         water: { sharedSurfaceCount: number };
-        assets: { loadComplete: boolean; failures: string[]; importedModelInstances: number; textureFamilies: number };
+        assets: {
+          loadComplete: boolean;
+          failures: string[];
+          importedModelInstances: number;
+          textureFamilies: number;
+        };
         groundYAt: (x: number, z: number) => number;
       };
       getRoadGraph: () => { stats: NetworkStats; invariants: NetworkInvariants };
-      probeTerrain: (x: number, z: number) => { ground: number; base: number; cutLimit: number; full: number; mountain: number; snow: number };
-      getRoadSamples: (roadId: string) => Array<import("./roads/network").RoadSample> | undefined;
-      exportRoadGraph: () => ReturnType<RoadGraph["toJSON"]>;
-      getLane: (id: string) => import("./roads/network").Lane | undefined;
+      probeTerrain: (
+        x: number,
+        z: number
+      ) => {
+        ground: number;
+        base: number;
+        cutLimit: number;
+        full: number;
+        mountain: number;
+        snow: number;
+      };
+      getRoadSamples: (roadId: string) => Array<import('./roads/network').RoadSample> | undefined;
+      exportRoadGraph: () => ReturnType<RoadGraph['toJSON']>;
+      getLane: (id: string) => import('./roads/network').Lane | undefined;
       findRoute: (fromLaneId: string, toLaneId: string) => RouteResult | undefined;
       showRandomRoute: (seed?: number) => RouteResult | undefined;
       getLastRoute: () => { laneIds: string[]; lengthM: number } | undefined;
@@ -86,11 +135,16 @@ declare global {
       };
       auditCity: () => ReturnType<typeof auditCity>;
       auditRoadClearance: () => RoadClearanceAudit;
-      listDeadEnds: () => Array<{ nodeId: string; roadId: string; destination?: string; edge: boolean }>;
+      listDeadEnds: () => Array<{
+        nodeId: string;
+        roadId: string;
+        destination?: string;
+        edge: boolean;
+      }>;
       getCategoryVisibility: () => ReturnType<typeof getLayerVisibility>;
       getCompassBearingDegrees: () => number;
       getAxisScale: () => {
-        unit: "meter";
+        unit: 'meter';
         visible: boolean;
         xMeasureM: number;
         yMeasureM: number;
@@ -107,7 +161,10 @@ declare global {
       };
       listViews: () => string[];
       flyTo: (viewId: string) => boolean;
-      setView: (view: { position: [number, number, number]; target: [number, number, number] }) => void;
+      setView: (view: {
+        position: [number, number, number];
+        target: [number, number, number];
+      }) => void;
       setLaneOverlay: (visible: boolean) => void;
       __scene: unknown;
       __composer: unknown;
@@ -116,15 +173,15 @@ declare global {
   }
 }
 
-const axisScaleElement = document.querySelector<HTMLElement>(".axis-scale");
+const axisScaleElement = document.querySelector<HTMLElement>('.axis-scale');
 
 window.__SITY_DEBUG__ = {
   __scene: scene,
   __composer: composer,
   getSiteLayout: () => ({
-    unit: "meter",
+    unit: 'meter',
     northDirection: { x: 0, z: -1 },
-    seaSide: "east",
+    seaSide: 'east',
     mainBoundaryAreaM2: MAIN_BOUNDARY_AREA_M2,
     mainBoundarySideM: MAIN_BOUNDARY_SIDE_M,
     mainBoundaryWidthM: MAIN_BOUNDARY_WIDTH_M,
@@ -135,9 +192,23 @@ window.__SITY_DEBUG__ = {
   }),
   getNaturalFeatures: () => ({
     mountain: { center: mountainCenter, maxHeightM: MOUNTAIN_HEIGHT_M },
-    snowMountain: { center: snowMountainCenter, maxHeightM: SNOW_MOUNTAIN_HEIGHT_M, snowLineM: SNOW_MOUNTAIN_SNOWLINE_M },
-    river: { source: riverPath[0], mouth: riverMouth, widthM: RIVER_WIDTH_M, path: riverPath.map((point) => ({ ...point })) },
-    reservoir: { center: reservoirCenter, radiusXM: RESERVOIR_RADIUS_X_M, radiusZM: RESERVOIR_RADIUS_Z_M, waterDepthM: RESERVOIR_WATER_DEPTH_M },
+    snowMountain: {
+      center: snowMountainCenter,
+      maxHeightM: SNOW_MOUNTAIN_HEIGHT_M,
+      snowLineM: SNOW_MOUNTAIN_SNOWLINE_M,
+    },
+    river: {
+      source: riverPath[0],
+      mouth: riverMouth,
+      widthM: RIVER_WIDTH_M,
+      path: riverPath.map((point) => ({ ...point })),
+    },
+    reservoir: {
+      center: reservoirCenter,
+      radiusXM: RESERVOIR_RADIUS_X_M,
+      radiusZM: RESERVOIR_RADIUS_Z_M,
+      waterDepthM: RESERVOIR_WATER_DEPTH_M,
+    },
     dam: { center: damCenter, lengthM: DAM_LENGTH_M, heightM: DAM_HEIGHT_M },
     coast: { beachInlandWidthM: BEACH_INLAND_WIDTH_M },
     water: { sharedSurfaceCount: sharedSeaWaterSurfaceCount },
@@ -158,7 +229,8 @@ window.__SITY_DEBUG__ = {
     mountain: mountainHeightAt(x, z),
     snow: snowMountainHeightAt(x, z),
   }),
-  getRoadSamples: (roadId) => roadNetwork.roads.get(roadId)?.samples.map((sample) => ({ ...sample })),
+  getRoadSamples: (roadId) =>
+    roadNetwork.roads.get(roadId)?.samples.map((sample) => ({ ...sample })),
   exportRoadGraph: () => roadGraph.toJSON(),
   getLane: (id) => {
     const lane = roadNetwork.lanes.get(id);
@@ -201,8 +273,8 @@ window.__SITY_DEBUG__ = {
   getCategoryVisibility: () => getLayerVisibility(),
   getCompassBearingDegrees: () => compassBearingDegrees,
   getAxisScale: () => ({
-    unit: "meter",
-    visible: axisScaleElement ? getComputedStyle(axisScaleElement).display !== "none" : false,
+    unit: 'meter',
+    visible: axisScaleElement ? getComputedStyle(axisScaleElement).display !== 'none' : false,
     xMeasureM: SCALE_X_MEASURE_M,
     yMeasureM: SCALE_Y_MEASURE_M,
     zMeasureM: SCALE_Z_MEASURE_M,
