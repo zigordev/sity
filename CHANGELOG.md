@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/zigordev/sity/compare/v0.2.0...v0.2.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* **scripts:** stop the stack before recreating it on local:up ([#28](https://github.com/zigordev/sity/issues/28)) ([95dd0f9](https://github.com/zigordev/sity/commit/95dd0f949d9ab984e7572b3efadba122688d9b08))
+
 ## [0.2.0](https://github.com/zigordev/sity/compare/v0.1.0...v0.2.0) (2026-09-12)
 
 
