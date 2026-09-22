@@ -95,7 +95,8 @@ in Chromium with software WebGL, and checks the asset pack, the lane-graph invar
 Street, the city and vegetation counts, the draw-call and triangle budgets, every camera view (pixel
 samples, screenshots kept as test output) and the panel against WCAG A and AA with axe. On the desktop
 viewport it also checks that the scene loads within its content security policy, that an injected inline
-script is still reported, and that the page's load reaches RUM.
+script is still reported, that the page's load reaches RUM, and that a browser without WebGL is still
+reported.
 
 ## Release + deploy model
 

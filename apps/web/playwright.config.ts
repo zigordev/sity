@@ -23,7 +23,7 @@ export default defineConfig({
     },
     {
       name: 'mobile',
-      testIgnore: /csp\.spec\.ts/,
+      testIgnore: /(csp|rum)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 } },
     },
   ],

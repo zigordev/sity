@@ -48,7 +48,8 @@ and a mobile viewport:
 - rendered pixels for each camera view, with a screenshot kept in the test output;
 - the control panel against WCAG A and AA with axe (the canvas itself is excluded);
 - on the desktop viewport, the scene loading within its content security policy, an injected inline
-  script still being reported, and the page's load reaching RUM.
+  script still being reported, the page's load reaching RUM, and a browser that cannot create a WebGL
+  context still being reported.
 
 ## Serving
 
@@ -61,7 +62,8 @@ and a mobile viewport:
   decoders compile, and `data:` in `connect-src` lets the loaders read the geometry and the decoder the
   bundle embeds as data URIs. Reports go to `/rum/csp`;
 - `/health` and `/metrics` answer the platform's probes, and `/rum/events` takes RUM from production
-  builds: web vitals, and errors mapped back through the build's source maps;
+  builds: web vitals, and errors mapped back through the build's source maps. RUM starts before the
+  scene's modules load, so a browser that cannot create a WebGL context is reported too;
 - logs are JSON lines with the estate's events: `service.started`, `service.stopping`, `request.failed`.
   There are no traces: the server serves files and takes beacons, and calls nothing downstream.
 
