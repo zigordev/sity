@@ -86,7 +86,7 @@ jobs:
 
       - name: Run container
         run: |
-          docker run -d --name sity-web -p 3031:8080 sity-web:ci
+          docker run -d --name sity-web -e APP_RELEASE=ci -p 3031:8080 sity-web:ci
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3031/health > /dev/null; then
               echo "web is up"; exit 0
@@ -108,6 +108,8 @@ jobs:
           curl -sf http://localhost:3031/assets/sity/asset-manifest.json | grep -q '"units": "meters"'
           curl -sfI http://localhost:3031/ | grep -qi '^content-security-policy-report-only: .*report-uri /rum/csp'
           curl -sf http://localhost:3031/metrics | grep -q '^http_requests_total{'
+          curl -sf http://localhost:3031/metrics | grep -q '^service_build_info{.*version="ci"'
+          curl -sf http://localhost:3031/health | grep -q '"release":"ci"'
 
       - name: Container logs (on failure)
         if: failure()
