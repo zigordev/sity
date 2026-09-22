@@ -106,6 +106,8 @@ jobs:
             printf '%s' "$body" | grep -qF "$needle" || { echo "missing: $needle" >&2; exit 1; }
           done
           curl -sf http://localhost:3031/assets/sity/asset-manifest.json | grep -q '"units": "meters"'
+          curl -sfI http://localhost:3031/ | grep -qi '^content-security-policy-report-only: .*report-uri /rum/csp'
+          curl -sf http://localhost:3031/metrics | grep -q '^http_requests_total{'
 
       - name: Container logs (on failure)
         if: failure()

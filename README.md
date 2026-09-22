@@ -6,8 +6,9 @@ added on top without a second model of the streets.
 
 ## Repository shape
 
-One workspace, `apps/web`: a Vite + TypeScript site with no backend and no secrets. The whole scene is
-generated at load time from deterministic plans, and a debug API on `window.__SITY_DEBUG__` exposes the
+One workspace, `apps/web`: a Vite + TypeScript site with no secrets, served by a small Fastify server in
+`apps/web/server` that adds the estate's probes and RUM. The whole scene is generated at load time from
+deterministic plans, and a debug API on `window.__SITY_DEBUG__` exposes the
 lane graph, routing, statistics and camera presets for the end-to-end checks.
 
 | Concern      | Where                                                        |
@@ -19,6 +20,7 @@ lane graph, routing, statistics and camera presets for the end-to-end checks.
 | Terrain      | `apps/web/src/natural`, `apps/web/src/world`                 |
 | Interface    | `apps/web/index.html`, `apps/web/src/ui`                     |
 | Assets       | `apps/web/public/assets/sity` — manifest-driven pack         |
+| Server       | `apps/web/server` — the build, `/health`, `/metrics`, RUM    |
 
 The scene and the road model are described in [docs/architecture/scene.md](docs/architecture/scene.md); the performance budget and
 the verification in [docs/architecture/performance-and-verification.md](docs/architecture/performance-and-verification.md).
@@ -46,8 +48,8 @@ dependency: the site needs no OpenBao, no Tolgee and no database.
 npm run local:up
 ```
 
-That builds `apps/web/Dockerfile` (a Vite build served by unprivileged nginx)
-and starts it on <http://localhost:3031> on the shared `platform_ops_shared`
+That builds `apps/web/Dockerfile` (the Vite build and the Fastify server that
+serves it) and starts it on <http://localhost:3031> on the shared `platform_ops_shared`
 network, which the script creates if it does not exist yet.
 
 For an edit-and-refresh loop in the container instead of a rebuild:
@@ -88,23 +90,25 @@ npm run build
 npm run e2e -w @sity/web
 ```
 
-The Playwright suite serves the built site with `vite preview`, loads the scene in Chromium with software
-WebGL, and checks the asset pack, the lane-graph invariants, routing between the ring highway and Main
+The Playwright suite serves the built site with the production server (`npm run start`), loads the scene
+in Chromium with software WebGL, and checks the asset pack, the lane-graph invariants, routing between the ring highway and Main
 Street, the city and vegetation counts, the draw-call and triangle budgets, every camera view (pixel
-samples, screenshots kept as test output) and the panel against WCAG A and AA with axe.
+samples, screenshots kept as test output) and the panel against WCAG A and AA with axe. On the desktop
+viewport it also checks that the scene loads within its content security policy, that an injected inline
+script is still reported, and that the page's load reaches RUM.
 
 ## Release + deploy model
 
 - `Release Please` manages versioning/changelog + release PR.
 - There is no deploy workflow yet, because the scene has no host until vehicles and traffic devices exist.
 - CI runs the quality commands above, plus gitleaks over the full history, a Docker smoke test of the
-  image, a licence gate, `npm audit` on production dependencies, an SBOM and Trivy scan of the image,
+  image (the page, its policy header, `/health` and `/metrics`), a licence gate, `npm audit` on production dependencies, an SBOM and Trivy scan of the image,
   Semgrep, CodeQL, dependency review and commitlint.
 
 ## Layout
 
 ```
-apps/web/            the Vite app (index.html, src, public, e2e)
+apps/web/            the Vite app (index.html, src, public, e2e) and its server (server)
 docker/              app-local and app-dev compose manifests
 docs/                first-run guide, with the scene and performance notes under docs/architecture
 scripts/             husky bootstrap, gitleaks pre-commit, licence and audit gates, local stack

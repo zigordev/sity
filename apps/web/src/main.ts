@@ -41,6 +41,9 @@ import { addParkedVehicles } from './vehicles/parked';
 import './roads/build';
 import { updateAxisScale, updateCategoryVisibility, updateCompass } from './ui/overlays';
 import { flyToViewId, initPanel, updateCameraFlight } from './ui/panel';
+import { initRum } from './observability/rum-client';
+
+if (import.meta.env.PROD) initRum();
 
 addSurroundingShaderSea();
 

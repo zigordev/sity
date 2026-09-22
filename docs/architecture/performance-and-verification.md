@@ -34,8 +34,9 @@ plan with a flat terrain and check the builder: trims and turn connectors at a c
 assignment and adjacency, roundabout rings with entries and exits, ramp diverges and merges, graph
 invariants, routing, path enumeration and random routes.
 
-The Playwright suite (`npm run e2e -w @sity/web`, after `npm run build`) serves the built site with
-`vite preview` and loads it in headless Chromium with software WebGL, on a desktop and a mobile viewport:
+The Playwright suite (`npm run e2e -w @sity/web`, after `npm run build`) serves the built site with the
+production server (`npm run start`) and loads it in headless Chromium with software WebGL, on a desktop
+and a mobile viewport:
 
 - assets loaded without failures (manifest, texture families, imported vessels);
 - the site frame (north is `-Z`, the sea is east, the river flows to the sea);
@@ -45,7 +46,24 @@ The Playwright suite (`npm run e2e -w @sity/web`, after `npm run build`) serves 
 - city size: lots, buildings and trees above minimum counts;
 - default layer visibility, camera views, compass movement and the draw-call and triangle budgets;
 - rendered pixels for each camera view, with a screenshot kept in the test output;
-- the control panel against WCAG A and AA with axe (the canvas itself is excluded).
+- the control panel against WCAG A and AA with axe (the canvas itself is excluded);
+- on the desktop viewport, the scene loading within its content security policy, an injected inline
+  script still being reported, and the page's load reaching RUM.
+
+## Serving
+
+`apps/web/server` serves `dist/` with Fastify, built next to the site by
+`vite build --config vite.server.config.ts`, and replaces the nginx image the site used to run in:
+
+- files under `/assets/` and glTF models are cached for 30 days, the page is revalidated on every visit,
+  text is compressed with Brotli or gzip, any other path gets the page and a missing asset gets a 404;
+- the page carries a report-only content security policy. `'wasm-unsafe-eval'` lets the WebAssembly
+  decoders compile, and `data:` in `connect-src` lets the loaders read the geometry and the decoder the
+  bundle embeds as data URIs. Reports go to `/rum/csp`;
+- `/health` and `/metrics` answer the platform's probes, and `/rum/events` takes RUM from production
+  builds: web vitals, and errors mapped back through the build's source maps;
+- logs are JSON lines with the estate's events: `service.started`, `service.stopping`, `request.failed`.
+  There are no traces: the server serves files and takes beacons, and calls nothing downstream.
 
 ## Simulation readiness
 
