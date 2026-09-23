@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/zigordev/sity/compare/v0.3.0...v0.3.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **observability:** declare the RUM vocabulary at server start, not on the first beacon ([#38](https://github.com/zigordev/sity/issues/38)) ([08e1477](https://github.com/zigordev/sity/commit/08e1477830835fcef46d139e0a529a4736c62d75))
+
 ## [0.3.0](https://github.com/zigordev/sity/compare/v0.2.1...v0.3.0) (2026-09-23)
 
 
