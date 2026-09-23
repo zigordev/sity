@@ -1,3 +1,4 @@
+import './rum';
 import './style.css';
 import './debug';
 import { startImportedAssetPipeline } from './assets/pipeline';
@@ -41,7 +42,6 @@ import { addParkedVehicles } from './vehicles/parked';
 import './roads/build';
 import { updateAxisScale, updateCategoryVisibility, updateCompass } from './ui/overlays';
 import { flyToViewId, initPanel, updateCameraFlight } from './ui/panel';
-
 addSurroundingShaderSea();
 
 addCoastalShallowWaterShelf();

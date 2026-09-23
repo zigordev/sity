@@ -10,6 +10,8 @@ node_modules
 
 dist
 **/dist
+dist-server
+**/dist-server
 coverage
 **/coverage
 artifacts

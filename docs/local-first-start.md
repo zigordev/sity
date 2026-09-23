@@ -44,8 +44,8 @@ end-to-end suite drives the same surface.
 npm run local:up
 ```
 
-This builds `apps/web/Dockerfile` — a Vite production build served by
-unprivileged nginx — and publishes it on <http://localhost:3031>, attached to
+This builds `apps/web/Dockerfile` — a Vite production build served by the
+Fastify server in `apps/web/server` — and publishes it on <http://localhost:3031>, attached to
 the shared `platform_ops_shared` network. The script creates that network if it
 does not exist, so this works whether or not the platform-ops stack is up.
 

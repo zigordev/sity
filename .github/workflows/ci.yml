@@ -86,7 +86,7 @@ jobs:
 
       - name: Run container
         run: |
-          docker run -d --name sity-web -p 3031:8080 sity-web:ci
+          docker run -d --name sity-web -e APP_RELEASE=ci -p 3031:8080 sity-web:ci
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3031/health > /dev/null; then
               echo "web is up"; exit 0
@@ -100,12 +100,20 @@ jobs:
       - name: Smoke probes
         run: |
           set -euo pipefail
-          curl -sf http://localhost:3031/health | grep -q '"status":"ok"'
+          health="$(curl -sf http://localhost:3031/health)"
+          printf '%s' "$health" | grep -q '"status":"ok"'
+          printf '%s' "$health" | grep -q '"release":"ci"'
           body="$(curl -sf http://localhost:3031/)"
           for needle in "Sity" "toggle-lanes" "route-random" "scene-stats"; do
             printf '%s' "$body" | grep -qF "$needle" || { echo "missing: $needle" >&2; exit 1; }
           done
-          curl -sf http://localhost:3031/assets/sity/asset-manifest.json | grep -q '"units": "meters"'
+          manifest="$(curl -sf http://localhost:3031/assets/sity/asset-manifest.json)"
+          printf '%s' "$manifest" | grep -q '"units": "meters"'
+          headers="$(curl -sfI http://localhost:3031/)"
+          printf '%s' "$headers" | grep -qi '^content-security-policy-report-only: .*report-uri /rum/csp'
+          metrics="$(curl -sf http://localhost:3031/metrics)"
+          printf '%s' "$metrics" | grep -q '^http_requests_total{'
+          printf '%s' "$metrics" | grep -q '^service_build_info{.*version="ci"'
 
       - name: Container logs (on failure)
         if: failure()

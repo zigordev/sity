@@ -17,6 +17,9 @@ services:
       dockerfile: apps/web/Dockerfile
       target: local
     restart: unless-stopped
+    environment:
+      OTEL_SERVICE_NAME: sity-web
+      APP_RELEASE: ${APP_RELEASE:-local}
     ports:
       - '3031:8080'
     healthcheck:

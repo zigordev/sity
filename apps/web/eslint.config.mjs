@@ -4,7 +4,16 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-  { ignores: ['dist/**', 'coverage/**', 'playwright-report/**', 'test-results/**', 'public/**'] },
+  {
+    ignores: [
+      'dist/**',
+      'dist-server/**',
+      'coverage/**',
+      'playwright-report/**',
+      'test-results/**',
+      'public/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -14,7 +23,10 @@ export default defineConfig([
   {
     files: ['**/*.ts', '**/*.mjs'],
     rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
     },
   },
 ]);
