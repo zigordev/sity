@@ -7,12 +7,14 @@ import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { fastifyLoggerOptions, registerHttpMetrics } from '../src/observability/fastify';
 import { registerRumRoutes } from '../src/observability/fastify-rum';
 import { setSourceMapRoot } from '../src/observability/rum-details';
+import { registerRumVocabulary } from '../src/observability/rum-metrics';
 import { logRequestFailed } from '../src/observability/standard-events';
 import { CONTENT_SECURITY_POLICY } from './csp';
 import { health } from './health';
 
 const THIRTY_DAYS = 'public, max-age=2592000';
 const NO_FALLBACK = ['/assets/', '/rum/'];
+const RUM_PAGES = ['/'];
 
 export interface ServerOptions {
   readonly root: string;
@@ -23,6 +25,8 @@ export async function buildServer({
   root,
   logger = true,
 }: ServerOptions): Promise<FastifyInstance> {
+  registerRumVocabulary({ pages: RUM_PAGES });
+
   const app = Fastify({
     logger: logger ? fastifyLoggerOptions : false,
     logController: new LogController({ disableRequestLogging: true }),
@@ -53,7 +57,7 @@ export async function buildServer({
   });
 
   registerHttpMetrics(app);
-  registerRumRoutes(app, { pages: ['/'] });
+  registerRumRoutes(app);
   app.get('/health', async () => health());
 
   await app.register(fastifyCompress, { encodings: ['br', 'gzip'] });
