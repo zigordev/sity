@@ -1,0 +1,114 @@
+name: Kit Drift
+
+on:
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kit-drift
+  cancel-in-progress: true
+
+env:
+  HUSKY: '0'
+
+jobs:
+  parity:
+    name: Observability kit drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Compare the vendored kit with the live manifest
+        id: parity
+        run: |
+          set -uo pipefail
+          report="$(npm run --silent check:kit -- --strict-remote 2>&1)" && status=0 || status=$?
+          printf '%s\n' "$report"
+          {
+            echo "report<<PARITY_EOF"
+            printf '%s\n' "$report"
+            echo "PARITY_EOF"
+          } >>"$GITHUB_OUTPUT"
+          echo "status=$status" >>"$GITHUB_OUTPUT"
+
+      - name: Open or update an issue
+        if: steps.parity.outputs.status != '0'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          REPORT: ${{ steps.parity.outputs.report }}
+        with:
+          script: |
+            const title = 'Observability kit: the vendored copy is behind platform-ops';
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'The weekly parity run could not confirm that `apps/web/src/observability` matches the pin in `observability.kit.json`.',
+              '',
+              '```',
+              process.env.REPORT.trim(),
+              '```',
+              '',
+              'Re-vendor the changed files from `zigordev/platform-ops`, then run `npm run check:kit -- --repin`.',
+              '',
+              `[Parity run](${run})`,
+            ].join('\n');
+
+            const existing = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: 'all',
+              labels: 'kit-drift',
+              per_page: 20,
+            });
+            const found = existing.data.find((i) => i.title === title);
+
+            if (!found) {
+              await github.rest.issues.create({ ...context.repo, title, body, labels: ['kit-drift'] });
+              return;
+            }
+
+            if (found.state === 'closed') {
+              await github.rest.issues.update({ ...context.repo, issue_number: found.number, state: 'open' });
+            }
+            await github.rest.issues.createComment({ ...context.repo, issue_number: found.number, body });
+
+      - name: Close the issue when the pin is current
+        if: steps.parity.outputs.status == '0'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = 'Observability kit: the vendored copy is behind platform-ops';
+            const open = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: 'open',
+              labels: 'kit-drift',
+              per_page: 20,
+            });
+            const issue = open.data.find((i) => i.title === title);
+            if (issue) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issue.number,
+                body: 'The vendored kit matches the pin and the pin is at the kit\'s current digest. Closing.',
+              });
+              await github.rest.issues.update({ ...context.repo, issue_number: issue.number, state: 'closed' });
+            }
+
+      - name: Fail when the kit has moved on
+        if: steps.parity.outputs.status != '0'
+        run: exit 1

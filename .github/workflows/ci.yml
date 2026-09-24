@@ -40,6 +40,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Observability kit parity
+        run: npm run check:kit -- --offline
+
       - name: Unit tests with coverage
         run: npm run test:cov
 
