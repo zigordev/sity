@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/zigordev/sity/compare/v0.4.0...v0.4.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **observability:** pin the vendored kit and stop the CI probes dying on SIGPIPE ([#44](https://github.com/zigordev/sity/issues/44)) ([d8ee994](https://github.com/zigordev/sity/commit/d8ee994dd17c7e17fab213e2289f87501262e151))
+
 ## [0.4.0](https://github.com/zigordev/sity/compare/v0.3.1...v0.4.0) (2026-09-24)
 
 
