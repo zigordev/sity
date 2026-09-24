@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/zigordev/sity/compare/v0.3.1...v0.4.0) (2026-09-24)
+
+
+### Features
+
+* **deploy:** give sity a production delivery path ([#41](https://github.com/zigordev/sity/issues/41)) ([ddd8526](https://github.com/zigordev/sity/commit/ddd8526457703b38453441062778f1f003643ec9))
+
 ## [0.3.1](https://github.com/zigordev/sity/compare/v0.3.0...v0.3.1) (2026-09-23)
 
 
