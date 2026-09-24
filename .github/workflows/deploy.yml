@@ -320,6 +320,6 @@ jobs:
         run: |
           set -euo pipefail
           body="$(curl -fsS "$HEALTHCHECK_URL")"
-          printf '%s' "$body" | grep -q '"status":"ok"'
-          printf '%s' "$body" | grep -q "\"release\":\"${RELEASE_TAG}\""
+          grep -q '"status":"ok"' <<<"$body"
+          grep -q "\"release\":\"${RELEASE_TAG}\"" <<<"$body"
           echo "Health check passed: $HEALTHCHECK_URL ($RELEASE_TAG)"

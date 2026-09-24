@@ -40,6 +40,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Observability kit parity
+        run: npm run check:kit -- --offline
+
       - name: Unit tests with coverage
         run: npm run test:cov
 
@@ -101,19 +104,19 @@ jobs:
         run: |
           set -euo pipefail
           health="$(curl -sf http://localhost:3031/health)"
-          printf '%s' "$health" | grep -q '"status":"ok"'
-          printf '%s' "$health" | grep -q '"release":"ci"'
+          grep -q '"status":"ok"' <<<"$health"
+          grep -q '"release":"ci"' <<<"$health"
           body="$(curl -sf http://localhost:3031/)"
           for needle in "Sity" "toggle-lanes" "route-random" "scene-stats"; do
-            printf '%s' "$body" | grep -qF "$needle" || { echo "missing: $needle" >&2; exit 1; }
+            grep -qF "$needle" <<<"$body" || { echo "missing: $needle" >&2; exit 1; }
           done
           manifest="$(curl -sf http://localhost:3031/assets/sity/asset-manifest.json)"
-          printf '%s' "$manifest" | grep -q '"units": "meters"'
+          grep -q '"units": "meters"' <<<"$manifest"
           headers="$(curl -sfI http://localhost:3031/)"
-          printf '%s' "$headers" | grep -qi '^content-security-policy-report-only: .*report-uri /rum/csp'
+          grep -qi '^content-security-policy-report-only: .*report-uri /rum/csp' <<<"$headers"
           metrics="$(curl -sf http://localhost:3031/metrics)"
-          printf '%s' "$metrics" | grep -q '^http_requests_total{'
-          printf '%s' "$metrics" | grep -q '^service_build_info{.*version="ci"'
+          grep -q '^http_requests_total{' <<<"$metrics"
+          grep -q '^service_build_info{.*version="ci"' <<<"$metrics"
 
       - name: Container logs (on failure)
         if: failure()
