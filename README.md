@@ -101,7 +101,13 @@ reported.
 ## Release + deploy model
 
 - `Release Please` manages versioning/changelog + release PR.
-- There is no deploy workflow yet, because the scene has no host until vehicles and traffic devices exist.
+- Publishing that release starts `Deploy AWS App (EC2 Compose)`: it builds and pushes the web image to
+  ECR, scans and signs it, bundles the repository to S3, and runs
+  [scripts/prod-deploy-remote.sh](scripts/prod-deploy-remote.sh) on the shared host over SSM, which
+  brings up [docker/compose.app.prod.yml](docker/compose.app.prod.yml) with the released image and tag.
+  The same workflow runs by hand with a `release_tag`, which is also how a rollback works.
+- The first deploy needs the ECR repository, the GitHub environment and the ingress route from
+  [docs/cloud-first-deploy.md](docs/cloud-first-deploy.md).
 - CI runs the quality commands above, plus gitleaks over the full history, a Docker smoke test of the
   image (the page, its policy header, `/health` and `/metrics`), a licence gate, `npm audit` on production dependencies, an SBOM and Trivy scan of the image,
   Semgrep, CodeQL, dependency review and commitlint.
@@ -110,8 +116,8 @@ reported.
 
 ```
 apps/web/            the Vite app (index.html, src, public, e2e) and its server (server)
-docker/              app-local and app-dev compose manifests
-docs/                first-run guide, with the scene and performance notes under docs/architecture
-scripts/             husky bootstrap, gitleaks pre-commit, licence and audit gates, local stack
-.github/workflows/   ci, codeql, commitlint, dependency review, auto-merge, release-please
+docker/              app-local, app-dev and app-prod compose manifests, prod env base
+docs/                first-run and first-deploy guides, scene and performance notes under architecture
+scripts/             husky bootstrap, gitleaks pre-commit, licence and audit gates, local stack, deploy
+.github/workflows/   ci, deploy, codeql, commitlint, dependency review, auto-merge, release-please
 ```

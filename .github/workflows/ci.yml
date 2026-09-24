@@ -176,9 +176,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate compose manifests
+        env:
+          APP_RELEASE: ci
+          WEB_IMAGE: sity-web:ci
         run: |
           docker compose -f docker/compose.app.dev.yml config > /dev/null
           docker compose -f docker/compose.app.local.yml config > /dev/null
+          docker compose -f docker/compose.app.prod.yml config > /dev/null
 
   security-supply-chain:
     name: Security + Supply Chain
