@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/zigordev/sity/compare/v0.4.1...v0.4.2) (2026-10-05)
+
+
+### Bug Fixes
+
+* **sity:** clear the high prod audit blocker ([#49](https://github.com/zigordev/sity/issues/49)) ([c417624](https://github.com/zigordev/sity/commit/c4176245d7c55553cab302e2927ac20a9ffe9c95))
+
 ## [0.4.1](https://github.com/zigordev/sity/compare/v0.4.0...v0.4.1) (2026-09-24)
 
 
