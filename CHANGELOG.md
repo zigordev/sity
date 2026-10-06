@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/zigordev/sity/compare/v0.4.2...v0.4.3) (2026-10-06)
+
+
+### Bug Fixes
+
+* **sity:** carry nested workspace dependencies into the web image ([#54](https://github.com/zigordev/sity/issues/54)) ([f774bf0](https://github.com/zigordev/sity/commit/f774bf003cb5368d1cfbcd50298c2ffb45785f81))
+
 ## [0.4.2](https://github.com/zigordev/sity/compare/v0.4.1...v0.4.2) (2026-10-05)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "sity",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
   "description": "Three.js coastal city and lane graph for smart-traffic simulation",
   "engines": {
