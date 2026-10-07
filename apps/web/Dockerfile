@@ -17,8 +17,7 @@ RUN set -eux; \
 
 FROM base AS build
 ENV NODE_ENV=production
-COPY --from=deps-build /workspace/node_modules /workspace/node_modules
-COPY package.json /workspace/package.json
+COPY --from=deps-build /workspace /workspace
 COPY apps/web /workspace/apps/web
 WORKDIR /workspace/apps/web
 RUN npm run build
@@ -36,6 +35,12 @@ RUN set -eux; \
     echo "npm ci failed (attempt $attempt), retrying in 10s..."; \
     sleep 10; \
   done
+RUN set -eux; \
+  if [ -d /workspace/apps/web/node_modules ]; then \
+    echo "runtime image carries only the hoisted root node_modules; these nested production dependencies would be missing:"; \
+    ls -1 /workspace/apps/web/node_modules; \
+    exit 1; \
+  fi
 
 FROM node:24-alpine AS prod
 WORKDIR /app
@@ -56,8 +61,7 @@ FROM prod AS local
 
 FROM base AS dev
 ENV NODE_ENV=development
-COPY --from=deps-build /workspace/node_modules /workspace/node_modules
-COPY package.json /workspace/package.json
+COPY --from=deps-build /workspace /workspace
 COPY apps/web /workspace/apps/web
 WORKDIR /workspace/apps/web
 EXPOSE 8080
